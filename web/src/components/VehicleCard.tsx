@@ -26,6 +26,8 @@ export function VehicleCard({
         <img
           src={vehicle.imageUrl}
           alt={vehicle.name}
+          loading="lazy"
+          decoding="async"
           className="h-full w-full object-cover transition duration-500 ease-motion group-hover:scale-105"
         />
         <span className="absolute left-3 top-3 rounded-full bg-paper/90 px-3 py-1 text-xs font-semibold text-forest">

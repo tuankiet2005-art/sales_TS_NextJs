@@ -16,6 +16,7 @@ import type {
   DealerPolicy,
   ImportResult,
   Location,
+  Paginated,
   QuoteExtras,
   QuoteHistory,
   UsageType,
@@ -100,6 +101,45 @@ export const api = {
     }
     const query = params.toString();
     return request<VehicleSummary[]>(`/api/vehicles/search${query ? `?${query}` : ""}`);
+  },
+  searchVehiclesPage(options: {
+    keyword?: string;
+    brandCode?: string;
+    categoryId?: number;
+    model?: string;
+    vehicleType?: string;
+    page?: number;
+    pageSize?: number;
+  }) {
+    const params = new URLSearchParams();
+    if (options.keyword?.trim()) {
+      params.set("keyword", options.keyword.trim());
+    }
+    if (options.brandCode) {
+      params.set("brand", options.brandCode);
+    }
+    if (options.categoryId) {
+      params.set("categoryId", String(options.categoryId));
+    }
+    if (options.model) {
+      params.set("model", options.model);
+    }
+    if (options.vehicleType) {
+      params.set("type", options.vehicleType);
+    }
+    params.set("page", String(options.page ?? 1));
+    params.set("pageSize", String(options.pageSize ?? 10));
+    return request<Paginated<VehicleSummary>>(`/api/vehicles/search?${params.toString()}`);
+  },
+  getVehicleFilterOptions(brandCode?: string) {
+    const params = new URLSearchParams();
+    if (brandCode) {
+      params.set("brand", brandCode);
+    }
+    const query = params.toString();
+    return request<{ models: string[]; vehicleTypes: string[] }>(
+      `/api/vehicles/filters${query ? `?${query}` : ""}`,
+    );
   },
   getVehicle(id: number) {
     return request<VehicleDetail>(`/api/vehicles/${id}`);
@@ -191,13 +231,29 @@ export const api = {
     }
     return response.blob();
   },
-  listQuotes(query?: string) {
+  listQuotes(options?: {
+    query?: string;
+    brandCode?: string;
+    locationName?: string;
+    page?: number;
+    pageSize?: number;
+  }) {
     const params = new URLSearchParams();
-    if (query?.trim()) {
-      params.set("q", query.trim());
+    if (options?.query?.trim()) {
+      params.set("q", options.query.trim());
     }
-    const suffix = params.toString();
-    return request<QuoteHistory[]>(`/api/quotes${suffix ? `?${suffix}` : ""}`);
+    if (options?.brandCode) {
+      params.set("brand", options.brandCode);
+    }
+    if (options?.locationName) {
+      params.set("location", options.locationName);
+    }
+    params.set("page", String(options?.page ?? 1));
+    params.set("pageSize", String(options?.pageSize ?? 10));
+    return request<Paginated<QuoteHistory>>(`/api/quotes?${params.toString()}`);
+  },
+  getQuoteFilterOptions() {
+    return request<{ brandCodes: string[]; locationNames: string[] }>("/api/quotes?filters=1");
   },
   getQuote(id: number) {
     return request<QuoteHistory>(`/api/quotes/${id}`);

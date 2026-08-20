@@ -1,4 +1,4 @@
-import { and, eq, ilike, or, sql } from "drizzle-orm";
+import { and, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "../client";
 import {
@@ -26,19 +26,30 @@ export async function findActiveVehicleById(id: number) {
   return rows[0] ?? null;
 }
 
-export async function searchActiveVehicles(params: {
+export type ActiveVehicleSearchParams = {
   keyword?: string;
   brandCode?: string;
   categoryId?: number;
-}) {
-  const db = getDb();
-  const filters = [eq(vehicles.active, true)];
+  model?: string;
+  vehicleType?: string;
+  limit?: number;
+  offset?: number;
+};
+
+function activeVehicleSearchWhere(params: ActiveVehicleSearchParams): SQL {
+  const filters: SQL[] = [eq(vehicles.active, true)];
 
   if (params.brandCode) {
     filters.push(sql`lower(${brands.code}) = lower(${params.brandCode})`);
   }
   if (params.categoryId) {
     filters.push(eq(vehicles.categoryId, params.categoryId));
+  }
+  if (params.model) {
+    filters.push(eq(vehicles.model, params.model));
+  }
+  if (params.vehicleType) {
+    filters.push(eq(vehicles.vehicleType, params.vehicleType));
   }
   if (params.keyword?.trim()) {
     const pattern = `%${params.keyword.trim()}%`;
@@ -52,6 +63,11 @@ export async function searchActiveVehicles(params: {
     );
   }
 
+  return and(...filters)!;
+}
+
+function activeVehicleSearchBase(params: ActiveVehicleSearchParams) {
+  const db = getDb();
   return db
     .select({
       vehicle: vehicles,
@@ -61,8 +77,57 @@ export async function searchActiveVehicles(params: {
     .from(vehicles)
     .innerJoin(brands, eq(vehicles.brandId, brands.id))
     .innerJoin(vehicleCategories, eq(vehicles.categoryId, vehicleCategories.id))
-    .where(and(...filters))
+    .where(activeVehicleSearchWhere(params))
     .orderBy(vehicles.name);
+}
+
+export async function searchActiveVehicles(params: ActiveVehicleSearchParams) {
+  const query = activeVehicleSearchBase(params);
+  if (params.limit == null) {
+    return query;
+  }
+  return query.limit(params.limit).offset(params.offset ?? 0);
+}
+
+export async function countActiveVehicles(params: ActiveVehicleSearchParams) {
+  const db = getDb();
+  const rows = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(vehicles)
+    .innerJoin(brands, eq(vehicles.brandId, brands.id))
+    .innerJoin(vehicleCategories, eq(vehicles.categoryId, vehicleCategories.id))
+    .where(activeVehicleSearchWhere(params));
+  return rows[0]?.count ?? 0;
+}
+
+export async function listActiveVehicleFilterOptions(brandCode?: string) {
+  const db = getDb();
+  const params: ActiveVehicleSearchParams = brandCode ? { brandCode } : {};
+  const where = activeVehicleSearchWhere(params);
+
+  const [modelRows, typeRows] = await Promise.all([
+    db
+      .selectDistinct({ model: vehicles.model })
+      .from(vehicles)
+      .innerJoin(brands, eq(vehicles.brandId, brands.id))
+      .innerJoin(vehicleCategories, eq(vehicles.categoryId, vehicleCategories.id))
+      .where(where)
+      .orderBy(vehicles.model),
+    db
+      .selectDistinct({ vehicleType: vehicles.vehicleType })
+      .from(vehicles)
+      .innerJoin(brands, eq(vehicles.brandId, brands.id))
+      .innerJoin(vehicleCategories, eq(vehicles.categoryId, vehicleCategories.id))
+      .where(where)
+      .orderBy(vehicles.vehicleType),
+  ]);
+
+  return {
+    models: modelRows.map((row: { model: string }) => row.model).filter(Boolean),
+    vehicleTypes: typeRows
+      .map((row: { vehicleType: string | null }) => row.vehicleType)
+      .filter((value): value is string => Boolean(value)),
+  };
 }
 
 export async function listBrands() {

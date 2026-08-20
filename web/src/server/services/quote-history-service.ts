@@ -1,9 +1,9 @@
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "../db/client";
 import { quoteHistory } from "../db/schema";
-import type { CostBreakdown, QuoteHistory } from "@/types";
-import { calculateOnRoad, resolveQuoteCalculation } from "./catalog-service";
+import type { CostBreakdown, Paginated, QuoteHistory } from "@/types";
+import { resolveQuoteCalculation } from "./catalog-service";
 import { collapseRecentDuplicateQuotes, shouldReuseRecentQuote } from "./quote-history-rules";
 
 export type QuoteSaveRequest = {
@@ -28,7 +28,63 @@ export type QuoteSaveRequest = {
   breakdown?: CostBreakdown;
 };
 
+export type QuoteSearchParams = {
+  query?: string;
+  brandCode?: string;
+  locationName?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+const quoteListColumns = {
+  id: quoteHistory.id,
+  customerName: quoteHistory.customerName,
+  customerAddress: quoteHistory.customerAddress,
+  vehicleId: quoteHistory.vehicleId,
+  brandCode: quoteHistory.brandCode,
+  vehicleName: quoteHistory.vehicleName,
+  locationId: quoteHistory.locationId,
+  locationName: quoteHistory.locationName,
+  categoryId: quoteHistory.categoryId,
+  color: quoteHistory.color,
+  usageType: quoteHistory.usageType,
+  language: quoteHistory.language,
+  includeOptional: quoteHistory.includeOptional,
+  listPrice: quoteHistory.listPrice,
+  salePrice: quoteHistory.salePrice,
+  discountAmount: quoteHistory.discountAmount,
+  deposit: quoteHistory.deposit,
+  onRoadTotal: quoteHistory.onRoadTotal,
+  createdAt: quoteHistory.createdAt,
+};
+
+type QuoteListRow = {
+  id: number;
+  customerName: string;
+  customerAddress: string | null;
+  vehicleId: number | null;
+  brandCode: string | null;
+  vehicleName: string | null;
+  locationId: number | null;
+  locationName: string | null;
+  categoryId: number | null;
+  color: string | null;
+  usageType: string | null;
+  language: string | null;
+  includeOptional: boolean;
+  listPrice: string | null;
+  salePrice: string | null;
+  discountAmount: string | null;
+  deposit: string | null;
+  onRoadTotal: string | null;
+  createdAt: Date;
+};
+
 function mapQuote(row: typeof quoteHistory.$inferSelect): QuoteHistory {
+  return mapQuoteListRow(row);
+}
+
+function mapQuoteListRow(row: QuoteListRow | typeof quoteHistory.$inferSelect): QuoteHistory {
   return {
     id: row.id,
     customerName: row.customerName,
@@ -47,36 +103,80 @@ function mapQuote(row: typeof quoteHistory.$inferSelect): QuoteHistory {
     salePrice: row.salePrice != null ? Number(row.salePrice) : undefined,
     discountAmount: row.discountAmount != null ? Number(row.discountAmount) : undefined,
     deposit: row.deposit != null ? Number(row.deposit) : undefined,
-    onRoadTotal: Number(row.onRoadTotal),
-    payload: row.payload ?? undefined,
+    onRoadTotal: Number(row.onRoadTotal ?? 0),
+    payload: "payload" in row ? row.payload ?? undefined : undefined,
     createdAt: row.createdAt.toISOString(),
   };
 }
 
-export async function searchQuotes(query?: string) {
-  const db = getDb();
-  if (query?.trim()) {
-    const pattern = `%${query.trim()}%`;
-    const rows = await db
-      .select()
-      .from(quoteHistory)
-      .where(
-        or(
-          ilike(quoteHistory.customerName, pattern),
-          ilike(quoteHistory.vehicleName, pattern),
-          ilike(quoteHistory.locationName, pattern),
-        ),
-      )
-      .orderBy(desc(quoteHistory.createdAt))
-      .limit(100);
-    return collapseRecentDuplicateQuotes(rows.map(mapQuote));
+function quoteSearchWhere(params: QuoteSearchParams): SQL | undefined {
+  const filters: SQL[] = [];
+  if (params.query?.trim()) {
+    const pattern = `%${params.query.trim()}%`;
+    filters.push(
+      or(
+        ilike(quoteHistory.customerName, pattern),
+        ilike(quoteHistory.customerAddress, pattern),
+        ilike(quoteHistory.vehicleName, pattern),
+        ilike(quoteHistory.locationName, pattern),
+      )!,
+    );
   }
-  const rows = await db
-    .select()
-    .from(quoteHistory)
-    .orderBy(desc(quoteHistory.createdAt))
-    .limit(100);
-  return collapseRecentDuplicateQuotes(rows.map(mapQuote));
+  if (params.brandCode) {
+    filters.push(eq(quoteHistory.brandCode, params.brandCode));
+  }
+  if (params.locationName) {
+    filters.push(eq(quoteHistory.locationName, params.locationName));
+  }
+  return filters.length ? and(...filters) : undefined;
+}
+
+export async function searchQuotes(params: QuoteSearchParams = {}): Promise<Paginated<QuoteHistory>> {
+  const db = getDb();
+  const page = Math.max(1, params.page ?? 1);
+  const pageSize = Math.max(1, Math.min(params.pageSize ?? 10, 50));
+  const offset = (page - 1) * pageSize;
+  const where = quoteSearchWhere(params);
+
+  const listQuery = db.select(quoteListColumns).from(quoteHistory);
+  const countQuery = db.select({ count: sql<number>`count(*)::int` }).from(quoteHistory);
+
+  const [rows, countRows] = await Promise.all([
+    (where ? listQuery.where(where) : listQuery)
+      .orderBy(desc(quoteHistory.createdAt))
+      .limit(pageSize)
+      .offset(offset),
+    where ? countQuery.where(where) : countQuery,
+  ]);
+
+  return {
+    items: collapseRecentDuplicateQuotes(rows.map(mapQuoteListRow)),
+    total: countRows[0]?.count ?? 0,
+    page,
+    pageSize,
+  };
+}
+
+export async function getQuoteFilterOptions() {
+  const db = getDb();
+  const [brandRows, locationRows] = await Promise.all([
+    db
+      .selectDistinct({ brandCode: quoteHistory.brandCode })
+      .from(quoteHistory)
+      .where(sql`${quoteHistory.brandCode} is not null`)
+      .orderBy(quoteHistory.brandCode),
+    db
+      .selectDistinct({ locationName: quoteHistory.locationName })
+      .from(quoteHistory)
+      .where(sql`${quoteHistory.locationName} is not null`)
+      .orderBy(quoteHistory.locationName),
+  ]);
+  return {
+    brandCodes: brandRows.map((row) => row.brandCode).filter((value): value is string => Boolean(value)),
+    locationNames: locationRows
+      .map((row) => row.locationName)
+      .filter((value): value is string => Boolean(value)),
+  };
 }
 
 export async function getQuote(id: number) {

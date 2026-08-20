@@ -36,13 +36,15 @@ Client-perceived quote navigation is faster when vehicle cache is warm (calc-onl
 
 ## Category filter fast path (2026-08-21 follow-up)
 
-Bundled `/api/catalog` blocked category chips until all vehicles loaded. Home now:
+Bundled `/api/catalog` blocked category chips until all vehicles loaded. Home now hydrates categories from `sessionStorage`, refreshes via `/api/vehicle-categories`, and loads vehicles separately.
 
-1. Hydrates categories from `sessionStorage` on first paint
-2. Refreshes via `/api/vehicle-categories` independently of the vehicle list
-3. Loads brand + vehicles in parallel (`vehiclesLoading` only gates the grid)
+## Pagination (2026-08-21)
 
-Vehicle confirm page caches categories and locations the same way.
+List endpoints were loading every row (and full quote `payload` JSON) regardless of how much text each row showed — so a one-line address felt as slow as a long one.
+
+- Catalog: `GET /api/vehicles/search?page=&pageSize=10` returns 10 vehicles per page with server-side filters
+- Quote history: list query skips `payload`; 10 rows per page; `GET /api/quotes/[id]` on open
+- Shared `Pagination` component (10 per page default)
 
 ## Follow-ups
 

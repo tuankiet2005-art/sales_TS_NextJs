@@ -1,10 +1,12 @@
 import {
+  countActiveVehicles,
   findActiveVehicleById,
   findBrandByCode,
   findCategoryById,
   findLocationById,
   listActiveFeeDefinitions,
   listActiveFeeRules,
+  listActiveVehicleFilterOptions,
   listBrands,
   listCategories,
   listLocations,
@@ -21,7 +23,7 @@ import {
 import { getDealerPolicy, loadPolicySnapshot } from "../config/policy-store";
 import { calculateOnRoadCost } from "../domain/on-road-cost";
 import type { CalculateOnRoadInput } from "../domain/types";
-import type { Brand, Category, CostBreakdown, Location } from "@/types";
+import type { Brand, Category, CostBreakdown, Location, Paginated, VehicleSummary } from "@/types";
 
 type CatalogListCache = {
   brands: Brand[] | null;
@@ -142,9 +144,49 @@ export async function searchVehicles(params: {
   keyword?: string;
   brandCode?: string;
   categoryId?: number;
+  model?: string;
+  vehicleType?: string;
 }) {
   const [rows, policy] = await Promise.all([searchActiveVehicles(params), getDealerPolicy()]);
   return rows.map((row) => mapVehicleSummaryWithPolicy(row, policy));
+}
+
+export async function searchVehiclesPage(params: {
+  keyword?: string;
+  brandCode?: string;
+  categoryId?: number;
+  model?: string;
+  vehicleType?: string;
+  page: number;
+  pageSize: number;
+}): Promise<Paginated<VehicleSummary>> {
+  const page = Math.max(1, params.page);
+  const pageSize = Math.max(1, Math.min(params.pageSize, 50));
+  const offset = (page - 1) * pageSize;
+  const searchParams = {
+    keyword: params.keyword,
+    brandCode: params.brandCode,
+    categoryId: params.categoryId,
+    model: params.model,
+    vehicleType: params.vehicleType,
+    limit: pageSize,
+    offset,
+  };
+  const [rows, total, policy] = await Promise.all([
+    searchActiveVehicles(searchParams),
+    countActiveVehicles(searchParams),
+    getDealerPolicy(),
+  ]);
+  return {
+    items: rows.map((row) => mapVehicleSummaryWithPolicy(row, policy)),
+    total,
+    page,
+    pageSize,
+  };
+}
+
+export async function getVehicleFilterOptions(brandCode?: string) {
+  return listActiveVehicleFilterOptions(brandCode);
 }
 
 export async function getVehicle(id: number) {

@@ -3,11 +3,31 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 
 import { error, json, notFound } from "@/server/http";
-import { saveQuoteFromRequest, searchQuotes } from "@/server/services/quote-history-service";
+import {
+  getQuoteFilterOptions,
+  saveQuoteFromRequest,
+  searchQuotes,
+} from "@/server/services/quote-history-service";
 
 export async function GET(request: NextRequest) {
-  const query = request.nextUrl.searchParams.get("q") ?? undefined;
-  return json(await searchQuotes(query));
+  const params = request.nextUrl.searchParams;
+  if (params.get("filters") === "1") {
+    return json(await getQuoteFilterOptions());
+  }
+  const query = params.get("q") ?? undefined;
+  const brandCode = params.get("brand") ?? undefined;
+  const locationName = params.get("location") ?? undefined;
+  const page = params.get("page") ? Number(params.get("page")) : 1;
+  const pageSize = params.get("pageSize") ? Number(params.get("pageSize")) : 10;
+  return json(
+    await searchQuotes({
+      query,
+      brandCode,
+      locationName,
+      page,
+      pageSize,
+    }),
+  );
 }
 
 export async function POST(request: Request) {

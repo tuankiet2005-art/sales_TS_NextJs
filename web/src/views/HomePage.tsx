@@ -5,12 +5,14 @@ import { useParams, usePathname, useRouter, useSearchParams } from "next/navigat
 import { api } from "../api/client";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
+import { Pagination, catalogPageSize } from "../components/Pagination";
 import { VehicleCard } from "../components/VehicleCard";
 import { useI18n } from "../i18n/LanguageContext";
-import { softIncludes } from "../lib/softSearch";
 import { loadCategoryCache, saveCategoryCache } from "../lib/catalogReferenceCache";
-import { motionInteractive, motionPress, motionStagger } from "../lib/motion";
+import { motionInteractive, motionStagger } from "../lib/motion";
 import type { Brand, Category, VehicleSummary } from "../types";
+
+const PAGE_SIZE = catalogPageSize();
 
 export function HomePage() {
   const params = useParams() ?? {};
@@ -20,16 +22,26 @@ export function HomePage() {
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const [keyword, setKeyword] = useState(searchParams?.get("q") ?? "");
+  const [debouncedKeyword, setDebouncedKeyword] = useState(keyword);
   const [categoryId, setCategoryId] = useState<number | undefined>(
-    searchParams?.get("category") ? Number(searchParams.get("category")) : undefined
+    searchParams?.get("category") ? Number(searchParams.get("category")) : undefined,
   );
   const [modelFilter, setModelFilter] = useState(searchParams?.get("model") ?? "");
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState(searchParams?.get("type") ?? "");
+  const page = Math.max(1, Number(searchParams?.get("page") ?? 1) || 1);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [categories, setCategories] = useState<Category[]>(() => loadCategoryCache() ?? []);
   const [vehicles, setVehicles] = useState<VehicleSummary[]>([]);
+  const [vehicleTotal, setVehicleTotal] = useState(0);
+  const [modelOptions, setModelOptions] = useState<{ value: string; label: string }[]>([]);
+  const [vehicleTypeOptions, setVehicleTypeOptions] = useState<{ value: string; label: string }[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedKeyword(keyword), 300);
+    return () => window.clearTimeout(timer);
+  }, [keyword]);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,16 +60,59 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (!brandCode) {
+      return;
+    }
+    let cancelled = false;
+    api
+      .getBrand(brandCode)
+      .then((nextBrand) => {
+        if (!cancelled) {
+          setBrand(nextBrand);
+        }
+      })
+      .catch(() => undefined);
+    api
+      .getVehicleFilterOptions(brandCode)
+      .then((filters) => {
+        if (!cancelled) {
+          setModelOptions(filters.models.map((model) => ({ value: model, label: model })));
+          setVehicleTypeOptions(
+            filters.vehicleTypes.map((vehicleType) => {
+              const key = `admin.opt.${vehicleType}`;
+              return { value: vehicleType, label: t(key) === key ? vehicleType : t(key) };
+            }),
+          );
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [brandCode, t]);
+
+  useEffect(() => {
+    if (!brandCode) {
+      return;
+    }
     let cancelled = false;
     setVehiclesLoading(true);
     setError(null);
-    Promise.all([api.getBrand(brandCode), api.searchVehicles("", brandCode)])
-      .then(([nextBrand, data]) => {
-        if (cancelled) {
-          return;
+    api
+      .searchVehiclesPage({
+        keyword: debouncedKeyword,
+        brandCode,
+        categoryId,
+        model: modelFilter || undefined,
+        vehicleType: vehicleTypeFilter || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      })
+      .then((result) => {
+        if (!cancelled) {
+          setVehicles(result.items);
+          setVehicleTotal(result.total);
         }
-        setBrand(nextBrand);
-        setVehicles(data);
       })
       .catch((err: Error) => {
         if (!cancelled) {
@@ -72,67 +127,44 @@ export function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [brandCode]);
+  }, [brandCode, categoryId, debouncedKeyword, modelFilter, vehicleTypeFilter, page]);
 
   const selectedCategory = useMemo(
     () => categories.find((item) => item.id === categoryId),
-    [categories, categoryId]
+    [categories, categoryId],
   );
 
-  const modelOptions = useMemo(
-    () =>
-      [...new Set(vehicles.map((vehicle) => vehicle.model).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b))
-        .map((model) => ({ value: model, label: model })),
-    [vehicles]
-  );
-
-  const vehicleTypeOptions = useMemo(
-    () =>
-      [...new Set(vehicles.map((vehicle) => vehicle.vehicleType).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b))
-        .map((vehicleType) => {
-          const key = `admin.opt.${vehicleType}`;
-          return { value: vehicleType, label: t(key) === key ? vehicleType : t(key) };
-        }),
-    [vehicles, t]
-  );
-
-  const visibleVehicles = useMemo(
-    () =>
-      vehicles.filter((vehicle) => {
-        const inCategory = !categoryId || vehicle.category.id === categoryId;
-        const inModel = !modelFilter || vehicle.model === modelFilter;
-        const inVehicleType = !vehicleTypeFilter || vehicle.vehicleType === vehicleTypeFilter;
-        return (
-          inCategory &&
-          inModel &&
-          inVehicleType &&
-          softIncludes(keyword, vehicle.name, vehicle.model, vehicle.brand, vehicle.vehicleType, vehicle.year)
-        );
-      }),
-    [vehicles, categoryId, keyword, modelFilter, vehicleTypeFilter]
-  );
-
-  function syncFilters(next: { categoryId?: number; model?: string; type?: string }) {
+  function pushQuery(next: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
-    if (next.categoryId) {
-      params.set("category", String(next.categoryId));
-    } else if ("categoryId" in next) {
-      params.delete("category");
-    }
-    if (next.model) {
-      params.set("model", next.model);
-    } else if ("model" in next) {
-      params.delete("model");
-    }
-    if (next.type) {
-      params.set("type", next.type);
-    } else if ("type" in next) {
-      params.delete("type");
+    for (const [key, value] of Object.entries(next)) {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
     }
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
+  function syncFilters(next: { categoryId?: number; model?: string; type?: string }) {
+    const params: Record<string, string | undefined> = { page: undefined };
+    if (next.categoryId) {
+      params.category = String(next.categoryId);
+    } else if ("categoryId" in next) {
+      params.category = undefined;
+    }
+    if (next.model) {
+      params.model = next.model;
+    } else if ("model" in next) {
+      params.model = undefined;
+    }
+    if (next.type) {
+      params.type = next.type;
+    } else if ("type" in next) {
+      params.type = undefined;
+    }
+    pushQuery(params);
   }
 
   function selectCategory(id?: number) {
@@ -148,6 +180,10 @@ export function HomePage() {
   function selectVehicleType(type: string) {
     setVehicleTypeFilter(type);
     syncFilters({ type });
+  }
+
+  function selectPage(nextPage: number) {
+    pushQuery({ page: nextPage <= 1 ? undefined : String(nextPage) });
   }
 
   return (
@@ -222,7 +258,7 @@ export function HomePage() {
               {selectedCategory ? t(`category.${selectedCategory.code}`) : t("availableVehicles")}
             </h2>
             <p className="mt-1 text-sm text-ink/55">
-              {vehiclesLoading ? t("loadingCatalog") : t("modelsCount", { n: visibleVehicles.length })}
+              {vehiclesLoading ? t("loadingCatalog") : t("modelsCount", { n: vehicleTotal })}
             </p>
           </div>
 
@@ -233,17 +269,19 @@ export function HomePage() {
             </div>
           )}
 
-          {!vehiclesLoading && !error && visibleVehicles.length === 0 && (
+          {!vehiclesLoading && !error && vehicles.length === 0 && (
             <p className="rounded-2xl bg-white px-5 py-10 text-center text-ink/60">
               {brand && !brand.ready ? t("emptyBrand") : t("emptySearch")}
             </p>
           )}
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleVehicles.map((vehicle, index) => (
+            {vehicles.map((vehicle, index) => (
               <VehicleCard key={vehicle.id} vehicle={vehicle} brandCode={brandCode} index={index} />
             ))}
           </div>
+
+          <Pagination page={page} total={vehicleTotal} onPageChange={selectPage} />
         </section>
 
         <section id="how-it-works" className="border-t border-ink/10 bg-white/70">

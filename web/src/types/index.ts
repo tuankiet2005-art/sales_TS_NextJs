@@ -9,6 +9,13 @@ export interface Brand {
   ready: boolean;
 }
 
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface Category {
   id: number;
   code: string;

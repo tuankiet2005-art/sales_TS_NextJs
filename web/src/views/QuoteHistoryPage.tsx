@@ -1,66 +1,74 @@
 "use client";
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
+import { Pagination, catalogPageSize } from "../components/Pagination";
 import { useI18n } from "../i18n/LanguageContext";
 import { formatVnd } from "../lib/format";
 import { motionInteractive, motionStagger } from "../lib/motion";
-import { softIncludes } from "../lib/softSearch";
 import { saveExtras } from "../lib/quoteExtras";
 import { savePolicyChoices } from "../lib/quotePolicy";
 import type { QuoteExtras, QuoteHistory } from "../types";
 
+const PAGE_SIZE = catalogPageSize();
+
 export function QuoteHistoryPage() {
   const { t, lang } = useI18n();
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [brandFilter, setBrandFilter] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams?.get("q") ?? "");
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [brandFilter, setBrandFilter] = useState(searchParams?.get("brand") ?? "");
+  const [locationFilter, setLocationFilter] = useState(searchParams?.get("location") ?? "");
+  const page = Math.max(1, Number(searchParams?.get("page") ?? 1) || 1);
   const [rows, setRows] = useState<QuoteHistory[]>([]);
+  const [total, setTotal] = useState(0);
+  const [brandOptions, setBrandOptions] = useState<{ value: string; label: string }[]>([]);
+  const [locationOptions, setLocationOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const brandOptions = useMemo(
-    () =>
-      [...new Set(rows.map((row) => row.brandCode).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b))
-        .map((brandCode) => ({ value: brandCode, label: brandCode })),
-    [rows]
-  );
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
-  const locationOptions = useMemo(
-    () =>
-      [...new Set(rows.map((row) => row.locationName).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, "vi"))
-        .map((locationName) => ({ value: locationName, label: locationName })),
-    [rows]
-  );
-
-  const visible = useMemo(
-    () =>
-      rows.filter((row) => {
-        if (brandFilter && row.brandCode !== brandFilter) {
-          return false;
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .getQuoteFilterOptions()
+      .then((filters) => {
+        if (!cancelled) {
+          setBrandOptions(filters.brandCodes.map((brandCode) => ({ value: brandCode, label: brandCode })));
+          setLocationOptions(
+            filters.locationNames.map((locationName) => ({ value: locationName, label: locationName })),
+          );
         }
-        if (locationFilter && row.locationName !== locationFilter) {
-          return false;
-        }
-        return matchesHistoryQuery(row, query);
-      }),
-    [rows, query, brandFilter, locationFilter]
-  );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     api
-      .listQuotes()
-      .then((next) => {
+      .listQuotes({
+        query: debouncedQuery,
+        brandCode: brandFilter || undefined,
+        locationName: locationFilter || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      })
+      .then((result) => {
         if (!cancelled) {
-          setRows(next);
+          setRows(result.items);
+          setTotal(result.total);
         }
       })
       .catch((err: Error) => {
@@ -76,39 +84,70 @@ export function QuoteHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [debouncedQuery, brandFilter, locationFilter, page]);
 
-  function openQuote(row: QuoteHistory) {
+  function pushQuery(next: Record<string, string | undefined>) {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    for (const [key, value] of Object.entries(next)) {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    }
+    const queryString = params.toString();
+    router.push(queryString ? `/quotes?${queryString}` : "/quotes");
+  }
+
+  function updateBrandFilter(value: string) {
+    setBrandFilter(value);
+    pushQuery({ brand: value || undefined, page: undefined });
+  }
+
+  function updateLocationFilter(value: string) {
+    setLocationFilter(value);
+    pushQuery({ location: value || undefined, page: undefined });
+  }
+
+  function selectPage(nextPage: number) {
+    pushQuery({ page: nextPage <= 1 ? undefined : String(nextPage) });
+  }
+
+  async function openQuote(row: QuoteHistory) {
     if (!row.vehicleId || !row.brandCode || !row.locationId) {
       return;
     }
-    const extras = extrasFromPayload(row.payload);
-    const offers = offersFromPayload(row.payload);
-    saveExtras(row.vehicleId, extras);
-    savePolicyChoices(row.vehicleId, {
-      usageType: row.usageType === "COMMERCIAL" ? "COMMERCIAL" : "PRIVATE",
+    const full = row.payload ? row : await api.getQuote(row.id);
+    if (!full) {
+      return;
+    }
+    const extras = extrasFromPayload(full.payload);
+    const offers = offersFromPayload(full.payload);
+    saveExtras(full.vehicleId, extras);
+    savePolicyChoices(full.vehicleId, {
+      usageType: full.usageType === "COMMERCIAL" ? "COMMERCIAL" : "PRIVATE",
       selectedOfferIds: offers.selectedOfferIds,
       forgoneOfferIds: offers.forgoneOfferIds,
     });
     const params = new URLSearchParams();
-    params.set("locationId", String(row.locationId));
-    if (row.categoryId) {
-      params.set("categoryId", String(row.categoryId));
+    params.set("locationId", String(full.locationId));
+    if (full.categoryId) {
+      params.set("categoryId", String(full.categoryId));
     }
-    if (row.includeOptional) {
+    if (full.includeOptional) {
       params.set("optional", "1");
     }
-    if (row.customerName) {
-      params.set("name", row.customerName);
+    if (full.customerName) {
+      params.set("name", full.customerName);
     }
-    if (row.customerAddress) {
-      params.set("address", row.customerAddress);
+    if (full.customerAddress) {
+      params.set("address", full.customerAddress);
     }
-    if (row.color) {
-      params.set("color", row.color);
+    if (full.color) {
+      params.set("color", full.color);
     }
-    params.set("usage", row.usageType === "COMMERCIAL" ? "commercial" : "private");
-    router.push(`/brand/${row.brandCode}/vehicles/${row.vehicleId}/on-road?${params.toString()}`);
+    params.set("usage", full.usageType === "COMMERCIAL" ? "commercial" : "private");
+    router.push(`/brand/${full.brandCode}/vehicles/${full.vehicleId}/on-road?${params.toString()}`);
   }
 
   return (
@@ -132,14 +171,14 @@ export function QuoteHistoryPage() {
           <ListFilterSelect
             label={t("filterBrand")}
             value={brandFilter}
-            onChange={setBrandFilter}
+            onChange={updateBrandFilter}
             options={brandOptions}
             allLabel={t("filterAll")}
           />
           <ListFilterSelect
             label={t("filterLocation")}
             value={locationFilter}
-            onChange={setLocationFilter}
+            onChange={updateLocationFilter}
             options={locationOptions}
             allLabel={t("filterAll")}
           />
@@ -149,12 +188,12 @@ export function QuoteHistoryPage() {
 
         {loading ? (
           <p className="mt-4 rounded-2xl bg-white px-4 py-8 text-sm text-ink/55 shadow-card">{t("loadingCatalog")}</p>
-        ) : visible.length === 0 ? (
+        ) : rows.length === 0 ? (
           <p className="mt-4 rounded-2xl bg-white px-4 py-8 text-sm text-ink/55 shadow-card">{t("quoteHistory.empty")}</p>
         ) : (
           <>
             <ul className="mt-4 space-y-3 md:hidden">
-              {visible.map((row, index) => (
+              {rows.map((row, index) => (
                 <li
                   key={row.id}
                   className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card motion-enter"
@@ -195,7 +234,7 @@ export function QuoteHistoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visible.map((row, index) => (
+                  {rows.map((row, index) => (
                     <tr
                       key={row.id}
                       className="border-t border-ink/6 motion-enter"
@@ -223,6 +262,7 @@ export function QuoteHistoryPage() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={page} total={total} onPageChange={selectPage} />
           </>
         )}
       </main>
@@ -240,30 +280,29 @@ interface StoredQuotePayload {
   accessories?: QuoteExtras["accessories"];
   selectedOfferIds?: string[];
   forgoneOfferIds?: string[];
-}
-
-function matchesHistoryQuery(row: QuoteHistory, query: string) {
-  return softIncludes(query, row.customerName, row.customerAddress, row.vehicleName, row.locationName);
+  request?: StoredQuotePayload;
 }
 
 function extrasFromPayload(payload?: string): QuoteExtras {
   const parsed = readPayload(payload);
+  const source = parsed.request ?? parsed;
   return {
-    discountAmount: numberOrUndefined(parsed.discountAmount),
-    deposit: numberOrUndefined(parsed.deposit),
-    optionalBodyInsurance: numberOrUndefined(parsed.optionalBodyInsurance),
-    registrationServiceFee: numberOrUndefined(parsed.registrationServiceFee),
-    micaPlateFee: numberOrUndefined(parsed.micaPlateFee),
-    inspectionFee: numberOrUndefined(parsed.inspectionFee),
-    accessories: Array.isArray(parsed.accessories) ? parsed.accessories : [],
+    discountAmount: numberOrUndefined(source.discountAmount),
+    deposit: numberOrUndefined(source.deposit),
+    optionalBodyInsurance: numberOrUndefined(source.optionalBodyInsurance),
+    registrationServiceFee: numberOrUndefined(source.registrationServiceFee),
+    micaPlateFee: numberOrUndefined(source.micaPlateFee),
+    inspectionFee: numberOrUndefined(source.inspectionFee),
+    accessories: Array.isArray(source.accessories) ? source.accessories : [],
   };
 }
 
 function offersFromPayload(payload?: string) {
   const parsed = readPayload(payload);
+  const source = parsed.request ?? parsed;
   return {
-    selectedOfferIds: Array.isArray(parsed.selectedOfferIds) ? parsed.selectedOfferIds.map(String) : [],
-    forgoneOfferIds: Array.isArray(parsed.forgoneOfferIds) ? parsed.forgoneOfferIds.map(String) : [],
+    selectedOfferIds: Array.isArray(source.selectedOfferIds) ? source.selectedOfferIds.map(String) : [],
+    forgoneOfferIds: Array.isArray(source.forgoneOfferIds) ? source.forgoneOfferIds.map(String) : [],
   };
 }
 
