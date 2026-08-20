@@ -40,9 +40,12 @@ function apiUrl(path: string): string {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...((init?.headers as Record<string, string> | undefined) ?? {}),
   };
+  const isFormData = init?.body instanceof FormData;
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
   const token = getAdminToken();
   if (token && (path.startsWith("/api/admin") || path.startsWith("/api/auth"))) {
     headers.Authorization = `Bearer ${token}`;
@@ -262,6 +265,24 @@ export const api = {
     return item.id
       ? request<AdminVehicle>(`/api/admin/vehicles/${item.id}`, { method: "PUT", body: JSON.stringify(item) })
       : request<AdminVehicle>("/api/admin/vehicles", { method: "POST", body: JSON.stringify(item) });
+  },
+  uploadVehicleImage(input: {
+    vehicleId: number;
+    kind: "hero" | "color";
+    colorName?: string;
+    file: File;
+  }) {
+    const form = new FormData();
+    form.append("vehicleId", String(input.vehicleId));
+    form.append("kind", input.kind);
+    if (input.colorName) {
+      form.append("colorName", input.colorName);
+    }
+    form.append("file", input.file);
+    return request<{ id: number; url: string }>("/api/admin/vehicle-images", {
+      method: "POST",
+      body: form,
+    });
   },
   deleteAdminVehicle(id: number) {
     return request<void>(`/api/admin/vehicles/${id}`, { method: "DELETE" });

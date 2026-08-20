@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -103,6 +104,28 @@ export const vehicles = pgTable("vehicles", {
   active: boolean("active").notNull().default(true),
 });
 
+export const vehicleImages = pgTable(
+  "vehicle_images",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+    vehicleId: bigint("vehicle_id", { mode: "number" })
+      .notNull()
+      .references(() => vehicles.id, { onDelete: "cascade" }),
+    kind: varchar("kind", { length: 20 }).notNull(),
+    colorName: varchar("color_name", { length: 80 }),
+    mimeType: varchar("mime_type", { length: 64 }).notNull().default("image/webp"),
+    data: text("data").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("vehicle_images_vehicle_kind_color_uidx").on(
+      table.vehicleId,
+      table.kind,
+      table.colorName,
+    ),
+  ],
+);
+
 export const feeRules = pgTable("fee_rules", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
   feeDefinitionId: bigint("fee_definition_id", { mode: "number" })
@@ -156,5 +179,6 @@ export const quoteHistory = pgTable("quote_history", {
 
 export type Brand = typeof brands.$inferSelect;
 export type Vehicle = typeof vehicles.$inferSelect;
+export type VehicleImage = typeof vehicleImages.$inferSelect;
 export type Location = typeof locations.$inferSelect;
 export type AppSetting = typeof appSettings.$inferSelect;

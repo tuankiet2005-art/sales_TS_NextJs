@@ -27,7 +27,7 @@ Route-level screens for brand pick, catalog search, vehicle confirm, and on-road
 - Header language (`vi` / `en` / `zh` / `ja`) drives the whole UI, including `/admin` tables, quote sheet, and Excel/PDF. Location rows use `name` / `nameEn` / `nameZh` / `nameJa`; categories and fees use `category.*` / `fee.*` keys; plate provinces reuse location names
 - Admin multilingual fields: type Vietnamese first; leaving the box calls `POST /api/admin/translate` and fills empty `en` / `zh` / `ja`. Save also fills copies of Vietnamese. Manual edits to those languages are kept
 - Add/edit catalog rows open in a popup, not under the table
-- Each vehicle color has its own photo URL; quote and confirm pages use that URL for the matching color
+- Each vehicle color has its own photo stored in `vehicle_images`; admin upload converts to WebP and saves in the database. Quote and confirm pages load `/api/vehicle-images/{id}` for the matching color
 - Fee policy, dealer policy, and plate regions save through `/api/admin` and persist in `app_settings`
 - Fee rules tab lists only remaining rule-based fees (one row per fee + vehicle type). `LICENSE_PLATE` and `REGISTRATION_TAX` stay on their own tabs
 - License plate fees tab uses a 6 / 4 split (Area I vs Area II, and province name vs area)

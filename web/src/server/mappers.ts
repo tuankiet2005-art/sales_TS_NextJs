@@ -6,6 +6,7 @@ import type {
   VehicleDetail,
   VehicleSummary,
 } from "@/types";
+import { vehicleImageUrl } from "@/lib/vehicleImageUrl";
 import type { Brand as DbBrand, Location as DbLocation, Vehicle, vehicleCategories } from "./db/schema";
 
 type VehicleCategory = typeof vehicleCategories.$inferSelect;
@@ -84,7 +85,7 @@ export function mapVehicleSummary(row: {
     listPrice: num(vehicle.listPrice),
     discountAmount: vehicle.discountAmount != null ? num(vehicle.discountAmount) : undefined,
     salePrice: salePrice(vehicle),
-    imageUrl: vehicle.imageUrl ?? "",
+    imageUrl: vehicleImageUrl(vehicle.imageUrl ?? ""),
     category: mapCategory(category),
   };
 }
@@ -98,6 +99,14 @@ function parseJsonRecord(value: string | null | undefined): Record<string, strin
   } catch {
     return {};
   }
+}
+
+function resolveColorPhotoMap(raw: Record<string, string>): Record<string, string> {
+  const resolved: Record<string, string> = {};
+  for (const [color, value] of Object.entries(raw)) {
+    resolved[color] = vehicleImageUrl(value);
+  }
+  return resolved;
 }
 
 export function mapVehicleDetail(row: {
@@ -119,7 +128,7 @@ export function mapVehicleDetail(row: {
     inspectionFee: vehicle.inspectionFee != null ? num(vehicle.inspectionFee) : undefined,
     defaultColor: vehicle.defaultColor ?? undefined,
     availableColors: vehicle.availableColors ?? undefined,
-    colorPhotos: parseJsonRecord(vehicle.colorPhotos),
+    colorPhotos: resolveColorPhotoMap(parseJsonRecord(vehicle.colorPhotos)),
     deliveryNote: vehicle.deliveryNote ?? undefined,
     warrantyNote: vehicle.warrantyNote ?? undefined,
     gifts: vehicle.gifts ?? undefined,

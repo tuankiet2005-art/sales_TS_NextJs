@@ -1,6 +1,7 @@
 "use client";
 import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { colorPhoto } from "../lib/vehicleColor";
+import { vehicleImageUrl } from "../lib/vehicleImageUrl";
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "../components/Header";
 import { api, UnauthorizedError } from "../api/client";
@@ -26,7 +27,14 @@ import type {
 type CatalogTab = "brands" | "categories" | "locations" | "dealers" | "vehicles" | "feeDefinitions" | "feeRules";
 type Tab = CatalogTab | "feePolicy" | "dealerPolicy" | "plateRegions";
 
-type FieldType = "text" | "number" | "boolean" | "textarea" | "select" | "langs" | "specs" | "colors";
+type FieldType = "text" | "number" | "boolean" | "textarea" | "select" | "langs" | "specs" | "colors" | "vehicleImage";
+
+interface PendingImageUploads {
+  hero?: File;
+  colorRows: Record<number, File>;
+}
+
+const EMPTY_PENDING_IMAGES: PendingImageUploads = { colorRows: {} };
 
 interface Field {
   key: string;
@@ -87,7 +95,7 @@ const FIELDS: Record<CatalogTab, Field[]> = {
     { key: "fuelType", type: "select", options: ["Gasoline", "Diesel", "Hybrid", "Electric"] },
     { key: "transmission", type: "select", options: ["Automatic", "CVT", "Manual"] },
     { key: "colorPhotos", type: "colors" },
-    { key: "imageUrl", type: "text" },
+    { key: "imageUrl", type: "vehicleImage" },
     { key: "specifications", type: "specs" },
     { key: "active", type: "boolean" },
   ],
@@ -136,6 +144,7 @@ export function AdminDataPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [catalogQuery, setCatalogQuery] = useState("");
+  const [pendingImages, setPendingImages] = useState<PendingImageUploads>(EMPTY_PENDING_IMAGES);
 
   async function loadLookups() {
     const [nextBrands, nextCategories, nextLocations, nextFees] = await Promise.all([
@@ -177,6 +186,7 @@ export function AdminDataPage() {
   useEffect(() => {
     void load(tab);
     setDraft(null);
+    setPendingImages(EMPTY_PENDING_IMAGES);
     setCatalogQuery("");
   }, [tab]);
 
@@ -213,6 +223,7 @@ export function AdminDataPage() {
       Object.assign(base, { feeDefinitionCode: firstFee, calculationType: "FIXED", categoryCode: firstCategory });
     }
     setDraft(base);
+    setPendingImages(EMPTY_PENDING_IMAGES);
   }
 
   async function saveDraft() {
@@ -228,8 +239,52 @@ export function AdminDataPage() {
         const names = Object.keys(photos).map((name) => name.trim()).filter(Boolean);
         payload.availableColors = names.join(", ");
         payload.defaultColor = String(payload.defaultColor || names[0] || "");
+
+        const saved = (await saveFor(tab, payload)) as { id: number };
+        const vehicleId = saved.id;
+        let colorPhotos = { ...photos };
+        let imageUrl = String(payload.imageUrl ?? "");
+        let hasImageUpdates = false;
+
+        if (pendingImages.hero) {
+          const uploaded = await api.uploadVehicleImage({
+            vehicleId,
+            kind: "hero",
+            file: pendingImages.hero,
+          });
+          imageUrl = String(uploaded.id);
+          hasImageUpdates = true;
+        }
+
+        const colorRows = Object.entries(colorPhotos);
+        for (const [index, file] of Object.entries(pendingImages.colorRows)) {
+          const colorName = colorRows[Number(index)]?.[0]?.trim();
+          if (!colorName) {
+            continue;
+          }
+          const uploaded = await api.uploadVehicleImage({
+            vehicleId,
+            kind: "color",
+            colorName,
+            file,
+          });
+          colorPhotos[colorName] = String(uploaded.id);
+          hasImageUpdates = true;
+        }
+
+        if (hasImageUpdates) {
+          await api.saveAdminVehicle({
+            ...(payload as unknown as AdminVehicle),
+            id: vehicleId,
+            colorPhotos,
+            imageUrl,
+          });
+        }
+
+        setPendingImages(EMPTY_PENDING_IMAGES);
+      } else {
+        await saveFor(tab, payload);
       }
-      await saveFor(tab, payload);
       setDraft(null);
       setNotice(t("admin.saved"));
       await load();
@@ -471,7 +526,14 @@ export function AdminDataPage() {
                         ))}
                         <td className="px-3 py-2">
                           <div className="flex gap-2">
-                            <button type="button" onClick={() => setDraft(prepareDraft(row))} className="text-ink/60 hover:text-ink">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPendingImages(EMPTY_PENDING_IMAGES);
+                                setDraft(prepareDraft(row));
+                              }}
+                              className="text-ink/60 hover:text-ink"
+                            >
                               <Pencil className="h-4 w-4" />
                             </button>
                             {typeof row.id === "number" && (
@@ -489,7 +551,10 @@ export function AdminDataPage() {
             </div>
 
             {draft && (
-              <div className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto bg-ink/45 p-0 sm:items-start sm:p-4 sm:pt-16" onClick={() => setDraft(null)}>
+              <div className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto bg-ink/45 p-0 sm:items-start sm:p-4 sm:pt-16" onClick={() => {
+                setDraft(null);
+                setPendingImages(EMPTY_PENDING_IMAGES);
+              }}>
                 <form
                   className="w-full max-h-[92dvh] overflow-y-auto rounded-t-2xl border border-ink/8 bg-white p-4 shadow-card sm:max-w-3xl sm:rounded-2xl sm:p-5"
                   onClick={(event) => event.stopPropagation()}
@@ -500,7 +565,10 @@ export function AdminDataPage() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold">{draft.id ? t("admin.edit") : t("admin.new")}</p>
-                    <button type="button" onClick={() => setDraft(null)} className="text-ink/50 hover:text-ink">
+                    <button type="button" onClick={() => {
+                      setDraft(null);
+                      setPendingImages(EMPTY_PENDING_IMAGES);
+                    }} className="text-ink/50 hover:text-ink">
                       <X className="h-5 w-5" />
                     </button>
                   </div>
@@ -514,6 +582,8 @@ export function AdminDataPage() {
                         t={t}
                         options={fieldOptions(field)}
                         optionLabel={(value) => optionLabel(value, field)}
+                        pendingImages={pendingImages}
+                        setPendingImages={setPendingImages}
                       />
                     ))}
                   </div>
@@ -521,7 +591,10 @@ export function AdminDataPage() {
                     <button type="submit" disabled={saving} className="h-10 rounded-lg bg-ink px-4 text-sm font-semibold text-paper disabled:opacity-60">
                       {saving ? t("admin.saving") : t("admin.save")}
                     </button>
-                    <button type="button" onClick={() => setDraft(null)} className="h-10 rounded-lg px-4 text-sm text-ink/60">
+                    <button type="button" onClick={() => {
+                      setDraft(null);
+                      setPendingImages(EMPTY_PENDING_IMAGES);
+                    }} className="h-10 rounded-lg px-4 text-sm text-ink/60">
                       {t("admin.cancel")}
                     </button>
                   </div>
@@ -610,6 +683,8 @@ function FieldInput({
   t,
   options,
   optionLabel,
+  pendingImages,
+  setPendingImages,
 }: {
   field: Field;
   draft: Record<string, unknown>;
@@ -617,6 +692,8 @@ function FieldInput({
   t: (key: string) => string;
   options: string[];
   optionLabel: (value: string) => string;
+  pendingImages: PendingImageUploads;
+  setPendingImages: (next: PendingImageUploads) => void;
 }) {
   if (field.type === "langs") {
     return (
@@ -635,39 +712,57 @@ function FieldInput({
       <div className="md:col-span-2">
         <p className="text-xs font-medium text-ink/70">{t("admin.field.colorPhotos")}</p>
         <div className="mt-2 space-y-2">
-          {rows.map(([name, url], index) => (
-            <div key={index} className="grid gap-2 sm:grid-cols-[8rem_1fr_4.5rem_auto]">
-              <input
-                value={name}
-                placeholder={t("admin.colorName")}
-                onChange={(event) => {
-                  const next = Object.fromEntries(rows.map((row, rowIndex) => (rowIndex === index ? [event.target.value, row[1]] : row)));
-                  setDraft({ ...draft, colorPhotos: next, defaultColor: draft.defaultColor === name ? event.target.value : draft.defaultColor });
-                }}
-                className="h-10 rounded-lg border border-ink/10 bg-paper px-3 text-sm"
-              />
-              <input
-                value={url}
-                placeholder={t("admin.colorPhotoUrl")}
-                onChange={(event) => {
-                  const next = Object.fromEntries(rows.map((row, rowIndex) => (rowIndex === index ? [row[0], event.target.value] : row)));
-                  setDraft({ ...draft, colorPhotos: next });
-                }}
-                className="h-10 rounded-lg border border-ink/10 bg-paper px-3 text-sm"
-              />
-              <img src={colorPhoto(name, photos)} alt="" className="h-10 w-full rounded-md object-contain bg-paper" />
-              <button
-                type="button"
-                className="text-sm text-red-700"
-                onClick={() => {
-                  const next = Object.fromEntries(rows.filter((_, rowIndex) => rowIndex !== index));
-                  setDraft({ ...draft, colorPhotos: next });
-                }}
-              >
-                {t("admin.remove")}
-              </button>
-            </div>
-          ))}
+          {rows.map(([name, imageId], index) => {
+            const pendingFile = pendingImages.colorRows[index];
+            const previewUrl = pendingFile
+              ? URL.createObjectURL(pendingFile)
+              : colorPhoto(name, photos);
+            return (
+              <div key={index} className="grid gap-2 sm:grid-cols-[8rem_1fr_4.5rem_auto]">
+                <input
+                  value={name}
+                  placeholder={t("admin.colorName")}
+                  onChange={(event) => {
+                    const next = Object.fromEntries(rows.map((row, rowIndex) => (rowIndex === index ? [event.target.value, row[1]] : row)));
+                    setDraft({ ...draft, colorPhotos: next, defaultColor: draft.defaultColor === name ? event.target.value : draft.defaultColor });
+                  }}
+                  className="h-10 rounded-lg border border-ink/10 bg-paper px-3 text-sm"
+                />
+                <label className="flex h-10 cursor-pointer items-center rounded-lg border border-ink/10 bg-paper px-3 text-sm text-ink/70 hover:bg-ink/5">
+                  <span className="truncate">{pendingFile ? pendingFile.name : imageId ? t("admin.imageStored") : t("admin.uploadImage")}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) {
+                        return;
+                      }
+                      setPendingImages({
+                        ...pendingImages,
+                        colorRows: { ...pendingImages.colorRows, [index]: file },
+                      });
+                    }}
+                  />
+                </label>
+                <img src={previewUrl} alt="" className="h-10 w-full rounded-md object-contain bg-paper" />
+                <button
+                  type="button"
+                  className="text-sm text-red-700"
+                  onClick={() => {
+                    const next = Object.fromEntries(rows.filter((_, rowIndex) => rowIndex !== index));
+                    const nextPending = { ...pendingImages.colorRows };
+                    delete nextPending[index];
+                    setPendingImages({ ...pendingImages, colorRows: nextPending });
+                    setDraft({ ...draft, colorPhotos: next });
+                  }}
+                >
+                  {t("admin.remove")}
+                </button>
+              </div>
+            );
+          })}
         </div>
         <button
           type="button"
@@ -683,13 +778,42 @@ function FieldInput({
             onChange={(event) => setDraft({ ...draft, defaultColor: event.target.value })}
             className="mt-1 h-10 w-full rounded-lg border border-ink/10 bg-paper px-3 text-sm"
           >
-            {rows.filter(([name]) => name).map(([name]) => (
-              <option key={name} value={name}>
-                {name}
+            {rows.filter(([colorName]) => colorName).map(([colorName]) => (
+              <option key={colorName} value={colorName}>
+                {colorName}
               </option>
             ))}
           </select>
         </label>
+      </div>
+    );
+  }
+
+  if (field.type === "vehicleImage") {
+    const imageId = String(draft.imageUrl ?? "");
+    const pendingFile = pendingImages.hero;
+    const previewUrl = pendingFile ? URL.createObjectURL(pendingFile) : vehicleImageUrl(imageId) || colorPhoto();
+    return (
+      <div className="md:col-span-2">
+        <p className="text-xs font-medium text-ink/70">{t("admin.field.imageUrl")}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-ink/10 bg-paper px-3 text-sm text-ink/70 hover:bg-ink/5">
+            <span>{pendingFile ? pendingFile.name : imageId ? t("admin.imageStored") : t("admin.uploadImage")}</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) {
+                  return;
+                }
+                setPendingImages({ ...pendingImages, hero: file });
+              }}
+            />
+          </label>
+          {previewUrl ? <img src={previewUrl} alt="" className="h-16 w-24 rounded-md object-contain bg-paper" /> : null}
+        </div>
       </div>
     );
   }
@@ -1145,11 +1269,8 @@ function prepareDraft(row: Record<string, unknown>): Record<string, unknown> {
     .filter(Boolean);
   for (const name of listed) {
     if (!photos[name]) {
-      photos[name] = colorPhoto(name);
+      photos[name] = "";
     }
-  }
-  if (row.defaultColor && !photos[String(row.defaultColor)]) {
-    photos[String(row.defaultColor)] = colorPhoto(String(row.defaultColor));
   }
   return { ...row, colorPhotos: photos };
 }

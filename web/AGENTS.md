@@ -51,13 +51,15 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 ## Verification
 
 - `npm run build` from `web/` — TypeScript skips `*.test.ts` (`tsconfig.json` exclude); Vitest still runs them
-- `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`), Excel fill (`src/server/services/quote-sheet-fill.test.ts`), quote history reuse (`src/server/services/quote-history-rules.test.ts`), PDF color rewrite (`src/lib/cssColor.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
+- `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`), Excel fill (`src/server/services/quote-sheet-fill.test.ts`), quote history reuse (`src/server/services/quote-history-rules.test.ts`), PDF color rewrite (`src/lib/cssColor.test.ts`), vehicle image import (`src/server/catalog/vehicle-import.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
+- `npm run import:catalog` — operator import from registration-photo folder; optional `--dry-run` or `--source <path>`
 
 ## Child DOX Index
 
 | Path | Scope |
 |---|---|
 | `src/server/db/AGENTS.md` | Drizzle schema, Neon client, catalog repositories |
+| `src/server/catalog/` | Registration-photo import (`npm run import:catalog`); WebP blobs in `vehicle_images` table |
 | `src/server/config/AGENTS.md` | YAML policy defaults, `app_settings` overrides |
 | `src/server/domain/AGENTS.md` | Fee rule resolution, dealer pricing, on-road cost assembly |
 
