@@ -16,6 +16,18 @@ const catalog = vi.hoisted(() => ({
 vi.mock("../db/repositories/catalog", () => catalog);
 
 vi.mock("../config/policy-store", () => ({
+  loadPolicySnapshot: vi.fn(async () => ({
+    feePolicy: {
+      registrationTaxPercent: 10,
+      registrationTaxCommercialPercent: 2,
+    },
+    plateRegions: {},
+    dealerPolicy: {
+      privateDiscountPercent: 0,
+      commercialDiscountPercent: 0,
+      offers: [],
+    },
+  })),
   getFeePolicy: vi.fn(async () => ({
     registrationTaxPercent: 10,
     registrationTaxCommercialPercent: 2,

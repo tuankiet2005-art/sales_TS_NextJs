@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
+import { ListFilterSelect } from "../components/ListFilterSelect";
 import { VehicleCard } from "../components/VehicleCard";
 import { useI18n } from "../i18n/LanguageContext";
 import { softIncludes } from "../lib/softSearch";
@@ -20,6 +21,8 @@ export function HomePage() {
   const [categoryId, setCategoryId] = useState<number | undefined>(
     searchParams?.get("category") ? Number(searchParams.get("category")) : undefined
   );
+  const [modelFilter, setModelFilter] = useState(searchParams?.get("model") ?? "");
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState(searchParams?.get("type") ?? "");
   const [brand, setBrand] = useState<Brand | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [vehicles, setVehicles] = useState<VehicleSummary[]>([]);
@@ -62,27 +65,72 @@ export function HomePage() {
     [categories, categoryId]
   );
 
+  const modelOptions = useMemo(
+    () =>
+      [...new Set(vehicles.map((vehicle) => vehicle.model).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((model) => ({ value: model, label: model })),
+    [vehicles]
+  );
+
+  const vehicleTypeOptions = useMemo(
+    () =>
+      [...new Set(vehicles.map((vehicle) => vehicle.vehicleType).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((vehicleType) => ({ value: vehicleType, label: vehicleType })),
+    [vehicles]
+  );
+
   const visibleVehicles = useMemo(
     () =>
       vehicles.filter((vehicle) => {
         const inCategory = !categoryId || vehicle.category.id === categoryId;
+        const inModel = !modelFilter || vehicle.model === modelFilter;
+        const inVehicleType = !vehicleTypeFilter || vehicle.vehicleType === vehicleTypeFilter;
         return (
           inCategory &&
+          inModel &&
+          inVehicleType &&
           softIncludes(keyword, vehicle.name, vehicle.model, vehicle.brand, vehicle.vehicleType, vehicle.year)
         );
       }),
-    [vehicles, categoryId, keyword]
+    [vehicles, categoryId, keyword, modelFilter, vehicleTypeFilter]
   );
+
+  function syncFilters(next: { categoryId?: number; model?: string; type?: string }) {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    if (next.categoryId) {
+      params.set("category", String(next.categoryId));
+    } else if ("categoryId" in next) {
+      params.delete("category");
+    }
+    if (next.model) {
+      params.set("model", next.model);
+    } else if ("model" in next) {
+      params.delete("model");
+    }
+    if (next.type) {
+      params.set("type", next.type);
+    } else if ("type" in next) {
+      params.delete("type");
+    }
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
 
   function selectCategory(id?: number) {
     setCategoryId(id);
-    const next = new URLSearchParams(searchParams?.toString() ?? "");
-    if (id) {
-      next.set("category", String(id));
-    } else {
-      next.delete("category");
-    }
-    router.push(`${pathname}?${next.toString()}`);
+    syncFilters({ categoryId: id });
+  }
+
+  function selectModel(model: string) {
+    setModelFilter(model);
+    syncFilters({ model });
+  }
+
+  function selectVehicleType(type: string) {
+    setVehicleTypeFilter(type);
+    syncFilters({ type });
   }
 
   return (
@@ -131,6 +179,23 @@ export function HomePage() {
                 {t(`category.${category.code}`)}
               </button>
             ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <ListFilterSelect
+              label={t("filterModel")}
+              value={modelFilter}
+              onChange={selectModel}
+              options={modelOptions}
+              allLabel={t("filterAll")}
+            />
+            <ListFilterSelect
+              label={t("filterBodyStyle")}
+              value={vehicleTypeFilter}
+              onChange={selectVehicleType}
+              options={vehicleTypeOptions}
+              allLabel={t("filterAll")}
+            />
           </div>
         </section>
 

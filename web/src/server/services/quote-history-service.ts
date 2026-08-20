@@ -1,7 +1,6 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 import { getDb } from "../db/client";
-import { findActiveVehicleById } from "../db/repositories/catalog";
 import { quoteHistory } from "../db/schema";
 import type { CostBreakdown, QuoteHistory } from "@/types";
 import { calculateOnRoad } from "./catalog-service";
@@ -138,11 +137,7 @@ export async function saveQuoteFromRequest(body: QuoteSaveRequest) {
   if (!calcResult || "error" in calcResult) {
     return null;
   }
-  const vehicleRow = await findActiveVehicleById(body.vehicleId);
-  if (!vehicleRow) {
-    return null;
-  }
-  return persistCalculatedQuote(body, calcResult.data, vehicleRow.brand.code);
+  return persistCalculatedQuote(body, calcResult.data, calcResult.vehicleRow.brand.code);
 }
 
 export async function persistCalculatedQuote(body: QuoteSaveRequest, calc: CostBreakdown, brandCode: string) {

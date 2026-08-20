@@ -18,7 +18,7 @@ import {
   mapVehicleDetail,
   mapVehicleSummary,
 } from "../mappers";
-import { getDealerPolicy, getFeePolicy, getPlateRegions } from "../config/policy-store";
+import { getDealerPolicy, loadPolicySnapshot } from "../config/policy-store";
 import { calculateOnRoadCost } from "../domain/on-road-cost";
 import type { CalculateOnRoadInput } from "../domain/types";
 import type { Brand, Category, Location } from "@/types";
@@ -35,8 +35,45 @@ let catalogListCache: CatalogListCache = {
   locations: null,
 };
 
+type FeeDataCache = {
+  definitions: Awaited<ReturnType<typeof listActiveFeeDefinitions>>;
+  rules: Awaited<ReturnType<typeof listActiveFeeRules>>;
+};
+
+let feeDataCache: FeeDataCache | null = null;
+
+export type ActiveVehicleRow = NonNullable<Awaited<ReturnType<typeof findActiveVehicleById>>>;
+
+export type CalculateOnRoadBody = {
+  vehicleId: number;
+  locationId: number;
+  categoryId?: number | null;
+  includeOptionalInsurance?: boolean;
+  discountAmount?: number | null;
+  salePrice?: number | null;
+  deposit?: number | null;
+  optionalBodyInsurance?: number | null;
+  registrationServiceFee?: number | null;
+  micaPlateFee?: number | null;
+  inspectionFee?: number | null;
+  accessories?: { name: string; amount: number }[] | null;
+  usageType?: string | null;
+  selectedOfferIds?: string[] | null;
+  forgoneOfferIds?: string[] | null;
+};
+
+async function getActiveFeeData(): Promise<FeeDataCache> {
+  if (feeDataCache) {
+    return feeDataCache;
+  }
+  const [definitions, rules] = await Promise.all([listActiveFeeDefinitions(), listActiveFeeRules()]);
+  feeDataCache = { definitions, rules };
+  return feeDataCache;
+}
+
 export function invalidateCatalogCache() {
   catalogListCache = { brands: null, categories: null, locations: null };
+  feeDataCache = null;
 }
 
 export function resetCatalogCacheForTests() {
@@ -111,34 +148,25 @@ export async function getDealerPolicyResponse() {
   };
 }
 
-export async function calculateOnRoad(body: {
-  vehicleId: number;
-  locationId: number;
-  categoryId?: number | null;
-  includeOptionalInsurance?: boolean;
-  discountAmount?: number | null;
-  salePrice?: number | null;
-  deposit?: number | null;
-  optionalBodyInsurance?: number | null;
-  registrationServiceFee?: number | null;
-  micaPlateFee?: number | null;
-  inspectionFee?: number | null;
-  accessories?: { name: string; amount: number }[] | null;
-  usageType?: string | null;
-  selectedOfferIds?: string[] | null;
-  forgoneOfferIds?: string[] | null;
-}) {
-  const [vehicleRow, location, categoryById, feePolicy, plateRegions, dealerPolicy, feeDefinitions, activeFeeRules] =
-    await Promise.all([
-      findActiveVehicleById(body.vehicleId),
-      findLocationById(body.locationId),
-      body.categoryId != null ? findCategoryById(body.categoryId) : Promise.resolve(null),
-      getFeePolicy(),
-      getPlateRegions(),
-      getDealerPolicy(),
-      listActiveFeeDefinitions(),
-      listActiveFeeRules(),
-    ]);
+export async function calculateOnRoad(
+  body: CalculateOnRoadBody,
+  options?: { vehicleRow?: ActiveVehicleRow | null },
+) {
+  const vehicleLookup =
+    options && "vehicleRow" in options
+      ? Promise.resolve(options.vehicleRow ?? null)
+      : findActiveVehicleById(body.vehicleId);
+
+  const [vehicleRow, location, categoryById, policySnapshot, feeData] = await Promise.all([
+    vehicleLookup,
+    findLocationById(body.locationId),
+    body.categoryId != null ? findCategoryById(body.categoryId) : Promise.resolve(null),
+    loadPolicySnapshot(),
+    getActiveFeeData(),
+  ]);
+
+  const { feePolicy, plateRegions, dealerPolicy } = policySnapshot;
+  const { definitions: feeDefinitions, rules: activeFeeRules } = feeData;
 
   if (!vehicleRow) {
     return null;
@@ -222,7 +250,22 @@ export async function calculateOnRoad(body: {
     selectedCategoryName: selectedCategory.name,
   });
 
-  return { data: mapCostBreakdown(result) };
+  return { data: mapCostBreakdown(result), vehicleRow };
+}
+
+export async function loadQuotePageData(body: CalculateOnRoadBody) {
+  const vehicleRow = await findActiveVehicleById(body.vehicleId);
+  if (!vehicleRow) {
+    return null;
+  }
+  const calcResult = await calculateOnRoad(body, { vehicleRow });
+  if (!calcResult || "error" in calcResult) {
+    return calcResult;
+  }
+  return {
+    vehicle: mapVehicleDetail(vehicleRow),
+    breakdown: calcResult.data,
+  };
 }
 
 export async function getHealth() {

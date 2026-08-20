@@ -5,6 +5,7 @@ import { convertImageFileToWebp } from "../lib/convertImageToWebp";
 import { vehicleImageUrl } from "../lib/vehicleImageUrl";
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "../components/Header";
+import { ListFilterSelect } from "../components/ListFilterSelect";
 import { api, UnauthorizedError } from "../api/client";
 import { useI18n } from "../i18n/LanguageContext";
 import type { Lang } from "../i18n/translations";
@@ -145,6 +146,7 @@ export function AdminDataPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogFilters, setCatalogFilters] = useState<Record<string, string>>({});
   const [pendingImages, setPendingImages] = useState<PendingImageUploads>(EMPTY_PENDING_IMAGES);
   const [processingImageKey, setProcessingImageKey] = useState<string | null>(null);
 
@@ -190,6 +192,7 @@ export function AdminDataPage() {
     setDraft(null);
     setPendingImages(EMPTY_PENDING_IMAGES);
     setCatalogQuery("");
+    setCatalogFilters({});
   }, [tab]);
 
   function startNew() {
@@ -445,8 +448,31 @@ export function AdminDataPage() {
     if (!isCatalog(tab)) {
       return rows;
     }
-    return rows.filter((row) =>
-      softIncludes(
+    return rows.filter((row) => {
+      if (
+        tab === "vehicles" &&
+        ((catalogFilters.brandCode && String(row.brandCode ?? "") !== catalogFilters.brandCode) ||
+          (catalogFilters.categoryCode && String(row.categoryCode ?? "") !== catalogFilters.categoryCode) ||
+          (catalogFilters.vehicleType && String(row.vehicleType ?? "") !== catalogFilters.vehicleType) ||
+          (catalogFilters.active === "true" && row.active !== true) ||
+          (catalogFilters.active === "false" && row.active !== false))
+      ) {
+        return false;
+      }
+      if (
+        tab === "locations" &&
+        ((catalogFilters.region && String(row.region ?? "") !== catalogFilters.region) ||
+          (catalogFilters.feeZone && String(row.feeZone ?? "") !== catalogFilters.feeZone))
+      ) {
+        return false;
+      }
+      if (tab === "dealers" && catalogFilters.brandCode && String(row.brandCode ?? "") !== catalogFilters.brandCode) {
+        return false;
+      }
+      if (tab === "feeRules" && catalogFilters.categoryCode && String(row.categoryCode ?? "") !== catalogFilters.categoryCode) {
+        return false;
+      }
+      return softIncludes(
         catalogQuery,
         ...COLUMNS[tab].map((column) => displayCell(column, row)),
         row.name,
@@ -456,9 +482,9 @@ export function AdminDataPage() {
         row.model,
         row.code,
         row.brandCode
-      )
-    );
-  }, [rows, catalogQuery, tab, lang]);
+      );
+    });
+  }, [rows, catalogQuery, catalogFilters, tab, lang]);
 
   return (
     <div className="min-h-screen">
@@ -554,7 +580,7 @@ export function AdminDataPage() {
                 <p className="text-sm font-semibold">
                   {t(TABS.find((item) => item.id === tab)?.labelKey ?? "")} · {visibleRows.length}
                 </p>
-                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-end">
                   <label className="relative min-w-0 flex-1 sm:flex-none">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
                     <input
@@ -564,6 +590,86 @@ export function AdminDataPage() {
                       className="h-10 w-full min-w-0 rounded-lg border border-ink/10 bg-paper pl-9 pr-3 text-sm sm:w-56"
                     />
                   </label>
+                  {tab === "vehicles" && (
+                    <>
+                      <ListFilterSelect
+                        label={t("filterBrand")}
+                        value={catalogFilters.brandCode ?? ""}
+                        onChange={(value) => setCatalogFilters((current) => ({ ...current, brandCode: value }))}
+                        options={brands.map((item) => ({ value: item.code, label: item.name || item.code }))}
+                        allLabel={t("filterAll")}
+                      />
+                      <ListFilterSelect
+                        label={t("filterCategory")}
+                        value={catalogFilters.categoryCode ?? ""}
+                        onChange={(value) => setCatalogFilters((current) => ({ ...current, categoryCode: value }))}
+                        options={categories.map((item) => ({ value: item.code, label: item.name || item.code }))}
+                        allLabel={t("filterAll")}
+                      />
+                      <ListFilterSelect
+                        label={t("filterBodyStyle")}
+                        value={catalogFilters.vehicleType ?? ""}
+                        onChange={(value) => setCatalogFilters((current) => ({ ...current, vehicleType: value }))}
+                        options={FIELDS.vehicles.find((field) => field.key === "vehicleType")?.options?.map((option) => ({
+                          value: option,
+                          label: option,
+                        })) ?? []}
+                        allLabel={t("filterAll")}
+                      />
+                      <ListFilterSelect
+                        label={t("filterActive")}
+                        value={catalogFilters.active ?? ""}
+                        onChange={(value) => setCatalogFilters((current) => ({ ...current, active: value }))}
+                        options={[
+                          { value: "true", label: t("filterActiveYes") },
+                          { value: "false", label: t("filterActiveNo") },
+                        ]}
+                        allLabel={t("filterAll")}
+                      />
+                    </>
+                  )}
+                  {tab === "locations" && (
+                    <>
+                      <ListFilterSelect
+                        label={t("admin.field.region")}
+                        value={catalogFilters.region ?? ""}
+                        onChange={(value) => setCatalogFilters((current) => ({ ...current, region: value }))}
+                        options={FIELDS.locations.find((field) => field.key === "region")?.options?.map((option) => ({
+                          value: option,
+                          label: t(`admin.opt.${option}`),
+                        })) ?? []}
+                        allLabel={t("filterAll")}
+                      />
+                      <ListFilterSelect
+                        label={t("admin.field.feeZone")}
+                        value={catalogFilters.feeZone ?? ""}
+                        onChange={(value) => setCatalogFilters((current) => ({ ...current, feeZone: value }))}
+                        options={FIELDS.locations.find((field) => field.key === "feeZone")?.options?.map((option) => ({
+                          value: option,
+                          label: t(`admin.opt.${option}`),
+                        })) ?? []}
+                        allLabel={t("filterAll")}
+                      />
+                    </>
+                  )}
+                  {tab === "dealers" && (
+                    <ListFilterSelect
+                      label={t("filterBrand")}
+                      value={catalogFilters.brandCode ?? ""}
+                      onChange={(value) => setCatalogFilters((current) => ({ ...current, brandCode: value }))}
+                      options={brands.map((item) => ({ value: item.code, label: item.name || item.code }))}
+                      allLabel={t("filterAll")}
+                    />
+                  )}
+                  {tab === "feeRules" && (
+                    <ListFilterSelect
+                      label={t("filterCategory")}
+                      value={catalogFilters.categoryCode ?? ""}
+                      onChange={(value) => setCatalogFilters((current) => ({ ...current, categoryCode: value }))}
+                      options={categories.map((item) => ({ value: item.code, label: item.name || item.code }))}
+                      allLabel={t("filterAll")}
+                    />
+                  )}
                   <button type="button" onClick={startNew} className="inline-flex items-center gap-1.5 text-sm font-semibold text-copper">
                     <Plus className="h-4 w-4" />
                     {t("admin.new")}
