@@ -79,22 +79,19 @@ Default section order:
 - Default UI and export language is Vietnamese (`vi`); keep `vi` first in language lists
 - Quote page: two equal sites — Price left, Accessories right; the report, Excel, and PDF follow `Bảng báo giá.xlsx`; Excel and PDF sit below the quote sheet
 - Use Lucide icons only (the set used by shadcn/ui); do not install the full shadcn component library unless asked
-- Do not commit `backend/.env` or Neon passwords
-- Production: Vercel (`frontend`) + Render (`backend`) + Neon PostgreSQL
+- Do not commit `.env.local` or Neon passwords
+- Production: Vercel (`web/`) + Neon PostgreSQL
 - Only create git commits when the user asks
 
 ## Child DOX Index
 
 | Path | Scope |
 |---|---|
-| `backend/AGENTS.md` | Spring Boot API: catalog, on-road calculation, Excel export, Neon/H2, Render |
-| `frontend/AGENTS.md` | React + Vite SPA: brand portal, quote flow, i18n, Vercel |
+| `web/AGENTS.md` | Next.js monolith: App Router UI + `/api` on Vercel |
 | `db/AGENTS.md` | Operator SQL for Neon (`neon-init.sql`); schema source of truth for postgres |
 
 ### Project facts
 
 - Brand: **OnRoad** — Vietnam vehicle sales and on-road cost quotes (Mitsubishi catalog from the dealer Excel template)
-- Backend: Spring Boot 3.3 / Java 17, package `com.vehisales.platform`, port **8003**
-- Frontend: React 18 + Vite + Tailwind, port **5174**; Vite proxies `/api` → `localhost:8003`
-- Database: Neon PostgreSQL in production (`SPRING_PROFILES_ACTIVE=postgres`, `ddl-auto: none`); local H2 file when profile is `local`
-- Live: `https://project-sales.vercel.app` → `https://project-sales.onrender.com`
+- App: Next.js 16 in `web/`, port **3000** (`npm run dev`)
+- Database: Neon PostgreSQL (`DATABASE_URL` in `web/.env.local`)

@@ -1,10 +1,7 @@
-backend/target/
-backend/data/
-backend/*.iml
-frontend/node_modules/
-frontend/dist/
+web/node_modules/
+web/.next/
+web/.env.local
 .idea/
 .vscode/
 *.log
 .DS_Store
-backend/.env
