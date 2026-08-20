@@ -1,5 +1,5 @@
 "use client";
-import { Check, CircleDollarSign, Package, Plus, Trash2 } from "lucide-react";
+import { Check, CircleDollarSign, Package, Plus, Trash2, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { MOVEO_ACCESSORIES } from "../lib/accessories";
 import { useI18n } from "../i18n/LanguageContext";
@@ -17,6 +17,17 @@ export function QuoteAdjustments({
     <div className="grid gap-3 md:grid-cols-2 md:*:min-w-0">
       <QuotePricePanel extras={extras} onChange={onChange} />
       <QuoteAccessoriesPanel extras={extras} onChange={onChange} />
+    </div>
+  );
+}
+
+function PanelHeader({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-mist text-copper">
+        <Icon className="h-4 w-4" />
+      </span>
+      <p className="text-sm font-semibold leading-none">{title}</p>
     </div>
   );
 }
@@ -41,14 +52,7 @@ export function QuotePricePanel({
 
   return (
     <section className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
-      <div className="flex items-start gap-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-mist text-copper">
-          <CircleDollarSign className="h-4 w-4" />
-        </span>
-        <div>
-          <p className="text-sm font-semibold leading-5">{t("adjustablePrices")}</p>
-        </div>
-      </div>
+      <PanelHeader icon={CircleDollarSign} title={t("adjustablePrices")} />
 
       <div className="mt-4 grid grid-cols-1 gap-3">
         <MoneyField label={t("discount")} value={extras.discountAmount} onChange={(value) => setField("discountAmount", value)} />
@@ -112,14 +116,7 @@ export function QuoteAccessoriesPanel({
 
   return (
     <section className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
-      <div className="flex items-start gap-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-mist text-copper">
-          <Package className="h-4 w-4" />
-        </span>
-        <div>
-          <p className="text-sm font-semibold leading-5">{t("accessoriesTitle")}</p>
-        </div>
-      </div>
+      <PanelHeader icon={Package} title={t("accessoriesTitle")} />
 
       <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
         {MOVEO_ACCESSORIES.map((item) => {
