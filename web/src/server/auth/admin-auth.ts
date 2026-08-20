@@ -27,7 +27,15 @@ export function issueAdminToken(): string {
 }
 
 export function loginAdmin(username: string, password: string): string | null {
-  if (!same(username, process.env.ADMIN_USERNAME) || !same(password, process.env.ADMIN_PASSWORD)) {
+  let expectedUser: string;
+  let expectedPass: string;
+  try {
+    expectedUser = env("ADMIN_USERNAME");
+    expectedPass = env("ADMIN_PASSWORD");
+  } catch {
+    return null;
+  }
+  if (!same(username.trim(), expectedUser) || !same(password.trim(), expectedPass)) {
     return null;
   }
   return issueAdminToken();

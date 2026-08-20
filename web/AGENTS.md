@@ -21,7 +21,7 @@ Target OnRoad monolith: App Router UI plus `/api` route handlers on Vercel, repl
 
 ### Environment
 
-Copy `web/.env.example` to `web/.env.local`. Never commit `.env.local`.
+Copy `web/.env.example` to `web/.env.local`. Never commit `.env.local`. Quote `ADMIN_PASSWORD` (`"Admin!!@"`) — unquoted `!` breaks bash `source`. Do not `source` `.env.local` in a shell. Production login reads Vercel env, not this file; after changing Vercel env, redeploy.
 
 | Variable | Purpose |
 |---|---|
@@ -37,13 +37,15 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 
 - Keep fee math in `src/server/domain/`; route handlers stay thin
 - Use `runtime = 'nodejs'` on Excel export and heavy DB routes
+- Excel export fills `src/server/assets/bang-bao-gia.xlsx` by labels on `vehicles.quote_sheet_name` (never hardcoded cells on sheet 0); unused tabs stay hidden
+- PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`
 - Default UI language Vietnamese (`vi`); match `frontend/src/i18n/` behavior when UI is ported
 - Do not add the full shadcn component kit unless asked
 
 ## Verification
 
 - `npm run build` from `web/`
-- `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
+- `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`), Excel fill (`src/server/services/quote-sheet-fill.test.ts`), PDF color rewrite (`src/lib/cssColor.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
 
 ## Child DOX Index
 
