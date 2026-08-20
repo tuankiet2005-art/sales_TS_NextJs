@@ -21,18 +21,19 @@ function NavItem({
 }) {
   const pathname = usePathname() ?? "/";
   const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+  const frame = active ? "border-copper text-copper" : "border-transparent";
   return (
     <Link
       href={href}
       onClick={onClick}
       className={
         stacked
-          ? `flex min-h-11 items-center rounded-xl px-3 py-2 text-base font-semibold ${
-              active ? "bg-mist text-copper" : "text-ink/80 hover:bg-mist/70 hover:text-ink"
+          ? `flex min-h-11 items-center rounded-xl border px-3 py-2 text-base font-semibold ${frame} ${
+              active ? "bg-mist" : "text-ink/80 hover:border-ink/10 hover:bg-mist/70 hover:text-ink"
             }`
-          : active
-            ? "px-1 py-1 text-copper"
-            : "px-1 py-1 text-ink/70 hover:text-ink"
+          : `rounded-lg border px-3 py-1.5 ${frame} ${
+              active ? "bg-copper/5" : "text-ink/70 hover:border-ink/10 hover:text-ink"
+            }`
       }
     >
       {children}
