@@ -21,7 +21,7 @@ Target OnRoad monolith: App Router UI plus `/api` route handlers on Vercel, repl
 
 ### Environment
 
-Copy `web/.env.example` to `web/.env.local`. Never commit `.env.local`.
+Copy `web/.env.example` to `web/.env.local`. Never commit `.env.local`. Quote `ADMIN_PASSWORD` (`"Admin!!@"`) — unquoted `!` breaks bash `source`. Do not `source` `.env.local` in a shell. Production login reads Vercel env, not this file; after changing Vercel env, redeploy.
 
 | Variable | Purpose |
 |---|---|

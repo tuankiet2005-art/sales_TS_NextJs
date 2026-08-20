@@ -12,7 +12,7 @@ Drizzle schema and Neon client for the OnRoad monolith. Schema mirrors `db/neon-
 
 ## Local Contracts
 
-- `DATABASE_URL` required at runtime for DB access; accepts `postgresql://` or `jdbc:postgresql://`
+- `DATABASE_URL` required at runtime for DB access; accepts `postgresql://` or `jdbc:postgresql://`; wrapping quotes are stripped
 - `drizzle.config.ts` is for introspection only — do not run `drizzle-kit push` against Neon production
 
 ## Verification
