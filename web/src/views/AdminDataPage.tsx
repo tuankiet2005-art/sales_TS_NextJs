@@ -1,6 +1,7 @@
 "use client";
 import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { colorPhoto } from "../lib/vehicleColor";
+import { convertImageFileToWebp } from "../lib/convertImageToWebp";
 import { vehicleImageUrl } from "../lib/vehicleImageUrl";
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "../components/Header";
@@ -145,6 +146,7 @@ export function AdminDataPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [catalogQuery, setCatalogQuery] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImageUploads>(EMPTY_PENDING_IMAGES);
+  const [processingImageKey, setProcessingImageKey] = useState<string | null>(null);
 
   async function loadLookups() {
     const [nextBrands, nextCategories, nextLocations, nextFees] = await Promise.all([
@@ -226,6 +228,68 @@ export function AdminDataPage() {
     setPendingImages(EMPTY_PENDING_IMAGES);
   }
 
+  async function processVehicleImagePick(input: {
+    file: File;
+    kind: "hero" | "color";
+    colorName?: string;
+    rowIndex?: number;
+  }) {
+    if (!draft) {
+      return;
+    }
+
+    const processKey = input.kind === "hero" ? "hero" : `color-${input.rowIndex ?? 0}`;
+    setProcessingImageKey(processKey);
+    setError(null);
+    try {
+      if (input.kind === "color" && !input.colorName?.trim()) {
+        setError(t("admin.colorNameRequired"));
+        return;
+      }
+      const webp = await convertImageFileToWebp(input.file);
+      const vehicleId = Number(draft.id);
+
+      if (Number.isFinite(vehicleId) && vehicleId > 0) {
+        const uploaded = await api.uploadVehicleImage({
+          vehicleId,
+          kind: input.kind,
+          colorName: input.colorName,
+          file: webp,
+        });
+        if (input.kind === "hero") {
+          setDraft({ ...draft, imageUrl: String(uploaded.id) });
+          setPendingImages({ ...pendingImages, hero: undefined });
+        } else if (input.colorName) {
+          const photos = { ...((draft.colorPhotos as Record<string, string>) ?? {}) };
+          photos[input.colorName] = String(uploaded.id);
+          const nextPending = { ...pendingImages.colorRows };
+          if (input.rowIndex != null) {
+            delete nextPending[input.rowIndex];
+          }
+          setPendingImages({ ...pendingImages, colorRows: nextPending });
+          setDraft({ ...draft, colorPhotos: photos });
+        }
+        return;
+      }
+
+      if (input.kind === "hero") {
+        setPendingImages({ ...pendingImages, hero: webp });
+        return;
+      }
+      if (input.rowIndex == null) {
+        return;
+      }
+      setPendingImages({
+        ...pendingImages,
+        colorRows: { ...pendingImages.colorRows, [input.rowIndex]: webp },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.imageConvertFailed"));
+    } finally {
+      setProcessingImageKey(null);
+    }
+  }
+
   async function saveDraft() {
     if (!draft || !isCatalog(tab)) {
       return;
@@ -273,6 +337,10 @@ export function AdminDataPage() {
         }
 
         if (hasImageUpdates) {
+          const defaultColor = String(payload.defaultColor ?? "");
+          if (!imageUrl && defaultColor && colorPhotos[defaultColor]) {
+            imageUrl = colorPhotos[defaultColor];
+          }
           await api.saveAdminVehicle({
             ...(payload as unknown as AdminVehicle),
             id: vehicleId,
@@ -584,6 +652,8 @@ export function AdminDataPage() {
                         optionLabel={(value) => optionLabel(value, field)}
                         pendingImages={pendingImages}
                         setPendingImages={setPendingImages}
+                        processingImageKey={processingImageKey}
+                        onPickVehicleImage={processVehicleImagePick}
                       />
                     ))}
                   </div>
@@ -685,6 +755,8 @@ function FieldInput({
   optionLabel,
   pendingImages,
   setPendingImages,
+  processingImageKey,
+  onPickVehicleImage,
 }: {
   field: Field;
   draft: Record<string, unknown>;
@@ -694,6 +766,13 @@ function FieldInput({
   optionLabel: (value: string) => string;
   pendingImages: PendingImageUploads;
   setPendingImages: (next: PendingImageUploads) => void;
+  processingImageKey: string | null;
+  onPickVehicleImage: (input: {
+    file: File;
+    kind: "hero" | "color";
+    colorName?: string;
+    rowIndex?: number;
+  }) => Promise<void>;
 }) {
   if (field.type === "langs") {
     return (
@@ -717,6 +796,7 @@ function FieldInput({
             const previewUrl = pendingFile
               ? URL.createObjectURL(pendingFile)
               : colorPhoto(name, photos);
+            const isProcessing = processingImageKey === `color-${index}`;
             return (
               <div key={index} className="grid gap-2 sm:grid-cols-[8rem_1fr_4.5rem_auto]">
                 <input
@@ -728,21 +808,32 @@ function FieldInput({
                   }}
                   className="h-10 rounded-lg border border-ink/10 bg-paper px-3 text-sm"
                 />
-                <label className="flex h-10 cursor-pointer items-center rounded-lg border border-ink/10 bg-paper px-3 text-sm text-ink/70 hover:bg-ink/5">
-                  <span className="truncate">{pendingFile ? pendingFile.name : imageId ? t("admin.imageStored") : t("admin.uploadImage")}</span>
+                <label className={`flex h-10 items-center rounded-lg border border-ink/10 bg-paper px-3 text-sm text-ink/70 ${isProcessing ? "cursor-wait opacity-70" : "cursor-pointer hover:bg-ink/5"}`}>
+                  <span className="truncate">
+                    {isProcessing
+                      ? t("admin.convertingImage")
+                      : pendingFile
+                        ? pendingFile.name
+                        : imageId
+                          ? t("admin.imageStored")
+                          : t("admin.uploadImage")}
+                  </span>
                   <input
                     type="file"
                     accept="image/*"
                     className="sr-only"
+                    disabled={isProcessing}
                     onChange={(event) => {
                       const file = event.target.files?.[0];
+                      event.target.value = "";
                       if (!file) {
                         return;
                       }
-                      setPendingImages({
-                        ...pendingImages,
-                        colorRows: { ...pendingImages.colorRows, [index]: file },
-                      });
+                      const colorName = name.trim();
+                      if (!colorName) {
+                        return;
+                      }
+                      void onPickVehicleImage({ file, kind: "color", colorName, rowIndex: index });
                     }}
                   />
                 </label>
@@ -793,22 +884,33 @@ function FieldInput({
     const imageId = String(draft.imageUrl ?? "");
     const pendingFile = pendingImages.hero;
     const previewUrl = pendingFile ? URL.createObjectURL(pendingFile) : vehicleImageUrl(imageId) || colorPhoto();
+    const isProcessing = processingImageKey === "hero";
     return (
       <div className="md:col-span-2">
         <p className="text-xs font-medium text-ink/70">{t("admin.field.imageUrl")}</p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-ink/10 bg-paper px-3 text-sm text-ink/70 hover:bg-ink/5">
-            <span>{pendingFile ? pendingFile.name : imageId ? t("admin.imageStored") : t("admin.uploadImage")}</span>
+          <label className={`inline-flex h-10 items-center rounded-lg border border-ink/10 bg-paper px-3 text-sm text-ink/70 ${isProcessing ? "cursor-wait opacity-70" : "cursor-pointer hover:bg-ink/5"}`}>
+            <span>
+              {isProcessing
+                ? t("admin.convertingImage")
+                : pendingFile
+                  ? pendingFile.name
+                  : imageId
+                    ? t("admin.imageStored")
+                    : t("admin.uploadImage")}
+            </span>
             <input
               type="file"
               accept="image/*"
               className="sr-only"
+              disabled={isProcessing}
               onChange={(event) => {
                 const file = event.target.files?.[0];
+                event.target.value = "";
                 if (!file) {
                   return;
                 }
-                setPendingImages({ ...pendingImages, hero: file });
+                void onPickVehicleImage({ file, kind: "hero" });
               }}
             />
           </label>

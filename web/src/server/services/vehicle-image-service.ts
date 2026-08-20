@@ -48,7 +48,7 @@ export async function saveVehicleImage(input: SaveVehicleImageInput) {
     vehicleId: input.vehicleId,
     kind: input.kind,
     colorName: colorName ?? null,
-    mimeType: input.mimeType ?? "image/webp",
+    mimeType: "image/webp",
     data: webp.toString("base64"),
   };
 
