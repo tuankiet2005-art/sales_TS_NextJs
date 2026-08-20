@@ -41,6 +41,16 @@ textarea {
   font-family: inherit;
 }
 
+button:not(:disabled),
+select,
+a {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
   input,
   select,
