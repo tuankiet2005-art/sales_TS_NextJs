@@ -21,7 +21,8 @@ Route-level screens for brand pick, catalog search, vehicle confirm, and on-road
 - On-road query: `locationId` (required), `categoryId`, `optional`, `name`, `address`, `color`, `usage`
 - Policy choices persist in `sessionStorage` key `onroad-policy-{vehicleId}`
 - `OnRoadQuotePage` keeps customer name/address in component state so export works without `?name=`
-- Recalculate sits at the bottom of the Price column; Excel and PDF sit below `QuoteSheet`; each export stores the client name and quote in `quote_history`
+- Recalculate sits at the bottom of the Price column; Excel and PDF sit below `QuoteSheet`
+- Excel and PDF persist one `quote_history` row: a calculated quote, reused for the same customer and vehicle within two minutes. Incomplete stubs (no vehicle / 0 đ) stay hidden. History **Mở** uses a pointer cursor
 - Excel download uses the vehicle’s `quote_sheet_name` tab inside `bang-bao-gia.xlsx` (Attrage opens Attrage, not Xpander MT)
 - Header language (`vi` / `en` / `zh` / `ja`) drives the whole UI, including `/admin` tables, quote sheet, and Excel/PDF. Location rows use `name` / `nameEn` / `nameZh` / `nameJa`; categories and fees use `category.*` / `fee.*` keys; plate provinces reuse location names
 - Admin multilingual fields: type Vietnamese first; leaving the box calls `POST /api/admin/translate` and fills empty `en` / `zh` / `ja`. Save also fills copies of Vietnamese. Manual edits to those languages are kept

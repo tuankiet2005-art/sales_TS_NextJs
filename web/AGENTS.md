@@ -51,7 +51,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 ## Verification
 
 - `npm run build` from `web/` — TypeScript skips `*.test.ts` (`tsconfig.json` exclude); Vitest still runs them
-- `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`), Excel fill (`src/server/services/quote-sheet-fill.test.ts`), PDF color rewrite (`src/lib/cssColor.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
+- `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`), Excel fill (`src/server/services/quote-sheet-fill.test.ts`), quote history reuse (`src/server/services/quote-history-rules.test.ts`), PDF color rewrite (`src/lib/cssColor.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
 
 ## Child DOX Index
 
