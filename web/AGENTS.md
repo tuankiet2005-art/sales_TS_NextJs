@@ -41,6 +41,8 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - Catalog list GETs (`/api/brands`, `/api/vehicle-categories`, `/api/locations`, `/api/dealer-policy`, `/api/catalog`, `/api/vehicles/search`, `/api/vehicles/[id]`, `/api/brands/[code]`) send `Cache-Control: public, max-age=60` except categories and locations use `max-age=3600, stale-while-revalidate=86400`. Brands, categories, locations, and brand-by-code also cache in `catalog-service` until `invalidateCatalogCache()` from catalog admin writes
 - Home catalog loads categories on a fast path (`sessionStorage` + `/api/vehicle-categories`) so filter chips render before the vehicle list finishes; vehicles load via paginated `GET /api/vehicles/search?page=&pageSize=10` (10 per page) with server-side filters
 - Catalog vehicle **list** queries select only card fields (no `specifications`, `color_photos`, `gifts` blobs); detail still loads full row on `GET /api/vehicles/[id]`
+- Quote history list omits heavy `payload` JSON; pagination is 10 per page; opening a quote fetches full row via `GET /api/quotes/[id]`
+- Data-fetch benchmark: `npx tsx scripts/bench-data-fetch.ts`
 - Vehicle confirm saves `VehicleDetail` to `sessionStorage` (`lib/vehicleCache.ts`); quote page uses cached vehicle + `POST /api/calculate-on-road-cost` when cache exists, else `POST /api/quote-load`
 - Quote export/save accept optional client `breakdown` to skip redundant `calculateOnRoad` when `vehicleId` matches (`resolveQuoteCalculation`)
 - Excel export fills `src/server/assets/bang-bao-gia.xlsx` by labels on `vehicles.quote_sheet_name` (never hardcoded cells on sheet 0); unused tabs stay hidden
