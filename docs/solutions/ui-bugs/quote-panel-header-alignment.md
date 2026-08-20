@@ -10,7 +10,7 @@ On the on-road quote page, **Giá có thể chỉnh** and **Phụ kiện xe** ti
 
 ## Fix
 
-Shared `PanelHeader` in `QuoteAdjustments.tsx` with `flex items-center gap-2` and `leading-none` on the title so both panels align the same way.
+Shared `PanelHeader` in `QuoteAdjustments.tsx`: icon badge and title both use `h-8`; title sits in `flex h-8 items-center` so text optically centers on the icon row.
 
 ## Rule
 

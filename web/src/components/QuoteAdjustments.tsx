@@ -23,11 +23,11 @@ export function QuoteAdjustments({
 
 function PanelHeader({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-h-8 items-center gap-2">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-mist text-copper">
         <Icon className="h-4 w-4" />
       </span>
-      <p className="text-sm font-semibold leading-none">{title}</p>
+      <span className="flex h-8 items-center text-sm font-semibold leading-none">{title}</span>
     </div>
   );
 }
