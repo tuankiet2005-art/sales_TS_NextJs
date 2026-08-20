@@ -603,17 +603,20 @@ export function AdminDataPage() {
                         label={t("filterCategory")}
                         value={catalogFilters.categoryCode ?? ""}
                         onChange={(value) => setCatalogFilters((current) => ({ ...current, categoryCode: value }))}
-                        options={categories.map((item) => ({ value: item.code, label: item.name || item.code }))}
+                        options={categories.map((item) => ({
+                          value: item.code,
+                          label: optionLabel(item.code, { key: "categoryCode", type: "select", ref: "category" }),
+                        }))}
                         allLabel={t("filterAll")}
                       />
                       <ListFilterSelect
                         label={t("filterBodyStyle")}
                         value={catalogFilters.vehicleType ?? ""}
                         onChange={(value) => setCatalogFilters((current) => ({ ...current, vehicleType: value }))}
-                        options={FIELDS.vehicles.find((field) => field.key === "vehicleType")?.options?.map((option) => ({
+                        options={(FIELDS.vehicles.find((field) => field.key === "vehicleType")?.options ?? []).map((option) => ({
                           value: option,
-                          label: option,
-                        })) ?? []}
+                          label: optionLabel(option, { key: "vehicleType", type: "select" }),
+                        }))}
                         allLabel={t("filterAll")}
                       />
                       <ListFilterSelect
@@ -666,7 +669,10 @@ export function AdminDataPage() {
                       label={t("filterCategory")}
                       value={catalogFilters.categoryCode ?? ""}
                       onChange={(value) => setCatalogFilters((current) => ({ ...current, categoryCode: value }))}
-                      options={categories.map((item) => ({ value: item.code, label: item.name || item.code }))}
+                      options={categories.map((item) => ({
+                        value: item.code,
+                        label: optionLabel(item.code, { key: "categoryCode", type: "select", ref: "category" }),
+                      }))}
                       allLabel={t("filterAll")}
                     />
                   )}
