@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return notFound("Vehicle", body.vehicleId);
   }
   if ("error" in result) {
-    return notFound(result.error === "location" ? "Location" : "Vehicle category", body.locationId);
+    return notFound(result.error === "location" ? "Location" : "Vehicle category", body.categoryId ?? body.vehicleId);
   }
   return json(result.data);
 }

@@ -70,21 +70,31 @@ export async function loadPolicySnapshot(): Promise<PolicySnapshot> {
     return cachedSnapshot;
   }
   if (!loadingSnapshot) {
-    loadingSnapshot = (async () => {
-      const [feeOverride, dealerOverride, plateOverride] = await Promise.all([
-        readSettingPayload<FeePolicyRecord>(APP_SETTING_KEYS.feePolicy),
-        readSettingPayload<DealerPolicyRecord>(APP_SETTING_KEYS.dealerPolicy),
-        readSettingPayload<PlateRegionsRecord>(APP_SETTING_KEYS.plateRegions),
-      ]);
+    const loadPromise = (async () => {
+      try {
+        const [feeOverride, dealerOverride, plateOverride] = await Promise.all([
+          readSettingPayload<FeePolicyRecord>(APP_SETTING_KEYS.feePolicy),
+          readSettingPayload<DealerPolicyRecord>(APP_SETTING_KEYS.dealerPolicy),
+          readSettingPayload<PlateRegionsRecord>(APP_SETTING_KEYS.plateRegions),
+        ]);
 
-      const snapshot: PolicySnapshot = {
-        feePolicy: feeOverride ?? loadDefaultFeePolicy(),
-        dealerPolicy: dealerOverride ?? loadDefaultDealerPolicy(),
-        plateRegions: plateOverride ?? loadDefaultPlateRegions(),
-      };
-      cachedSnapshot = snapshot;
-      return snapshot;
+        const snapshot: PolicySnapshot = {
+          feePolicy: feeOverride ?? loadDefaultFeePolicy(),
+          dealerPolicy: dealerOverride ?? loadDefaultDealerPolicy(),
+          plateRegions: plateOverride ?? loadDefaultPlateRegions(),
+        };
+        if (loadingSnapshot === loadPromise) {
+          cachedSnapshot = snapshot;
+        }
+        return snapshot;
+      } catch (error) {
+        if (loadingSnapshot === loadPromise) {
+          loadingSnapshot = null;
+        }
+        throw error;
+      }
     })();
+    loadingSnapshot = loadPromise;
   }
   return loadingSnapshot;
 }

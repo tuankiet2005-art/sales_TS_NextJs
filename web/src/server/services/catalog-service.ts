@@ -18,7 +18,7 @@ import {
   mapVehicleDetail,
   mapVehicleSummary,
 } from "../mappers";
-import { getDealerPolicy, getFeePolicy, getPlateRegions, loadPolicySnapshot } from "../config/policy-store";
+import { getDealerPolicy, loadPolicySnapshot } from "../config/policy-store";
 import { calculateOnRoadCost } from "../domain/on-road-cost";
 import type { CalculateOnRoadInput } from "../domain/types";
 import type { Brand, Category, Location } from "@/types";

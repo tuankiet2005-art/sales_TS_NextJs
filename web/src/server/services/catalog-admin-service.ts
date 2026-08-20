@@ -372,15 +372,18 @@ export async function upsertFeeDefinition(record: AdminFeeDefinition) {
   };
   if (record.id) {
     const rows = await db.update(feeDefinitions).set(values).where(eq(feeDefinitions.id, record.id)).returning();
+    invalidateCatalogCache();
     return rows[0];
   }
   const rows = await db.insert(feeDefinitions).values(values).returning();
+  invalidateCatalogCache();
   return rows[0];
 }
 
 export async function deleteFeeDefinition(id: number) {
   const db = getDb();
   await db.delete(feeDefinitions).where(eq(feeDefinitions.id, id));
+  invalidateCatalogCache();
 }
 
 export async function listAdminVehicles() {
@@ -474,13 +477,16 @@ export async function upsertFeeRule(record: AdminFeeRule) {
   };
   if (record.id) {
     const rows = await db.update(feeRules).set(values).where(eq(feeRules.id, record.id)).returning();
+    invalidateCatalogCache();
     return rows[0];
   }
   const rows = await db.insert(feeRules).values(values).returning();
+  invalidateCatalogCache();
   return rows[0];
 }
 
 export async function deleteFeeRule(id: number) {
   const db = getDb();
   await db.delete(feeRules).where(eq(feeRules.id, id));
+  invalidateCatalogCache();
 }
