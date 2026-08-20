@@ -1,0 +1,163 @@
+import type {
+  Brand,
+  Category,
+  CostBreakdown,
+  Location,
+  VehicleDetail,
+  VehicleSummary,
+} from "@/types";
+import type { Brand as DbBrand, Location as DbLocation, Vehicle, vehicleCategories } from "./db/schema";
+
+type VehicleCategory = typeof vehicleCategories.$inferSelect;
+import type { OnRoadCostResult } from "./domain/types";
+import { toNumber } from "./domain/money";
+
+function num(value: string | number | null | undefined): number {
+  return value == null ? 0 : Number(value);
+}
+
+export function mapBrand(brand: DbBrand): Brand {
+  return {
+    id: brand.id,
+    code: brand.code,
+    name: brand.name,
+    tagline: brand.tagline ?? "",
+    market: brand.market,
+    accentColor: brand.accentColor ?? "",
+    imageUrl: brand.imageUrl ?? "",
+    ready: brand.ready,
+  };
+}
+
+export function mapCategory(category: VehicleCategory): Category {
+  return {
+    id: category.id,
+    code: category.code,
+    name: category.name,
+    description: category.description ?? "",
+    typicalSeats: category.typicalSeats,
+    requiresInspection: category.requiresInspection,
+    requiresRoadUseFee: category.requiresRoadUseFee,
+    requiresCompulsoryInsurance: category.requiresCompulsoryInsurance,
+  };
+}
+
+export function mapLocation(location: DbLocation): Location {
+  return {
+    id: location.id,
+    code: location.code,
+    name: location.name,
+    nameEn: location.nameEn,
+    nameZh: location.nameZh,
+    nameJa: location.nameJa,
+    region: location.region,
+    feeZone: location.feeZone,
+    centrallyGovernedCity: location.centrallyGovernedCity,
+  };
+}
+
+function salePrice(vehicle: Vehicle): number | undefined {
+  if (vehicle.salePrice != null) {
+    return num(vehicle.salePrice);
+  }
+  if (vehicle.discountAmount != null) {
+    return num(vehicle.listPrice) - num(vehicle.discountAmount);
+  }
+  return undefined;
+}
+
+export function mapVehicleSummary(row: {
+  vehicle: Vehicle;
+  brand: DbBrand;
+  category: VehicleCategory;
+}): VehicleSummary {
+  const { vehicle, brand, category } = row;
+  return {
+    id: vehicle.id,
+    brand: brand.name,
+    brandCode: brand.code,
+    model: vehicle.model,
+    name: vehicle.name,
+    year: vehicle.modelYear ?? 0,
+    seats: vehicle.seats,
+    vehicleType: vehicle.vehicleType ?? "",
+    listPrice: num(vehicle.listPrice),
+    discountAmount: vehicle.discountAmount != null ? num(vehicle.discountAmount) : undefined,
+    salePrice: salePrice(vehicle),
+    imageUrl: vehicle.imageUrl ?? "",
+    category: mapCategory(category),
+  };
+}
+
+function parseJsonRecord(value: string | null | undefined): Record<string, string> {
+  if (!value?.trim()) {
+    return {};
+  }
+  try {
+    return JSON.parse(value) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+export function mapVehicleDetail(row: {
+  vehicle: Vehicle;
+  brand: DbBrand;
+  category: VehicleCategory;
+}): VehicleDetail {
+  const summary = mapVehicleSummary(row);
+  const vehicle = row.vehicle;
+  return {
+    ...summary,
+    engineCc: vehicle.engineCc,
+    fuelType: vehicle.fuelType ?? "",
+    transmission: vehicle.transmission ?? "",
+    defaultDeposit: vehicle.defaultDeposit != null ? num(vehicle.defaultDeposit) : undefined,
+    registrationServiceFee:
+      vehicle.registrationServiceFee != null ? num(vehicle.registrationServiceFee) : undefined,
+    micaPlateFee: vehicle.micaPlateFee != null ? num(vehicle.micaPlateFee) : undefined,
+    inspectionFee: vehicle.inspectionFee != null ? num(vehicle.inspectionFee) : undefined,
+    defaultColor: vehicle.defaultColor ?? undefined,
+    availableColors: vehicle.availableColors ?? undefined,
+    colorPhotos: parseJsonRecord(vehicle.colorPhotos),
+    deliveryNote: vehicle.deliveryNote ?? undefined,
+    warrantyNote: vehicle.warrantyNote ?? undefined,
+    gifts: vehicle.gifts ?? undefined,
+    specifications: parseJsonRecord(vehicle.specifications),
+  };
+}
+
+export function mapCostBreakdown(result: OnRoadCostResult): CostBreakdown {
+  return {
+    vehicleId: result.vehicleId,
+    vehicleName: result.vehicleName,
+    brand: result.brandName,
+    model: result.model,
+    categoryName: result.categoryName,
+    locationId: result.locationId,
+    locationName: result.locationName,
+    listPrice: result.listPrice,
+    discountAmount: result.discountAmount,
+    salePrice: result.salePrice,
+    fees: result.fees.map((fee: OnRoadCostResult["fees"][number]) => ({
+      code: fee.code,
+      name: fee.name,
+      description: fee.description ?? "",
+      mandatory: fee.mandatory,
+      applicable: fee.applicable,
+      includedInTotal: fee.includedInTotal,
+      amount: fee.amount,
+      calculationNote: fee.note,
+    })),
+    totalMandatoryFees: result.totalMandatory,
+    totalOptionalFees: result.totalOptional,
+    accessoriesTotal: result.accessoriesTotal,
+    estimatedOnRoadTotal: result.estimatedTotal,
+    deposit: result.deposit,
+    accessories: result.accessories,
+    currency: result.currency,
+    usageType: result.usageType,
+    discountPercent: result.discountPercent,
+    appliedOfferIds: result.appliedOfferIds,
+  };
+}

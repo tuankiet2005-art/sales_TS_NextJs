@@ -1,7 +1,14 @@
 import { and, eq, ilike, or, sql } from "drizzle-orm";
 
 import { getDb } from "../client";
-import { brands, locations, vehicleCategories, vehicles } from "../schema";
+import {
+  brands,
+  feeDefinitions,
+  feeRules,
+  locations,
+  vehicleCategories,
+  vehicles,
+} from "../schema";
 
 export async function findActiveVehicleById(id: number) {
   const db = getDb();
@@ -73,6 +80,17 @@ export async function findBrandByCode(code: string) {
   return rows[0] ?? null;
 }
 
+export async function listCategories() {
+  const db = getDb();
+  return db.select().from(vehicleCategories).orderBy(vehicleCategories.sortOrder, vehicleCategories.name);
+}
+
+export async function findCategoryById(id: number) {
+  const db = getDb();
+  const rows = await db.select().from(vehicleCategories).where(eq(vehicleCategories.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function listLocations() {
   const db = getDb();
   return db.select().from(locations).orderBy(locations.name);
@@ -88,4 +106,28 @@ export async function countBrands() {
   const db = getDb();
   const rows = await db.select({ count: sql<number>`count(*)::int` }).from(brands);
   return rows[0]?.count ?? 0;
+}
+
+export async function listActiveFeeDefinitions() {
+  const db = getDb();
+  return db
+    .select()
+    .from(feeDefinitions)
+    .where(eq(feeDefinitions.active, true))
+    .orderBy(feeDefinitions.sortOrder);
+}
+
+export async function listActiveFeeRules() {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  return db
+    .select()
+    .from(feeRules)
+    .where(
+      and(
+        eq(feeRules.active, true),
+        or(sql`${feeRules.effectiveFrom} is null`, sql`${feeRules.effectiveFrom} <= ${today}`),
+        or(sql`${feeRules.effectiveTo} is null`, sql`${feeRules.effectiveTo} >= ${today}`),
+      ),
+    );
 }

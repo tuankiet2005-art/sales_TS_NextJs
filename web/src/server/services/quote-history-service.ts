@@ -1,0 +1,110 @@
+import { desc, eq, ilike, or } from "drizzle-orm";
+
+import { getDb } from "../db/client";
+import { quoteHistory } from "../db/schema";
+import type { QuoteHistory } from "@/types";
+
+function mapQuote(row: typeof quoteHistory.$inferSelect): QuoteHistory {
+  return {
+    id: row.id,
+    customerName: row.customerName,
+    customerAddress: row.customerAddress ?? undefined,
+    vehicleId: row.vehicleId ?? 0,
+    brandCode: row.brandCode ?? "",
+    vehicleName: row.vehicleName ?? "",
+    locationId: row.locationId ?? 0,
+    locationName: row.locationName ?? "",
+    categoryId: row.categoryId ?? undefined,
+    color: row.color ?? undefined,
+    usageType: (row.usageType as QuoteHistory["usageType"]) ?? undefined,
+    language: row.language ?? undefined,
+    includeOptional: row.includeOptional,
+    listPrice: row.listPrice != null ? Number(row.listPrice) : undefined,
+    salePrice: row.salePrice != null ? Number(row.salePrice) : undefined,
+    discountAmount: row.discountAmount != null ? Number(row.discountAmount) : undefined,
+    deposit: row.deposit != null ? Number(row.deposit) : undefined,
+    onRoadTotal: Number(row.onRoadTotal),
+    payload: row.payload ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export async function searchQuotes(query?: string) {
+  const db = getDb();
+  if (query?.trim()) {
+    const pattern = `%${query.trim()}%`;
+    const rows = await db
+      .select()
+      .from(quoteHistory)
+      .where(
+        or(
+          ilike(quoteHistory.customerName, pattern),
+          ilike(quoteHistory.vehicleName, pattern),
+          ilike(quoteHistory.locationName, pattern),
+        ),
+      )
+      .orderBy(desc(quoteHistory.createdAt))
+      .limit(100);
+    return rows.map(mapQuote);
+  }
+  const rows = await db
+    .select()
+    .from(quoteHistory)
+    .orderBy(desc(quoteHistory.createdAt))
+    .limit(100);
+  return rows.map(mapQuote);
+}
+
+export async function getQuote(id: number) {
+  const db = getDb();
+  const rows = await db.select().from(quoteHistory).where(eq(quoteHistory.id, id)).limit(1);
+  return rows[0] ? mapQuote(rows[0]) : null;
+}
+
+export async function saveQuote(input: {
+  customerName: string;
+  customerAddress?: string;
+  vehicleId?: number;
+  brandCode?: string;
+  vehicleName?: string;
+  locationId?: number;
+  locationName?: string;
+  categoryId?: number;
+  color?: string;
+  usageType?: string;
+  language?: string;
+  includeOptional?: boolean;
+  listPrice?: number;
+  salePrice?: number;
+  discountAmount?: number;
+  deposit?: number;
+  onRoadTotal: number;
+  payload?: string;
+}) {
+  const db = getDb();
+  const rows = await db
+    .insert(quoteHistory)
+    .values({
+      customerName: input.customerName,
+      customerAddress: input.customerAddress,
+      vehicleId: input.vehicleId,
+      brandCode: input.brandCode,
+      vehicleName: input.vehicleName,
+      locationId: input.locationId,
+      locationName: input.locationName,
+      categoryId: input.categoryId,
+      color: input.color,
+      usageType: input.usageType,
+      language: input.language,
+      includeOptional: input.includeOptional ?? false,
+      listPrice: input.listPrice != null ? String(input.listPrice) : null,
+      salePrice: input.salePrice != null ? String(input.salePrice) : null,
+      discountAmount: input.discountAmount != null ? String(input.discountAmount) : null,
+      deposit: input.deposit != null ? String(input.deposit) : null,
+      onRoadTotal: String(input.onRoadTotal),
+      payload: input.payload,
+      createdAt: new Date(),
+    })
+    .returning();
+  return mapQuote(rows[0]);
+}

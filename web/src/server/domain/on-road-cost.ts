@@ -209,4 +209,4 @@ function sanitizeAccessories(accessories: AccessoryItem[] | null | undefined): A
     }));
 }
 
-export type { UsageType };
+export type { OnRoadCostResult } from "./types";
