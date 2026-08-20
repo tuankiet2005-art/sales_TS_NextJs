@@ -112,9 +112,12 @@ export async function countActiveVehicles(params: ActiveVehicleSearchParams) {
   return rows[0]?.count ?? 0;
 }
 
-export async function listActiveVehicleFilterOptions(brandCode?: string) {
+export async function listActiveVehicleFilterOptions(brandCode?: string, categoryId?: number) {
   const db = getDb();
-  const params: ActiveVehicleSearchParams = brandCode ? { brandCode } : {};
+  const params: ActiveVehicleSearchParams = {
+    ...(brandCode ? { brandCode } : {}),
+    ...(categoryId != null ? { categoryId } : {}),
+  };
   const where = activeVehicleSearchWhere(params);
 
   const [modelRows, typeRows] = await Promise.all([

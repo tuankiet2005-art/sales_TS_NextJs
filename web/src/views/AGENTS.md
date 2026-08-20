@@ -7,7 +7,7 @@ Route-level screens for brand pick, catalog search, vehicle confirm, and on-road
 ## Ownership
 
 - `BrandPortal.tsx` — `/`; each ready brand box is a full-card link (photo included)
-- `HomePage.tsx` — `/brand/:brandCode`; live search with server pagination (10 vehicles per page); category pills plus model and body-style dropdown filters
+- `HomePage.tsx` — `/brand/:brandCode`; category/model/type filters live in URL query (`?category=&model=&type=&page=`); one paginated vehicle fetch per filter change (includes category-scoped filter options); aborts stale requests
 - `VehiclePage.tsx` — confirm details, usage (private / commercial), company policies, and a soft province search
 - `OnRoadQuotePage.tsx` — load extras, single `POST /api/quote-load` for vehicle + breakdown, equal left Price / right Accessories, sheet, Excel + PDF export
 - `AdminDataPage.tsx` — `/admin` easy forms; catalog and plate lists have live soft search plus tab-specific dropdown filters (vehicles: brand, category, body style, status; locations: region, fee zone; dealers/fee rules: brand or category)

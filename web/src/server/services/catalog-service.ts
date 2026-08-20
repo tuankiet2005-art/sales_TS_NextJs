@@ -159,7 +159,7 @@ export async function searchVehiclesPage(params: {
   vehicleType?: string;
   page: number;
   pageSize: number;
-}): Promise<Paginated<VehicleSummary>> {
+}): Promise<Paginated<VehicleSummary> & { filterOptions: { models: string[]; vehicleTypes: string[] } }> {
   const page = Math.max(1, params.page);
   const pageSize = Math.max(1, Math.min(params.pageSize, 50));
   const offset = (page - 1) * pageSize;
@@ -172,21 +172,27 @@ export async function searchVehiclesPage(params: {
     limit: pageSize,
     offset,
   };
-  const [rows, total, policy] = await Promise.all([
+  const filterScope = {
+    brandCode: params.brandCode,
+    categoryId: params.categoryId,
+  };
+  const [rows, total, policy, filterOptions] = await Promise.all([
     searchActiveVehicles(searchParams),
     countActiveVehicles(searchParams),
     getDealerPolicy(),
+    listActiveVehicleFilterOptions(filterScope.brandCode, filterScope.categoryId),
   ]);
   return {
     items: rows.map((row) => mapVehicleSummaryWithPolicy(row, policy)),
     total,
     page,
     pageSize,
+    filterOptions,
   };
 }
 
-export async function getVehicleFilterOptions(brandCode?: string) {
-  return listActiveVehicleFilterOptions(brandCode);
+export async function getVehicleFilterOptions(brandCode?: string, categoryId?: number) {
+  return listActiveVehicleFilterOptions(brandCode, categoryId);
 }
 
 export async function getVehicle(id: number) {

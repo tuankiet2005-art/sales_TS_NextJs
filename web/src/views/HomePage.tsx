@@ -14,6 +14,11 @@ import type { Brand, Category, VehicleSummary } from "../types";
 
 const PAGE_SIZE = catalogPageSize();
 
+function vehicleTypeLabel(t: (key: string) => string, vehicleType: string) {
+  const key = `admin.opt.${vehicleType}`;
+  return t(key) === key ? vehicleType : t(key);
+}
+
 export function HomePage() {
   const params = useParams() ?? {};
   const brandCode = typeof params.brandCode === "string" ? params.brandCode : "";
@@ -23,18 +28,16 @@ export function HomePage() {
   const searchParams = useSearchParams();
   const [keyword, setKeyword] = useState(searchParams?.get("q") ?? "");
   const [debouncedKeyword, setDebouncedKeyword] = useState(keyword);
-  const [categoryId, setCategoryId] = useState<number | undefined>(
-    searchParams?.get("category") ? Number(searchParams.get("category")) : undefined,
-  );
-  const [modelFilter, setModelFilter] = useState(searchParams?.get("model") ?? "");
-  const [vehicleTypeFilter, setVehicleTypeFilter] = useState(searchParams?.get("type") ?? "");
+  const categoryId = searchParams?.get("category") ? Number(searchParams.get("category")) : undefined;
+  const modelFilter = searchParams?.get("model") ?? "";
+  const vehicleTypeFilter = searchParams?.get("type") ?? "";
   const page = Math.max(1, Number(searchParams?.get("page") ?? 1) || 1);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [categories, setCategories] = useState<Category[]>(() => loadCategoryCache() ?? []);
   const [vehicles, setVehicles] = useState<VehicleSummary[]>([]);
   const [vehicleTotal, setVehicleTotal] = useState(0);
-  const [modelOptions, setModelOptions] = useState<{ value: string; label: string }[]>([]);
-  const [vehicleTypeOptions, setVehicleTypeOptions] = useState<{ value: string; label: string }[]>([]);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [vehicleTypeOptions, setVehicleTypeOptions] = useState<string[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,62 +75,66 @@ export function HomePage() {
         }
       })
       .catch(() => undefined);
-    api
-      .getVehicleFilterOptions(brandCode)
-      .then((filters) => {
-        if (!cancelled) {
-          setModelOptions(filters.models.map((model) => ({ value: model, label: model })));
-          setVehicleTypeOptions(
-            filters.vehicleTypes.map((vehicleType) => {
-              const key = `admin.opt.${vehicleType}`;
-              return { value: vehicleType, label: t(key) === key ? vehicleType : t(key) };
-            }),
-          );
-        }
-      })
-      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [brandCode, t]);
+  }, [brandCode]);
 
   useEffect(() => {
     if (!brandCode) {
       return;
     }
-    let cancelled = false;
+    const controller = new AbortController();
     setVehiclesLoading(true);
     setError(null);
     api
-      .searchVehiclesPage({
-        keyword: debouncedKeyword,
-        brandCode,
-        categoryId,
-        model: modelFilter || undefined,
-        vehicleType: vehicleTypeFilter || undefined,
-        page,
-        pageSize: PAGE_SIZE,
-      })
+      .searchVehiclesPage(
+        {
+          keyword: debouncedKeyword,
+          brandCode,
+          categoryId,
+          model: modelFilter || undefined,
+          vehicleType: vehicleTypeFilter || undefined,
+          page,
+          pageSize: PAGE_SIZE,
+        },
+        { signal: controller.signal },
+      )
       .then((result) => {
-        if (!cancelled) {
-          setVehicles(result.items);
-          setVehicleTotal(result.total);
-        }
+        setVehicles(result.items);
+        setVehicleTotal(result.total);
+        setModelOptions(result.filterOptions.models);
+        setVehicleTypeOptions(result.filterOptions.vehicleTypes);
       })
       .catch((err: Error) => {
-        if (!cancelled) {
-          setError(err.message);
+        if (controller.signal.aborted) {
+          return;
         }
+        setError(err.message);
       })
       .finally(() => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setVehiclesLoading(false);
         }
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [brandCode, categoryId, debouncedKeyword, modelFilter, vehicleTypeFilter, page]);
+  }, [brandCode, categoryId, debouncedKeyword, modelFilter, page, vehicleTypeFilter]);
+
+  const modelSelectOptions = useMemo(
+    () => modelOptions.map((model) => ({ value: model, label: model })),
+    [modelOptions],
+  );
+
+  const vehicleTypeSelectOptions = useMemo(
+    () =>
+      vehicleTypeOptions.map((vehicleType) => ({
+        value: vehicleType,
+        label: vehicleTypeLabel(t, vehicleType),
+      })),
+    [vehicleTypeOptions, t],
+  );
 
   const selectedCategory = useMemo(
     () => categories.find((item) => item.id === categoryId),
@@ -147,39 +154,27 @@ export function HomePage() {
     router.push(query ? `${pathname}?${query}` : pathname);
   }
 
-  function syncFilters(next: { categoryId?: number; model?: string; type?: string }) {
-    const params: Record<string, string | undefined> = { page: undefined };
-    if (next.categoryId) {
-      params.category = String(next.categoryId);
-    } else if ("categoryId" in next) {
-      params.category = undefined;
-    }
-    if (next.model) {
-      params.model = next.model;
-    } else if ("model" in next) {
-      params.model = undefined;
-    }
-    if (next.type) {
-      params.type = next.type;
-    } else if ("type" in next) {
-      params.type = undefined;
-    }
-    pushQuery(params);
-  }
-
   function selectCategory(id?: number) {
-    setCategoryId(id);
-    syncFilters({ categoryId: id });
+    pushQuery({
+      category: id ? String(id) : undefined,
+      model: undefined,
+      type: undefined,
+      page: undefined,
+    });
   }
 
   function selectModel(model: string) {
-    setModelFilter(model);
-    syncFilters({ model });
+    pushQuery({
+      model: model || undefined,
+      page: undefined,
+    });
   }
 
   function selectVehicleType(type: string) {
-    setVehicleTypeFilter(type);
-    syncFilters({ type });
+    pushQuery({
+      type: type || undefined,
+      page: undefined,
+    });
   }
 
   function selectPage(nextPage: number) {
@@ -239,14 +234,14 @@ export function HomePage() {
               label={t("filterModel")}
               value={modelFilter}
               onChange={selectModel}
-              options={modelOptions}
+              options={modelSelectOptions}
               allLabel={t("filterAll")}
             />
             <ListFilterSelect
               label={t("filterBodyStyle")}
               value={vehicleTypeFilter}
               onChange={selectVehicleType}
-              options={vehicleTypeOptions}
+              options={vehicleTypeSelectOptions}
               allLabel={t("filterAll")}
             />
           </div>
@@ -275,7 +270,10 @@ export function HomePage() {
             </p>
           )}
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            className={`grid gap-5 sm:grid-cols-2 lg:grid-cols-3 ${vehiclesLoading ? "opacity-60" : ""}`}
+            aria-busy={vehiclesLoading}
+          >
             {vehicles.map((vehicle, index) => (
               <VehicleCard key={vehicle.id} vehicle={vehicle} brandCode={brandCode} index={index} />
             ))}

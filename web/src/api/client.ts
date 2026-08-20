@@ -102,15 +102,18 @@ export const api = {
     const query = params.toString();
     return request<VehicleSummary[]>(`/api/vehicles/search${query ? `?${query}` : ""}`);
   },
-  searchVehiclesPage(options: {
-    keyword?: string;
-    brandCode?: string;
-    categoryId?: number;
-    model?: string;
-    vehicleType?: string;
-    page?: number;
-    pageSize?: number;
-  }) {
+  searchVehiclesPage(
+    options: {
+      keyword?: string;
+      brandCode?: string;
+      categoryId?: number;
+      model?: string;
+      vehicleType?: string;
+      page?: number;
+      pageSize?: number;
+    },
+    init?: RequestInit,
+  ) {
     const params = new URLSearchParams();
     if (options.keyword?.trim()) {
       params.set("keyword", options.keyword.trim());
@@ -129,12 +132,18 @@ export const api = {
     }
     params.set("page", String(options.page ?? 1));
     params.set("pageSize", String(options.pageSize ?? 10));
-    return request<Paginated<VehicleSummary>>(`/api/vehicles/search?${params.toString()}`);
+    return request<Paginated<VehicleSummary> & { filterOptions: { models: string[]; vehicleTypes: string[] } }>(
+      `/api/vehicles/search?${params.toString()}`,
+      init,
+    );
   },
-  getVehicleFilterOptions(brandCode?: string) {
+  getVehicleFilterOptions(brandCode?: string, categoryId?: number) {
     const params = new URLSearchParams();
     if (brandCode) {
       params.set("brand", brandCode);
+    }
+    if (categoryId != null) {
+      params.set("categoryId", String(categoryId));
     }
     const query = params.toString();
     return request<{ models: string[]; vehicleTypes: string[] }>(
