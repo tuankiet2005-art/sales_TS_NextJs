@@ -130,7 +130,11 @@ export function VehiclePage() {
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
           <section>
             <div className="overflow-hidden rounded-3xl bg-mist shadow-card">
-              <img src={vehicle.imageUrl} alt={vehicle.name} className="aspect-[16/10] w-full object-cover" />
+              <img
+                src={colorPhoto(color || vehicle.defaultColor, vehicle.colorPhotos)}
+                alt={vehicle.name}
+                className="aspect-[16/10] w-full object-contain bg-paper"
+              />
             </div>
             <div className="mt-6">
               <p className="text-xs uppercase tracking-[0.18em] text-ink/45">{vehicle.brand}</p>
