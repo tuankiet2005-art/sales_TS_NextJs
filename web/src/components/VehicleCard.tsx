@@ -2,21 +2,31 @@
 import Link from "next/link";
 import { useI18n } from "../i18n/LanguageContext";
 import { formatVnd } from "../lib/format";
+import { motionCard, motionStagger } from "../lib/motion";
 import type { VehicleSummary } from "../types";
 
-export function VehicleCard({ vehicle, brandCode }: { vehicle: VehicleSummary; brandCode: string }) {
+export function VehicleCard({
+  vehicle,
+  brandCode,
+  index = 0,
+}: {
+  vehicle: VehicleSummary;
+  brandCode: string;
+  index?: number;
+}) {
   const { t } = useI18n();
 
   return (
     <Link
       href={`/brand/${brandCode}/vehicles/${vehicle.id}`}
-      className="group overflow-hidden rounded-3xl border border-ink/8 bg-white shadow-card transition hover:-translate-y-1 hover:border-copper/40"
+      className={`group overflow-hidden rounded-3xl border border-ink/8 bg-white shadow-card ${motionCard} motion-enter`}
+      style={motionStagger(index)}
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-mist">
         <img
           src={vehicle.imageUrl}
           alt={vehicle.name}
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover transition duration-500 ease-motion group-hover:scale-105"
         />
         <span className="absolute left-3 top-3 rounded-full bg-paper/90 px-3 py-1 text-xs font-semibold text-forest">
           {t(`category.${vehicle.category.code}`)}

@@ -45,6 +45,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`/`lab` (canvas pixel sampling converts modern color functions to `rgb`/`rgba`)
 - Default UI language Vietnamese (`vi`); match `frontend/src/i18n/` behavior when UI is ported
 - Layout is mobile-first: phones stack, tablets use two columns where the contract needs them, desktop keeps the wide catalog
+- UI motion is CSS-first (`globals.css` + `lib/motion.ts` + `PageMotion`); no animation library; keep transitions smooth and respect `prefers-reduced-motion`
 - Quote page: Price left and Accessories right are equal columns from `md` up; they stack on phones. The Excel quote sheet stays desktop-width and scrolls sideways on small screens
 - Header: compact bar + hamburger below `lg`; language switcher stays on the bar
 - Do not add the full shadcn component kit unless asked

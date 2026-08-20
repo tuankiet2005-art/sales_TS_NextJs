@@ -11,6 +11,7 @@ import type { Lang } from "../i18n/translations";
 import { formatVnd } from "../lib/format";
 import { codedOption } from "../lib/labels";
 import { priceVehicleFromPolicy } from "../lib/dealerPricing";
+import { motionInteractive, motionPress } from "../lib/motion";
 import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
 import { colorPhoto } from "../lib/vehicleColor";
 import { defaultPolicyChoices, loadPolicyChoices, localizedPolicyText, savePolicyChoices } from "../lib/quotePolicy";
@@ -136,7 +137,7 @@ export function VehiclePage() {
         <form onSubmit={goToQuote}>
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
           <section>
-            <div className="overflow-hidden rounded-3xl bg-mist shadow-card">
+            <div className="overflow-hidden rounded-3xl bg-mist shadow-card motion-scale-in">
               <img
                 src={colorPhoto(color || vehicle.defaultColor, vehicle.colorPhotos)}
                 alt={vehicle.name}
@@ -151,7 +152,10 @@ export function VehiclePage() {
               </p>
               <div className="mt-5 rounded-2xl bg-white px-5 py-4 shadow-card">
                 <p className="text-xs uppercase tracking-[0.16em] text-ink/45">{t("salePrice")}</p>
-                <p className="font-display text-3xl text-copper">
+                <p
+                  key={`${displayPricing.salePrice}-${displayPricing.discountAmount}`}
+                  className="font-display text-3xl text-copper motion-price-pop"
+                >
                   {formatVnd(displayPricing.salePrice)}
                 </p>
                 <p className="mt-1 text-sm text-ink/50">
@@ -319,7 +323,7 @@ export function VehiclePage() {
           <button
             type="submit"
             disabled={!locationId}
-            className="h-12 w-full rounded-xl bg-ink text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60"
+            className={`h-12 w-full rounded-xl bg-ink text-sm font-semibold text-paper disabled:opacity-60 ${motionInteractive} ${motionPress} hover:bg-forest`}
           >
             {t("calculateButton")}
           </button>

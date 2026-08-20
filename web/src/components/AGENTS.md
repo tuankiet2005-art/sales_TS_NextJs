@@ -7,6 +7,7 @@ Shared chrome and quote widgets used by pages.
 ## Ownership
 
 - `Header.tsx` / `LanguageSwitcher.tsx` / `LoginScreen.tsx` — site chrome; logo stays left with no tagline; nav is hidden until sign-in; after login shows Models, Change brand, History, Data, Sign out, and Language; active nav tab shows a copper border frame; header stays above admin popups (`z-50`); `AppShell` must not show `LoginScreen` until the token has been read
+- `PageMotion.tsx` — route enter animation keyed by pathname; wraps signed-in pages from `AppShell`
 - `QuotePricePanel` / `QuoteAccessoriesPanel` in `QuoteAdjustments.tsx` — equal left/right editors
 - `QuoteSheet.tsx` — visual replica of the dealer Excel quote; `#quote-sheet` is the PDF source (`lib/exportQuotePdf.ts` sanitizes Tailwind `oklch`/`lab` before html2canvas)
 - `VehicleCard.tsx`, `CostBreakdown.tsx` — catalog / fee list
@@ -22,6 +23,7 @@ Shared chrome and quote widgets used by pages.
 - Color-car photos use `h-12 w-auto object-contain` so PDF capture does not stretch them
 - Color photos prefer `vehicle.colorPhotos[name]`, then `public/colors/`
 - Icons from `lucide-react` only
+- Motion tokens in `app/globals.css`; shared helpers in `lib/motion.ts`; honor `prefers-reduced-motion`
 
 ## Work Guidance
 

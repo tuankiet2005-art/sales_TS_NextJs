@@ -7,6 +7,7 @@ import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
 import { useI18n } from "../i18n/LanguageContext";
 import { formatVnd } from "../lib/format";
+import { motionInteractive, motionStagger } from "../lib/motion";
 import { softIncludes } from "../lib/softSearch";
 import { saveExtras } from "../lib/quoteExtras";
 import { savePolicyChoices } from "../lib/quotePolicy";
@@ -153,8 +154,12 @@ export function QuoteHistoryPage() {
         ) : (
           <>
             <ul className="mt-4 space-y-3 md:hidden">
-              {visible.map((row) => (
-                <li key={row.id} className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
+              {visible.map((row, index) => (
+                <li
+                  key={row.id}
+                  className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card motion-enter"
+                  style={motionStagger(index)}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium">{row.customerName}</p>
@@ -170,7 +175,7 @@ export function QuoteHistoryPage() {
                   <button
                     type="button"
                     onClick={() => openQuote(row)}
-                    className="mt-3 inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-copper"
+                    className={`mt-3 inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-copper ${motionInteractive}`}
                   >
                     {t("quoteHistory.open")}
                   </button>
@@ -190,8 +195,12 @@ export function QuoteHistoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visible.map((row) => (
-                    <tr key={row.id} className="border-t border-ink/6">
+                  {visible.map((row, index) => (
+                    <tr
+                      key={row.id}
+                      className="border-t border-ink/6 motion-enter"
+                      style={motionStagger(index, 35, 280)}
+                    >
                       <td className="px-3 py-2">{formatQuoteDate(row.createdAt, lang)}</td>
                       <td className="px-3 py-2">
                         <p className="font-medium">{row.customerName}</p>

@@ -8,6 +8,7 @@ import { ListFilterSelect } from "../components/ListFilterSelect";
 import { VehicleCard } from "../components/VehicleCard";
 import { useI18n } from "../i18n/LanguageContext";
 import { softIncludes } from "../lib/softSearch";
+import { motionInteractive, motionPress, motionStagger } from "../lib/motion";
 import type { Brand, Category, VehicleSummary } from "../types";
 
 export function HomePage() {
@@ -140,7 +141,7 @@ export function HomePage() {
     <div className="min-h-screen">
       <Header />
       <main>
-        <section className="mx-auto max-w-page px-4 pb-8 pt-8 sm:px-6 sm:pt-12">
+        <section className="mx-auto max-w-page px-4 pb-8 pt-8 sm:px-6 sm:pt-12 motion-enter">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-copper sm:text-sm">
             {brand?.name ?? t("heroKicker")} · {t("marketVietnam")}
           </p>
@@ -154,7 +155,7 @@ export function HomePage() {
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               placeholder={t("searchPlaceholder")}
-              className="h-14 w-full rounded-2xl border border-ink/10 bg-white pl-14 pr-5 text-base outline-none ring-copper/30 focus:ring-4"
+              className="h-14 w-full rounded-2xl border border-ink/10 bg-white pl-14 pr-5 text-base outline-none ring-copper/30 transition-shadow duration-300 ease-motion focus:ring-4"
             />
           </label>
 
@@ -162,7 +163,7 @@ export function HomePage() {
             <button
               type="button"
               onClick={() => selectCategory(undefined)}
-              className={`rounded-full px-4 py-2 text-sm ${
+              className={`rounded-full px-4 py-2 text-sm ${motionInteractive} ${
                 !categoryId ? "bg-ink text-paper" : "bg-white text-ink/70 ring-1 ring-ink/10"
               }`}
             >
@@ -173,7 +174,7 @@ export function HomePage() {
                 key={category.id}
                 type="button"
                 onClick={() => selectCategory(category.id)}
-                className={`rounded-full px-4 py-2 text-sm ${
+                className={`rounded-full px-4 py-2 text-sm ${motionInteractive} ${
                   categoryId === category.id
                     ? "bg-ink text-paper"
                     : "bg-white text-ink/70 ring-1 ring-ink/10"
@@ -226,8 +227,8 @@ export function HomePage() {
           )}
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleVehicles.map((vehicle) => (
-              <VehicleCard key={vehicle.id} vehicle={vehicle} brandCode={brandCode} />
+            {visibleVehicles.map((vehicle, index) => (
+              <VehicleCard key={vehicle.id} vehicle={vehicle} brandCode={brandCode} index={index} />
             ))}
           </div>
         </section>
@@ -239,8 +240,8 @@ export function HomePage() {
               ["02", "step2Title"],
               ["03", "step3Title"],
               ["04", "step4Title"],
-            ].map(([step, title]) => (
-              <div key={step}>
+            ].map(([step, title], index) => (
+              <div key={step} className="motion-enter" style={motionStagger(index, 80)}>
                 <p className="text-xs font-semibold tracking-[0.2em] text-copper">{step}</p>
                 <h3 className="mt-2 font-display text-2xl">{t(title)}</h3>
               </div>

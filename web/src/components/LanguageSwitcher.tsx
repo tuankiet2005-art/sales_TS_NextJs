@@ -2,6 +2,7 @@
 import { Languages } from "lucide-react";
 import { languages } from "../i18n/translations";
 import { useI18n } from "../i18n/LanguageContext";
+import { motionInteractive, motionStagger } from "../lib/motion";
 
 export function LanguageSwitcher() {
   const { lang, setLang } = useI18n();
@@ -12,7 +13,7 @@ export function LanguageSwitcher() {
       <select
         value={lang}
         onChange={(event) => setLang(event.target.value as typeof lang)}
-        className="h-10 max-w-[9.5rem] rounded-full border border-ink/15 bg-white px-2.5 text-sm text-ink sm:max-w-none sm:px-4 sm:text-base"
+        className={`h-10 max-w-[9.5rem] rounded-full border border-ink/15 bg-white px-2.5 text-sm text-ink sm:max-w-none sm:px-4 sm:text-base ${motionInteractive}`}
       >
         {languages.map((item) => (
           <option key={item.code} value={item.code}>

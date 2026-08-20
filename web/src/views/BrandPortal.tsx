@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
 import { useI18n } from "../i18n/LanguageContext";
+import { motionCard, motionStagger } from "../lib/motion";
 import type { Brand } from "../types";
 
 export function BrandPortal() {
@@ -19,8 +20,10 @@ export function BrandPortal() {
     <div className="min-h-screen">
       <Header />
       <main className="mx-auto max-w-page px-4 py-8 sm:px-6 sm:py-14">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-copper sm:text-sm">{t("marketVietnam")}</p>
-        <h1 className="mt-3 text-balance font-display text-3xl text-ink sm:text-5xl">{t("chooseBrand")}</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-copper sm:text-sm motion-enter">{t("marketVietnam")}</p>
+        <h1 className="mt-3 text-balance font-display text-3xl text-ink sm:text-5xl motion-enter" style={motionStagger(1)}>
+          {t("chooseBrand")}
+        </h1>
 
         {error && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -30,11 +33,15 @@ export function BrandPortal() {
         )}
 
         <div className="mt-10 grid gap-5 sm:grid-cols-2">
-          {brands.map((brand) => {
+          {brands.map((brand, index) => {
             const card = (
               <>
-                <div className="relative aspect-[16/8] bg-mist">
-                  <img src={brand.imageUrl} alt={brand.name} className="h-full w-full object-cover" />
+                <div className="relative aspect-[16/8] overflow-hidden bg-mist">
+                  <img
+                    src={brand.imageUrl}
+                    alt={brand.name}
+                    className="h-full w-full object-cover transition duration-500 ease-motion group-hover:scale-105"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-ink/70 to-transparent" />
                   <div className="absolute bottom-4 left-5">
                     <p className="text-xs uppercase tracking-[0.18em] text-white/70">
@@ -59,13 +66,19 @@ export function BrandPortal() {
                 </div>
               </>
             );
-            const boxClass = "block overflow-hidden rounded-3xl border border-ink/8 bg-white shadow-card";
+            const boxClass = `block overflow-hidden rounded-3xl border border-ink/8 bg-white shadow-card ${motionCard} motion-enter group`;
+            const cardStyle = motionStagger(index);
             return brand.ready ? (
-              <Link key={brand.id} href={`/brand/${brand.code}`} className={`${boxClass} transition hover:-translate-y-1 hover:border-copper/40`}>
+              <Link
+                key={brand.id}
+                href={`/brand/${brand.code}`}
+                className={boxClass}
+                style={cardStyle}
+              >
                 {card}
               </Link>
             ) : (
-              <article key={brand.id} className={boxClass}>
+              <article key={brand.id} className={boxClass} style={cardStyle}>
                 {card}
               </article>
             );

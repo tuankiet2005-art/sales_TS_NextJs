@@ -6,6 +6,7 @@ import { useParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAdminAuth } from "../auth/AdminAuthContext";
 import { useI18n } from "../i18n/LanguageContext";
+import { motionInteractive } from "../lib/motion";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
 function NavItem({
@@ -28,10 +29,10 @@ function NavItem({
       onClick={onClick}
       className={
         stacked
-          ? `flex min-h-11 items-center rounded-xl border px-3 py-2 text-base font-semibold ${frame} ${
+          ? `flex min-h-11 items-center rounded-xl border px-3 py-2 text-base font-semibold ${motionInteractive} ${frame} ${
               active ? "bg-mist" : "text-ink/80 hover:border-ink/10 hover:bg-mist/70 hover:text-ink"
             }`
-          : `rounded-lg border px-3 py-1.5 ${frame} ${
+          : `rounded-lg border px-3 py-1.5 ${motionInteractive} ${frame} ${
               active ? "bg-copper/5" : "text-ink/70 hover:border-ink/10 hover:text-ink"
             }`
       }
@@ -91,7 +92,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-ink/10 bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-ink/10 bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur motion-fade-in">
       <div className="mx-auto flex max-w-page items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:py-5">
         {signedIn ? (
           <Link
@@ -113,7 +114,7 @@ export function Header() {
           {signedIn && (
             <button
               type="button"
-              className="inline-flex size-11 items-center justify-center rounded-xl border border-ink/10 bg-white text-ink lg:hidden"
+              className={`inline-flex size-11 items-center justify-center rounded-xl border border-ink/10 bg-white text-ink lg:hidden ${motionInteractive}`}
               aria-expanded={menuOpen}
               aria-controls="site-menu"
               aria-label={menuOpen ? t("nav.close") : t("nav.open")}
@@ -125,10 +126,7 @@ export function Header() {
         </div>
       </div>
       {signedIn && menuOpen && (
-        <nav
-          id="site-menu"
-          className="border-t border-ink/10 bg-paper px-4 py-3 lg:hidden"
-        >
+        <nav id="site-menu" className="border-t border-ink/10 bg-paper px-4 py-3 lg:hidden motion-slide-down">
           <div className="mx-auto flex max-w-page flex-col gap-1">{navLinks(true)}</div>
         </nav>
       )}

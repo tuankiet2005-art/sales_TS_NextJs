@@ -10,6 +10,7 @@ import { QuoteSheet } from "../components/QuoteSheet";
 import { useI18n } from "../i18n/LanguageContext";
 import { languages, type Lang } from "../i18n/translations";
 import { downloadQuotePdf } from "../lib/exportQuotePdf";
+import { motionInteractive, motionPress } from "../lib/motion";
 import { extrasFromVehicle, extrasStorageKey, loadExtras, saveExtras } from "../lib/quoteExtras";
 import { defaultPolicyChoices, loadPolicyChoices } from "../lib/quotePolicy";
 import type { CostBreakdown as CostBreakdownType, QuoteExtras, VehicleDetail } from "../types";
@@ -218,7 +219,7 @@ export function OnRoadQuotePage() {
         {notice && <p className="mb-3 text-sm text-forest print:hidden">{notice}</p>}
 
         {vehicle && (
-          <div className="mb-5 grid gap-3 print:hidden md:grid-cols-2 md:*:min-w-0">
+          <div className="mb-5 grid gap-3 motion-enter print:hidden md:grid-cols-2 md:*:min-w-0">
             <QuotePricePanel
               extras={extras}
               onChange={setExtras}
@@ -227,7 +228,7 @@ export function OnRoadQuotePage() {
                   type="button"
                   onClick={recalculate}
                   disabled={calculating}
-                  className="mt-4 inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-ink text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60"
+                  className={`mt-4 inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-xl bg-ink text-sm font-semibold text-paper disabled:opacity-60 ${motionInteractive} ${motionPress} hover:bg-forest`}
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${calculating ? "animate-spin" : ""}`} />
                   {calculating ? t("calculating") : t("recalculate")}
@@ -239,7 +240,10 @@ export function OnRoadQuotePage() {
         )}
 
         {vehicle && result && (
-          <div className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 print:mx-0 print:overflow-visible print:px-0">
+          <div
+            key={result.salePrice}
+            className="-mx-4 overflow-x-auto px-4 motion-scale-in sm:-mx-6 sm:px-6 print:mx-0 print:overflow-visible print:px-0"
+          >
             <QuoteSheet
               vehicle={vehicle}
               result={result}
