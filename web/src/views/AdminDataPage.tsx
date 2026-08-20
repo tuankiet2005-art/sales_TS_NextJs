@@ -9,6 +9,7 @@ import { ListFilterSelect } from "../components/ListFilterSelect";
 import { api, UnauthorizedError } from "../api/client";
 import { useI18n } from "../i18n/LanguageContext";
 import type { Lang } from "../i18n/translations";
+import { getAdminCatalog, invalidateAdminCatalog, type AdminCatalogKey } from "../lib/adminCatalogCache";
 import { fillFromVietnamese } from "../lib/fromVietnamese";
 import { locationLabel } from "../lib/labels";
 import { softIncludes } from "../lib/softSearch";
@@ -138,11 +139,14 @@ const TAB_LOOKUPS: Partial<Record<Tab, LookupKey[]>> = {
   plateRegions: ["locations"],
 };
 
-const TAB_LOOKUP_SOURCE: Partial<Record<CatalogTab, LookupKey>> = {
+const TAB_TO_CACHE: Record<CatalogTab, AdminCatalogKey> = {
   brands: "brands",
   categories: "categories",
   locations: "locations",
+  dealers: "dealers",
+  vehicles: "vehicles",
   feeDefinitions: "fees",
+  feeRules: "feeRules",
 };
 
 export function AdminDataPage() {
@@ -165,83 +169,44 @@ export function AdminDataPage() {
   const [catalogFilters, setCatalogFilters] = useState<Record<string, string>>({});
   const [pendingImages, setPendingImages] = useState<PendingImageUploads>(EMPTY_PENDING_IMAGES);
   const [processingImageKey, setProcessingImageKey] = useState<string | null>(null);
-  const lookupReady = useRef<Record<LookupKey, boolean>>({
-    brands: false,
-    categories: false,
-    locations: false,
-    fees: false,
-  });
-  const rowsCache = useRef<Partial<Record<CatalogTab, Record<string, unknown>[]>>>({});
   const policyReady = useRef({ feePolicy: false, dealerPolicy: false, plateRegions: false });
 
-  async function fetchLookup(key: LookupKey) {
+  function syncLookupState(key: AdminCatalogKey, data: unknown[]) {
     switch (key) {
-      case "brands": {
-        const data = await api.listAdminBrands();
-        setBrands(data);
-        rowsCache.current.brands = data as unknown as Record<string, unknown>[];
+      case "brands":
+        setBrands(data as AdminBrand[]);
         break;
-      }
-      case "categories": {
-        const data = await api.listAdminCategories();
-        setCategories(data);
-        rowsCache.current.categories = data as unknown as Record<string, unknown>[];
+      case "categories":
+        setCategories(data as AdminCategory[]);
         break;
-      }
-      case "locations": {
-        const data = await api.listAdminLocations();
-        setLocations(data);
-        rowsCache.current.locations = data as unknown as Record<string, unknown>[];
+      case "locations":
+        setLocations(data as AdminLocation[]);
         break;
-      }
-      case "fees": {
-        const data = await api.listAdminFeeDefinitions();
-        setFees(data);
-        rowsCache.current.feeDefinitions = data as unknown as Record<string, unknown>[];
+      case "fees":
+        setFees(data as AdminFeeDefinition[]);
         break;
-      }
     }
-    lookupReady.current[key] = true;
   }
 
   async function ensureLookups(keys: LookupKey[], force = false) {
-    const pending = keys.filter((key) => force || !lookupReady.current[key]);
-    await Promise.all(pending.map((key) => fetchLookup(key)));
+    await Promise.all(
+      keys.map(async (key) => {
+        const data = await getAdminCatalog(key, { force });
+        syncLookupState(key, data);
+      }),
+    );
   }
 
   function invalidateCatalogTab(nextTab: CatalogTab) {
-    delete rowsCache.current[nextTab];
-    const lookupKey = TAB_LOOKUP_SOURCE[nextTab];
-    if (lookupKey) {
-      lookupReady.current[lookupKey] = false;
-    }
+    invalidateAdminCatalog(TAB_TO_CACHE[nextTab]);
   }
 
   async function loadCatalogTab(nextTab: CatalogTab, force = false) {
-    if (!force && rowsCache.current[nextTab]) {
-      setRows(rowsCache.current[nextTab]!);
-      return;
-    }
-    const lookupKey = TAB_LOOKUP_SOURCE[nextTab];
-    const data = (await listFor(nextTab)) as unknown as Record<string, unknown>[];
-    rowsCache.current[nextTab] = data;
-    setRows(data);
-    if (lookupKey) {
-      switch (lookupKey) {
-        case "brands":
-          setBrands(data as unknown as AdminBrand[]);
-          break;
-        case "categories":
-          setCategories(data as unknown as AdminCategory[]);
-          break;
-        case "locations":
-          setLocations(data as unknown as AdminLocation[]);
-          break;
-        case "fees":
-          setFees(data as unknown as AdminFeeDefinition[]);
-          break;
-      }
-      lookupReady.current[lookupKey] = true;
+    const cacheKey = TAB_TO_CACHE[nextTab];
+    const data = await getAdminCatalog(cacheKey, { force });
+    setRows(data as unknown as Record<string, unknown>[]);
+    if (cacheKey === "brands" || cacheKey === "categories" || cacheKey === "locations" || cacheKey === "fees") {
+      syncLookupState(cacheKey, data);
     }
   }
 
@@ -1645,25 +1610,6 @@ function locationName(location: AdminLocation | undefined, lang: Lang) {
     return "";
   }
   return locationLabel(location, lang);
-}
-
-function listFor(tab: CatalogTab) {
-  switch (tab) {
-    case "brands":
-      return api.listAdminBrands();
-    case "categories":
-      return api.listAdminCategories();
-    case "locations":
-      return api.listAdminLocations();
-    case "dealers":
-      return api.listAdminDealers();
-    case "vehicles":
-      return api.listAdminVehicles();
-    case "feeDefinitions":
-      return api.listAdminFeeDefinitions();
-    case "feeRules":
-      return api.listAdminFeeRules();
-  }
 }
 
 function saveFor(tab: CatalogTab, item: Record<string, unknown>) {
