@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
+import { ListFilterSelect } from "../components/ListFilterSelect";
 import { useI18n } from "../i18n/LanguageContext";
 import { formatVnd } from "../lib/format";
 import { softIncludes } from "../lib/softSearch";
@@ -15,11 +16,41 @@ export function QuoteHistoryPage() {
   const { t, lang } = useI18n();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [brandFilter, setBrandFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
   const [rows, setRows] = useState<QuoteHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const visible = useMemo(() => rows.filter((row) => matchesHistoryQuery(row, query)), [rows, query]);
+  const brandOptions = useMemo(
+    () =>
+      [...new Set(rows.map((row) => row.brandCode).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((brandCode) => ({ value: brandCode, label: brandCode })),
+    [rows]
+  );
+
+  const locationOptions = useMemo(
+    () =>
+      [...new Set(rows.map((row) => row.locationName).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "vi"))
+        .map((locationName) => ({ value: locationName, label: locationName })),
+    [rows]
+  );
+
+  const visible = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (brandFilter && row.brandCode !== brandFilter) {
+          return false;
+        }
+        if (locationFilter && row.locationName !== locationFilter) {
+          return false;
+        }
+        return matchesHistoryQuery(row, query);
+      }),
+    [rows, query, brandFilter, locationFilter]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +126,23 @@ export function QuoteHistoryPage() {
             className="h-11 w-full rounded-xl border border-ink/10 bg-white pl-10 pr-3 text-sm shadow-card"
           />
         </label>
+
+        <div className="mt-3 flex flex-wrap gap-3">
+          <ListFilterSelect
+            label={t("filterBrand")}
+            value={brandFilter}
+            onChange={setBrandFilter}
+            options={brandOptions}
+            allLabel={t("filterAll")}
+          />
+          <ListFilterSelect
+            label={t("filterLocation")}
+            value={locationFilter}
+            onChange={setLocationFilter}
+            options={locationOptions}
+            allLabel={t("filterAll")}
+          />
+        </div>
 
         {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
