@@ -1,4 +1,4 @@
-import type { QuoteExtras, VehicleDetail } from "../types";
+import type { CostBreakdown, QuoteExtras, VehicleDetail } from "../types";
 
 export function extrasStorageKey(vehicleId: number): string {
   return `onroad-extras-${vehicleId}`;
@@ -6,11 +6,20 @@ export function extrasStorageKey(vehicleId: number): string {
 
 export function extrasFromVehicle(vehicle: VehicleDetail): QuoteExtras {
   return {
+    discountAmount: vehicle.discountAmount,
     deposit: vehicle.defaultDeposit,
     registrationServiceFee: vehicle.registrationServiceFee,
     micaPlateFee: vehicle.micaPlateFee,
     inspectionFee: vehicle.inspectionFee,
     accessories: [],
+  };
+}
+
+/** Seed adjustable quote fields from the server breakdown (includes usage + offers). */
+export function extrasFromQuote(vehicle: VehicleDetail, breakdown: CostBreakdown): QuoteExtras {
+  return {
+    ...extrasFromVehicle(vehicle),
+    discountAmount: breakdown.discountAmount ?? vehicle.discountAmount,
   };
 }
 
@@ -28,7 +37,8 @@ export function loadExtras(vehicleId: number, fallback: QuoteExtras): QuoteExtra
     return {
       ...fallback,
       ...parsed,
-      accessories: Array.isArray(parsed.accessories) ? parsed.accessories : [],
+      discountAmount: parsed.discountAmount ?? fallback.discountAmount,
+      accessories: Array.isArray(parsed.accessories) ? parsed.accessories : fallback.accessories,
     };
   } catch {
     return fallback;

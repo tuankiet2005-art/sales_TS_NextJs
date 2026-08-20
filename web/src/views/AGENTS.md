@@ -21,6 +21,7 @@ Route-level screens for brand pick, catalog search, vehicle confirm, and on-road
 - On-road query: `locationId` (required), `categoryId`, `optional`, `name`, `address`, `color`, `usage`
 - Policy choices persist in `sessionStorage` key `onroad-policy-{vehicleId}`
 - `OnRoadQuotePage` keeps customer name/address in component state so export works without `?name=`
+- Quote extras (`lib/quoteExtras.ts`): `Giảm giá` seeds from `extrasFromQuote(vehicle, breakdown)` so the adjustable panel matches confirm-page / sheet discount; `VehiclePage` saves policy discount in session before navigating
 - Recalculate sits at the bottom of the Price column; Excel and PDF sit below `QuoteSheet`
 - Excel and PDF persist one `quote_history` row: a calculated quote, reused for the same customer and vehicle within two minutes. Incomplete stubs (no vehicle / 0 đ) stay hidden. History **Mở** uses a pointer cursor
 - Excel download uses the vehicle’s `quote_sheet_name` tab inside `bang-bao-gia.xlsx` (Attrage opens Attrage, not Xpander MT)

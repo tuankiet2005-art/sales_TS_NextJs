@@ -90,7 +90,12 @@ export function VehiclePage() {
       params.set("color", color);
     }
     params.set("usage", usageType === "COMMERCIAL" ? "commercial" : "private");
-    saveExtras(id, extras);
+    const discountAmount =
+      policy && vehicle
+        ? priceVehicleFromPolicy(policy, vehicle.listPrice, usageType, selectedOfferIds, forgoneOfferIds)
+            .discountAmount
+        : vehicle?.discountAmount;
+    saveExtras(id, { ...extras, discountAmount });
     savePolicyChoices(id, { usageType, selectedOfferIds, forgoneOfferIds });
     router.push(`/brand/${brandCode}/vehicles/${id}/on-road?${params.toString()}`);
   }

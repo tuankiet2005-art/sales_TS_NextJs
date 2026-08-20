@@ -11,7 +11,7 @@ import { useI18n } from "../i18n/LanguageContext";
 import { languages, type Lang } from "../i18n/translations";
 import { downloadQuotePdf } from "../lib/exportQuotePdf";
 import { motionInteractive, motionPress } from "../lib/motion";
-import { extrasFromVehicle, extrasStorageKey, loadExtras, saveExtras } from "../lib/quoteExtras";
+import { extrasFromQuote, extrasFromVehicle, extrasStorageKey, loadExtras, saveExtras } from "../lib/quoteExtras";
 import { defaultPolicyChoices, loadPolicyChoices } from "../lib/quotePolicy";
 import type { CostBreakdown as CostBreakdownType, QuoteExtras, VehicleDetail } from "../types";
 
@@ -82,7 +82,7 @@ export function OnRoadQuotePage() {
           return;
         }
         setVehicle(nextVehicle);
-        setExtras(loadExtras(id, extrasFromVehicle(nextVehicle)));
+        setExtras(loadExtras(id, extrasFromQuote(nextVehicle, breakdown)));
         setResult(breakdown);
       })
       .catch((err: Error) => {
