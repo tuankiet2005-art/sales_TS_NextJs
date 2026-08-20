@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-import { json, notFound } from "@/server/http";
+import { json, notFound, CATALOG_LIST_CACHE_CONTROL } from "@/server/http";
 import { getVehicle } from "@/server/services/catalog-service";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
@@ -9,5 +9,5 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (!vehicle) {
     return notFound("Vehicle", id);
   }
-  return json(vehicle);
+  return json(vehicle, 200, { "Cache-Control": CATALOG_LIST_CACHE_CONTROL });
 }

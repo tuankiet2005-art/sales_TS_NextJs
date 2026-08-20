@@ -1,0 +1,41 @@
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+
+import { loadVehicleCache, saveVehicleCache, vehicleCacheKey } from "./vehicleCache";
+
+describe("vehicleCache", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("round-trips vehicle detail in sessionStorage", () => {
+    const vehicle = {
+      id: 5,
+      name: "Attrage",
+      model: "Attrage",
+      brandName: "Mitsubishi",
+      listPrice: 400,
+      salePrice: 380,
+      discountAmount: 20,
+      taxBasePrice: 400,
+      engineCc: 1200,
+      defaultDeposit: 0,
+      registrationServiceFee: 0,
+      micaPlateFee: 0,
+      inspectionFee: 0,
+      categoryId: 4,
+      categoryName: "Sedan",
+      imageUrl: null,
+    };
+    saveVehicleCache(5, vehicle);
+    expect(sessionStorage.getItem(vehicleCacheKey(5))).toBeTruthy();
+    expect(loadVehicleCache(5)).toEqual(vehicle);
+  });
+
+  it("returns null for missing cache", () => {
+    expect(loadVehicleCache(99)).toBeNull();
+  });
+});

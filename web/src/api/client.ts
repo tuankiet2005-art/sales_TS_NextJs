@@ -81,6 +81,12 @@ export const api = {
   getBrand(code: string) {
     return request<Brand>(`/api/brands/${code}`);
   },
+  getCatalogBootstrap(brandCode: string) {
+    const params = new URLSearchParams({ brand: brandCode });
+    return request<{ brand: Brand; categories: Category[]; vehicles: VehicleSummary[] }>(
+      `/api/catalog?${params.toString()}`,
+    );
+  },
   searchVehicles(keyword?: string, brandCode?: string, categoryId?: number) {
     const params = new URLSearchParams();
     if (keyword?.trim()) {
@@ -168,6 +174,7 @@ export const api = {
     usageType?: UsageType;
     selectedOfferIds?: string[];
     forgoneOfferIds?: string[];
+    breakdown?: CostBreakdown;
   }) {
     const response = await fetch(apiUrl("/api/export-quote"), {
       method: "POST",
@@ -208,6 +215,7 @@ export const api = {
     usageType?: UsageType;
     selectedOfferIds?: string[];
     forgoneOfferIds?: string[];
+    breakdown?: CostBreakdown;
   }) {
     return request<QuoteHistory>("/api/quotes", {
       method: "POST",

@@ -21,7 +21,7 @@ import {
 import { getDealerPolicy, loadPolicySnapshot } from "../config/policy-store";
 import { calculateOnRoadCost } from "../domain/on-road-cost";
 import type { CalculateOnRoadInput } from "../domain/types";
-import type { Brand, Category, Location } from "@/types";
+import type { Brand, Category, CostBreakdown, Location } from "@/types";
 
 type CatalogListCache = {
   brands: Brand[] | null;
@@ -34,6 +34,8 @@ let catalogListCache: CatalogListCache = {
   categories: null,
   locations: null,
 };
+
+const brandByCodeCache: Record<string, Brand> = {};
 
 type FeeDataCache = {
   definitions: Awaited<ReturnType<typeof listActiveFeeDefinitions>>;
@@ -74,6 +76,9 @@ async function getActiveFeeData(): Promise<FeeDataCache> {
 export function invalidateCatalogCache() {
   catalogListCache = { brands: null, categories: null, locations: null };
   feeDataCache = null;
+  for (const key of Object.keys(brandByCodeCache)) {
+    delete brandByCodeCache[key];
+  }
 }
 
 export function resetCatalogCacheForTests() {
@@ -90,11 +95,29 @@ export async function getBrands() {
 }
 
 export async function getBrand(code: string) {
+  const cached = brandByCodeCache[code];
+  if (cached) {
+    return cached;
+  }
   const row = await findBrandByCode(code);
   if (!row) {
     return null;
   }
-  return mapBrand(row);
+  const mapped = mapBrand(row);
+  brandByCodeCache[code] = mapped;
+  return mapped;
+}
+
+export async function getCatalogBootstrap(brandCode: string) {
+  const [brand, categories, vehicles] = await Promise.all([
+    getBrand(brandCode),
+    getCategories(),
+    searchVehicles({ brandCode }),
+  ]);
+  if (!brand) {
+    return null;
+  }
+  return { brand, categories, vehicles };
 }
 
 export async function getCategories() {
@@ -254,21 +277,35 @@ export async function calculateOnRoad(
 }
 
 export async function loadQuotePageData(body: CalculateOnRoadBody) {
-  const [vehicleRow, policy] = await Promise.all([
-    findActiveVehicleById(body.vehicleId),
+  const [calcResult, dealerPolicy] = await Promise.all([
+    calculateOnRoad(body),
     getDealerPolicy(),
   ]);
-  if (!vehicleRow) {
-    return null;
-  }
-  const calcResult = await calculateOnRoad(body, { vehicleRow });
   if (!calcResult || "error" in calcResult) {
     return calcResult;
   }
   return {
-    vehicle: mapVehicleDetail(vehicleRow, policy),
+    vehicle: mapVehicleDetail(calcResult.vehicleRow, dealerPolicy),
     breakdown: calcResult.data,
   };
+}
+
+export async function resolveQuoteCalculation(
+  body: CalculateOnRoadBody,
+  breakdown?: CostBreakdown | null,
+) {
+  if (breakdown && breakdown.vehicleId === body.vehicleId) {
+    const vehicleRow = await findActiveVehicleById(body.vehicleId);
+    if (!vehicleRow) {
+      return null;
+    }
+    return { data: breakdown, vehicleRow };
+  }
+  const calcResult = await calculateOnRoad(body);
+  if (!calcResult || "error" in calcResult) {
+    return calcResult;
+  }
+  return calcResult;
 }
 
 export async function getHealth() {

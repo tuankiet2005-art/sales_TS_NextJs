@@ -13,6 +13,7 @@ import { codedOption } from "../lib/labels";
 import { priceVehicleFromPolicy } from "../lib/dealerPricing";
 import { motionInteractive, motionPress } from "../lib/motion";
 import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
+import { saveVehicleCache } from "../lib/vehicleCache";
 import { colorPhoto } from "../lib/vehicleColor";
 import { defaultPolicyChoices, loadPolicyChoices, localizedPolicyText, savePolicyChoices } from "../lib/quotePolicy";
 import type { Category, DealerOffer, DealerPolicy, Location, QuoteExtras, UsageType, VehicleDetail } from "../types";
@@ -60,6 +61,7 @@ export function VehiclePage() {
         setCategoryId(nextVehicle.category.id);
         setColor(nextVehicle.defaultColor ?? "");
         setExtras(loadExtras(id, extrasFromVehicle(nextVehicle)));
+        saveVehicleCache(id, nextVehicle);
         const hanoi = nextLocations.find((item) => item.code === "HN");
         setLocationId(hanoi?.id ?? nextLocations[0]?.id);
       })
@@ -96,6 +98,9 @@ export function VehiclePage() {
             .discountAmount
         : vehicle?.discountAmount;
     saveExtras(id, { ...extras, discountAmount });
+    if (vehicle) {
+      saveVehicleCache(id, vehicle);
+    }
     savePolicyChoices(id, { usageType, selectedOfferIds, forgoneOfferIds });
     router.push(`/brand/${brandCode}/vehicles/${id}/on-road?${params.toString()}`);
   }

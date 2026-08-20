@@ -20,7 +20,7 @@ Operator SQL that creates and seeds the Neon (and optional local Postgres) schem
 - Do not re-run this SQL just to add a vehicle
 - Thuế trước bạ percents are not in this SQL — edit `/admin` Registration tax (defaults in `fee-policy.yml`)
 - Phí bấm biển số is not in this SQL — edit `/admin` License plate fees (defaults in `license-plate-regions.yml`)
-- `fee_rules` seed has one row per remaining fee + vehicle type; plate and tax rules are not seeded
+- `idx_vehicles_active_brand` partial index on `vehicles(brand_id) WHERE active = TRUE` — speeds catalog search by brand; add manually on existing Neon if not re-running full init
 
 ## Work Guidance
 

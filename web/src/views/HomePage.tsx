@@ -31,20 +31,18 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getCategories().then(setCategories).catch(() => undefined);
-    api.getBrand(brandCode).then(setBrand).catch(() => setBrand(null));
-  }, [brandCode]);
-
-  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     api
-      .searchVehicles("", brandCode)
+      .getCatalogBootstrap(brandCode)
       .then((data) => {
-        if (!cancelled) {
-          setVehicles(data);
+        if (cancelled) {
+          return;
         }
+        setBrand(data.brand);
+        setCategories(data.categories);
+        setVehicles(data.vehicles);
       })
       .catch((err: Error) => {
         if (!cancelled) {

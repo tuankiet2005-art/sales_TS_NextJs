@@ -68,7 +68,7 @@ async function main() {
     testsPassed = 0;
   }
 
-  const { calculateOnRoad, loadQuotePageData, invalidateCatalogCache } = await import(
+  const { calculateOnRoad, loadQuotePageData, getCatalogBootstrap, invalidateCatalogCache } = await import(
     "../src/server/services/catalog-service"
   );
   const { invalidatePolicyCache } = await import("../src/server/config/policy-store");
@@ -99,11 +99,23 @@ async function main() {
   const quoteLoadSamples: number[] = [];
   const calcSamples: number[] = [];
   let calcValid = 0;
+  let catalogValid = 0;
   let duplicateVehicleLookups = 1;
+
+  const catalogSamples: number[] = [];
+  const brandCode = process.env.BENCH_BRAND_CODE ?? "mitsubishi";
 
   for (let i = 0; i < measureRuns; i++) {
     invalidateCatalogCache();
     invalidatePolicyCache();
+
+    const catalogStart = performance.now();
+    const bootstrap = await getCatalogBootstrap(brandCode);
+    catalogSamples.push(performance.now() - catalogStart);
+
+    if (bootstrap) {
+      catalogValid = 1;
+    }
 
     const quoteStart = performance.now();
     const quoteResult = await loadQuotePageData({ vehicleId, locationId });
@@ -122,11 +134,14 @@ async function main() {
 
   const result = {
     quote_load_latency_ms: Math.round(median(quoteLoadSamples)),
+    catalog_bootstrap_latency_ms: Math.round(median(catalogSamples)),
     calc_latency_ms: Math.round(median(calcSamples)),
     tests_passed: testsPassed,
     calc_valid: calcValid,
+    catalog_valid: catalogValid,
     duplicate_vehicle_lookups: duplicateVehicleLookups,
     quote_page_api_calls: 1,
+    home_api_calls: 1,
     sample_runs: measureRuns,
   };
 

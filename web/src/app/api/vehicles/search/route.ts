@@ -2,13 +2,15 @@ export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
 
-import { json, notFound } from "@/server/http";
-import { getVehicle, searchVehicles } from "@/server/services/catalog-service";
+import { json, notFound, CATALOG_LIST_CACHE_CONTROL } from "@/server/http";
+import { searchVehicles } from "@/server/services/catalog-service";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const keyword = params.get("keyword") ?? undefined;
   const brand = params.get("brand") ?? undefined;
   const categoryId = params.get("categoryId") ? Number(params.get("categoryId")) : undefined;
-  return json(await searchVehicles({ keyword, brandCode: brand, categoryId }));
+  return json(await searchVehicles({ keyword, brandCode: brand, categoryId }), 200, {
+    "Cache-Control": CATALOG_LIST_CACHE_CONTROL,
+  });
 }

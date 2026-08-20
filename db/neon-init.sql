@@ -138,6 +138,7 @@ CREATE TABLE fee_rules (
 
 CREATE INDEX idx_vehicles_brand ON vehicles (brand_id);
 CREATE INDEX idx_vehicles_category ON vehicles (category_id);
+CREATE INDEX idx_vehicles_active_brand ON vehicles (brand_id) WHERE active = TRUE;
 CREATE INDEX idx_fee_rules_definition ON fee_rules (fee_definition_id);
 
 CREATE TABLE app_settings (

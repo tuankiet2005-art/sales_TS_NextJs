@@ -12,6 +12,7 @@ import { languages, type Lang } from "../i18n/translations";
 import { downloadQuotePdf } from "../lib/exportQuotePdf";
 import { motionInteractive, motionPress } from "../lib/motion";
 import { extrasFromQuote, extrasFromVehicle, extrasStorageKey, loadExtras, saveExtras } from "../lib/quoteExtras";
+import { loadVehicleCache } from "../lib/vehicleCache";
 import { defaultPolicyChoices, loadPolicyChoices } from "../lib/quotePolicy";
 import type { CostBreakdown as CostBreakdownType, QuoteExtras, VehicleDetail } from "../types";
 
@@ -61,22 +62,37 @@ export function OnRoadQuotePage() {
     setLoading(true);
     setError(null);
 
+    const cachedVehicle = loadVehicleCache(id);
     const extrasForCalc =
       typeof sessionStorage !== "undefined" && sessionStorage.getItem(extrasStorageKey(id))
         ? loadExtras(id, { accessories: [] })
         : undefined;
 
-    api
-      .loadQuotePage(
-        id,
-        locationId,
-        includeOptional,
-        categoryId,
-        extrasForCalc,
-        policyChoices.usageType,
-        policyChoices.selectedOfferIds,
-        policyChoices.forgoneOfferIds
-      )
+    const loadPromise = cachedVehicle
+      ? api
+          .calculateOnRoadCost(
+            id,
+            locationId,
+            includeOptional,
+            categoryId,
+            extrasForCalc,
+            policyChoices.usageType,
+            policyChoices.selectedOfferIds,
+            policyChoices.forgoneOfferIds,
+          )
+          .then((breakdown) => ({ vehicle: cachedVehicle, breakdown }))
+      : api.loadQuotePage(
+          id,
+          locationId,
+          includeOptional,
+          categoryId,
+          extrasForCalc,
+          policyChoices.usageType,
+          policyChoices.selectedOfferIds,
+          policyChoices.forgoneOfferIds,
+        );
+
+    loadPromise
       .then(({ vehicle: nextVehicle, breakdown }) => {
         if (cancelled) {
           return;
@@ -112,7 +128,7 @@ export function OnRoadQuotePage() {
     setNotice(null);
     saveExtras(id, extras);
     try {
-      const blob = await api.exportQuote(quotePayload(name));
+      const blob = await api.exportQuote({ ...quotePayload(name), breakdown: result ?? undefined });
       setNotice(t("quoteHistory.saved"));
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -139,7 +155,7 @@ export function OnRoadQuotePage() {
     try {
       const name = customerName.trim() || t("customerName");
       try {
-        await api.saveQuote(quotePayload(name));
+        await api.saveQuote({ ...quotePayload(name), breakdown: result ?? undefined });
         setNotice(t("quoteHistory.saved"));
       } catch {
         setNotice(null);

@@ -3,7 +3,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { quoteHistory } from "../db/schema";
 import type { CostBreakdown, QuoteHistory } from "@/types";
-import { calculateOnRoad } from "./catalog-service";
+import { calculateOnRoad, resolveQuoteCalculation } from "./catalog-service";
 import { collapseRecentDuplicateQuotes, shouldReuseRecentQuote } from "./quote-history-rules";
 
 export type QuoteSaveRequest = {
@@ -25,6 +25,7 @@ export type QuoteSaveRequest = {
   micaPlateFee?: number;
   inspectionFee?: number;
   accessories?: { name: string; amount: number }[];
+  breakdown?: CostBreakdown;
 };
 
 function mapQuote(row: typeof quoteHistory.$inferSelect): QuoteHistory {
@@ -133,7 +134,7 @@ export async function saveQuote(input: {
 }
 
 export async function saveQuoteFromRequest(body: QuoteSaveRequest) {
-  const calcResult = await calculateOnRoad(body);
+  const calcResult = await resolveQuoteCalculation(body, body.breakdown);
   if (!calcResult || "error" in calcResult) {
     return null;
   }

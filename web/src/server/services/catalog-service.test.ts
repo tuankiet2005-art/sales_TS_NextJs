@@ -40,7 +40,14 @@ vi.mock("../config/policy-store", () => ({
   })),
 }));
 
-import { calculateOnRoad, getCategories, invalidateCatalogCache, resetCatalogCacheForTests } from "./catalog-service";
+import {
+  calculateOnRoad,
+  getCatalogBootstrap,
+  getCategories,
+  invalidateCatalogCache,
+  resetCatalogCacheForTests,
+  resolveQuoteCalculation,
+} from "./catalog-service";
 
 const categoryRow = {
   id: 4,
@@ -160,5 +167,90 @@ describe("calculateOnRoad lookups", () => {
     catalog.findLocationById.mockResolvedValue(null);
     await calculateOnRoad({ vehicleId: 13, locationId: 29 });
     expect(catalog.findCategoryById).not.toHaveBeenCalled();
+  });
+});
+
+describe("resolveQuoteCalculation", () => {
+  const vehicleRow = {
+    vehicle: {
+      id: 13,
+      listPrice: "100",
+      taxBasePrice: "100",
+      engineCc: 1200,
+      defaultDeposit: "0",
+      registrationServiceFee: "0",
+      micaPlateFee: "0",
+      inspectionFee: "0",
+      name: "Attrage",
+      model: "Attrage",
+    },
+    brand: { name: "Mitsubishi", code: "mitsubishi" },
+    category: categoryRow,
+  };
+
+  const breakdown = {
+    vehicleId: 13,
+    listPrice: 100,
+    salePrice: 100,
+    totalOnRoad: 120,
+    fees: [],
+    accessories: [],
+    deposit: 0,
+    balanceDue: 120,
+  };
+
+  beforeEach(() => {
+    resetCatalogCacheForTests();
+    catalog.findActiveVehicleById.mockReset();
+    catalog.findLocationById.mockReset();
+    catalog.findCategoryById.mockReset();
+    catalog.listActiveFeeDefinitions.mockReset();
+    catalog.listActiveFeeRules.mockReset();
+    catalog.listActiveFeeDefinitions.mockResolvedValue([]);
+    catalog.listActiveFeeRules.mockResolvedValue([]);
+  });
+
+  it("reuses client breakdown when vehicleId matches", async () => {
+    catalog.findActiveVehicleById.mockResolvedValue(vehicleRow);
+    const result = await resolveQuoteCalculation({ vehicleId: 13, locationId: 29 }, breakdown);
+    expect(result).toEqual({ data: breakdown, vehicleRow });
+    expect(catalog.findLocationById).not.toHaveBeenCalled();
+  });
+
+  it("falls back to calculateOnRoad when breakdown vehicleId mismatches", async () => {
+    catalog.findActiveVehicleById.mockResolvedValue(null);
+    catalog.findLocationById.mockResolvedValue(null);
+    await resolveQuoteCalculation({ vehicleId: 13, locationId: 29 }, { ...breakdown, vehicleId: 99 });
+    expect(catalog.findLocationById).toHaveBeenCalled();
+  });
+});
+
+describe("getCatalogBootstrap", () => {
+  beforeEach(() => {
+    resetCatalogCacheForTests();
+    catalog.findBrandByCode.mockReset();
+    catalog.listCategories.mockReset();
+    catalog.searchActiveVehicles.mockReset();
+    catalog.listCategories.mockResolvedValue([categoryRow]);
+    catalog.searchActiveVehicles.mockResolvedValue([]);
+  });
+
+  it("returns null when brand is missing", async () => {
+    catalog.findBrandByCode.mockResolvedValue(null);
+    await expect(getCatalogBootstrap("missing")).resolves.toBeNull();
+  });
+
+  it("bundles brand, categories, and vehicles", async () => {
+    catalog.findBrandByCode.mockResolvedValue({
+      id: 1,
+      code: "mitsubishi",
+      name: "Mitsubishi",
+      logoUrl: null,
+      sortOrder: 0,
+    });
+    const result = await getCatalogBootstrap("mitsubishi");
+    expect(result?.brand.code).toBe("mitsubishi");
+    expect(result?.categories).toHaveLength(1);
+    expect(result?.vehicles).toEqual([]);
   });
 });

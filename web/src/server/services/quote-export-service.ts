@@ -2,12 +2,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import ExcelJS from "exceljs";
 
-import { calculateOnRoad } from "./catalog-service";
+import { resolveQuoteCalculation } from "./catalog-service";
 import { persistCalculatedQuote, type QuoteSaveRequest } from "./quote-history-service";
 import { fillQuoteWorkbook, normalizeLanguage } from "./quote-sheet-fill";
 
 export async function exportQuote(body: QuoteSaveRequest) {
-  const calcResult = await calculateOnRoad(body);
+  const calcResult = await resolveQuoteCalculation(body, body.breakdown);
   if (!calcResult || "error" in calcResult) {
     return null;
   }

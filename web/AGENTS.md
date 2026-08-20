@@ -38,9 +38,10 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - Fee math in `src/server/domain/`; route handlers stay thin
 - Public catalog list/detail prices use dealer policy (`privateDiscountPercent`) via `mapVehicleSummaryWithPolicy`, not legacy `vehicles.discount_amount` columns
 - Use `runtime = 'nodejs'` on Excel export and heavy DB routes
-- Catalog list GETs (`/api/brands`, `/api/vehicle-categories`, `/api/locations`, `/api/dealer-policy`) send `Cache-Control: public, max-age=60`. Brands, categories, and locations also cache in `catalog-service` until `invalidateCatalogCache()` from catalog admin writes
-- AppShell waits to read the operator token before showing login; a signed-in reload must not flash the login screen
-- Quote page loads vehicle + on-road breakdown via one `POST /api/quote-load` call (`loadQuotePageData`); `POST /api/calculate-on-road-cost` remains for recalculate-only
+- Catalog list GETs (`/api/brands`, `/api/vehicle-categories`, `/api/locations`, `/api/dealer-policy`, `/api/catalog`, `/api/vehicles/search`, `/api/vehicles/[id]`, `/api/brands/[code]`) send `Cache-Control: public, max-age=60`. Brands, categories, locations, and brand-by-code also cache in `catalog-service` until `invalidateCatalogCache()` from catalog admin writes
+- Home catalog loads one `GET /api/catalog?brand=` bootstrap (brand + categories + vehicles) instead of three parallel list calls
+- Vehicle confirm saves `VehicleDetail` to `sessionStorage` (`lib/vehicleCache.ts`); quote page uses cached vehicle + `POST /api/calculate-on-road-cost` when cache exists, else `POST /api/quote-load`
+- Quote export/save accept optional client `breakdown` to skip redundant `calculateOnRoad` when `vehicleId` matches (`resolveQuoteCalculation`)
 - Excel export fills `src/server/assets/bang-bao-gia.xlsx` by labels on `vehicles.quote_sheet_name` (never hardcoded cells on sheet 0); unused tabs stay hidden
 - PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`/`lab` (canvas pixel sampling converts modern color functions to `rgb`/`rgba`)
 - Default UI language Vietnamese (`vi`); match `frontend/src/i18n/` behavior when UI is ported
