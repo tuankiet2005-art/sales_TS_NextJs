@@ -1,3 +1,5 @@
+import { vehicleImageUrl } from "./vehicleImageUrl";
+
 export const VEHICLE_COLORS: Record<string, string> = {
   Trắng: "#f4f4f4",
   Đen: "#1a1a1a",
@@ -5,6 +7,13 @@ export const VEHICLE_COLORS: Record<string, string> = {
   Xám: "#6b7280",
   Nâu: "#6b3e26",
   Đỏ: "#c00000",
+  Cam: "#c45c26",
+  Vàng: "#d4a017",
+  Xanh: "#1e6b4f",
+  "Trắng Đen": "#4a4a4a",
+  "Vàng Đen": "#3d3420",
+  "Đỏ Đen": "#3d1a1a",
+  "Xanh Đen": "#1a2e28",
 };
 
 export const VEHICLE_COLOR_PHOTOS: Record<string, string> = {
@@ -22,7 +31,10 @@ export function colorPhoto(name?: string, photos?: Record<string, string> | null
   }
   const fromVehicle = photos?.[name]?.trim();
   if (fromVehicle) {
-    return fromVehicle;
+    const resolved = vehicleImageUrl(fromVehicle);
+    if (resolved) {
+      return resolved;
+    }
   }
   return VEHICLE_COLOR_PHOTOS[name] ?? "/colors/bac.png";
 }
