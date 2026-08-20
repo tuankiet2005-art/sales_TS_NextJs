@@ -77,8 +77,11 @@ export function HomePage() {
     () =>
       [...new Set(vehicles.map((vehicle) => vehicle.vehicleType).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b))
-        .map((vehicleType) => ({ value: vehicleType, label: vehicleType })),
-    [vehicles]
+        .map((vehicleType) => {
+          const key = `admin.opt.${vehicleType}`;
+          return { value: vehicleType, label: t(key) === key ? vehicleType : t(key) };
+        }),
+    [vehicles, t]
   );
 
   const visibleVehicles = useMemo(
