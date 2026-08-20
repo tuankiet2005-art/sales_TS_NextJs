@@ -46,6 +46,8 @@ List endpoints were loading every row (and full quote `payload` JSON) regardless
 - Quote history: list query skips `payload`; 10 rows per page; `GET /api/quotes/[id]` on open
 - Shared `Pagination` component (10 per page default)
 
+List queries now use slim SQL columns (vehicle card fields only; quote list skips `payload`). Benchmark: `npx tsx scripts/bench-data-fetch.ts`.
+
 ## Follow-ups
 
 - Apply `idx_vehicles_active_brand` on production Neon if not re-running init SQL

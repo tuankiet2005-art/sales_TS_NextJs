@@ -59,11 +59,16 @@ export function mapLocation(location: DbLocation): Location {
   };
 }
 
-export function mapVehicleSummary(row: {
-  vehicle: Vehicle;
-  brand: DbBrand;
+type VehicleSummarySource = {
+  vehicle: Pick<
+    Vehicle,
+    "id" | "model" | "name" | "seats" | "vehicleType" | "modelYear" | "listPrice" | "imageUrl"
+  >;
+  brand: Pick<DbBrand, "name" | "code">;
   category: VehicleCategory;
-}): VehicleSummary {
+};
+
+export function mapVehicleSummary(row: VehicleSummarySource): VehicleSummary {
   const { vehicle, brand, category } = row;
   return {
     id: vehicle.id,
@@ -82,11 +87,7 @@ export function mapVehicleSummary(row: {
 
 /** Public catalog prices follow dealer policy (private usage), not legacy DB discount columns. */
 export function mapVehicleSummaryWithPolicy(
-  row: {
-    vehicle: Vehicle;
-    brand: DbBrand;
-    category: VehicleCategory;
-  },
+  row: VehicleSummarySource,
   policy: DealerPolicyRecord,
 ): VehicleSummary {
   const summary = mapVehicleSummary(row);
@@ -118,11 +119,7 @@ function resolveColorPhotoMap(raw: Record<string, string>): Record<string, strin
 }
 
 export function mapVehicleDetail(
-  row: {
-    vehicle: Vehicle;
-    brand: DbBrand;
-    category: VehicleCategory;
-  },
+  row: VehicleSummarySource & { vehicle: Vehicle },
   policy?: DealerPolicyRecord,
 ): VehicleDetail {
   const summary = policy ? mapVehicleSummaryWithPolicy(row, policy) : mapVehicleSummary(row);

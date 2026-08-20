@@ -70,8 +70,20 @@ function activeVehicleSearchBase(params: ActiveVehicleSearchParams) {
   const db = getDb();
   return db
     .select({
-      vehicle: vehicles,
-      brand: brands,
+      vehicle: {
+        id: vehicles.id,
+        model: vehicles.model,
+        name: vehicles.name,
+        seats: vehicles.seats,
+        vehicleType: vehicles.vehicleType,
+        modelYear: vehicles.modelYear,
+        listPrice: vehicles.listPrice,
+        imageUrl: vehicles.imageUrl,
+      },
+      brand: {
+        name: brands.name,
+        code: brands.code,
+      },
       category: vehicleCategories,
     })
     .from(vehicles)
