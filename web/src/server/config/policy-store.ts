@@ -23,11 +23,13 @@ type PolicySnapshot = {
 let memoryOverrides: Partial<Record<keyof typeof APP_SETTING_KEYS, unknown>> = {};
 let cachedSnapshot: PolicySnapshot | null = null;
 let loadingSnapshot: Promise<PolicySnapshot> | null = null;
+let loadGeneration = 0;
 
 export function resetPolicyStoreForTests() {
   memoryOverrides = {};
   cachedSnapshot = null;
   loadingSnapshot = null;
+  loadGeneration = 0;
 }
 
 export function setPolicyOverrideForTests(
@@ -41,6 +43,7 @@ export function setPolicyOverrideForTests(
   }
   cachedSnapshot = null;
   loadingSnapshot = null;
+  loadGeneration += 1;
 }
 
 async function readSettingPayload<T>(settingKey: string): Promise<T | null> {
@@ -65,36 +68,39 @@ async function readSettingPayload<T>(settingKey: string): Promise<T | null> {
   return JSON.parse(rows[0].payload) as T;
 }
 
+async function fetchPolicySnapshot(): Promise<PolicySnapshot> {
+  const [feeOverride, dealerOverride, plateOverride] = await Promise.all([
+    readSettingPayload<FeePolicyRecord>(APP_SETTING_KEYS.feePolicy),
+    readSettingPayload<DealerPolicyRecord>(APP_SETTING_KEYS.dealerPolicy),
+    readSettingPayload<PlateRegionsRecord>(APP_SETTING_KEYS.plateRegions),
+  ]);
+
+  return {
+    feePolicy: feeOverride ?? loadDefaultFeePolicy(),
+    dealerPolicy: dealerOverride ?? loadDefaultDealerPolicy(),
+    plateRegions: plateOverride ?? loadDefaultPlateRegions(),
+  };
+}
+
 export async function loadPolicySnapshot(): Promise<PolicySnapshot> {
   if (cachedSnapshot) {
     return cachedSnapshot;
   }
   if (!loadingSnapshot) {
-    const loadPromise = (async () => {
-      try {
-        const [feeOverride, dealerOverride, plateOverride] = await Promise.all([
-          readSettingPayload<FeePolicyRecord>(APP_SETTING_KEYS.feePolicy),
-          readSettingPayload<DealerPolicyRecord>(APP_SETTING_KEYS.dealerPolicy),
-          readSettingPayload<PlateRegionsRecord>(APP_SETTING_KEYS.plateRegions),
-        ]);
-
-        const snapshot: PolicySnapshot = {
-          feePolicy: feeOverride ?? loadDefaultFeePolicy(),
-          dealerPolicy: dealerOverride ?? loadDefaultDealerPolicy(),
-          plateRegions: plateOverride ?? loadDefaultPlateRegions(),
-        };
-        if (loadingSnapshot === loadPromise) {
+    const generation = loadGeneration;
+    loadingSnapshot = fetchPolicySnapshot()
+      .then((snapshot) => {
+        if (generation === loadGeneration) {
           cachedSnapshot = snapshot;
         }
         return snapshot;
-      } catch (error) {
-        if (loadingSnapshot === loadPromise) {
+      })
+      .catch((error) => {
+        if (generation === loadGeneration) {
           loadingSnapshot = null;
         }
         throw error;
-      }
-    })();
-    loadingSnapshot = loadPromise;
+      });
   }
   return loadingSnapshot;
 }
@@ -114,4 +120,5 @@ export async function getPlateRegions(): Promise<PlateRegionsRecord> {
 export function invalidatePolicyCache() {
   cachedSnapshot = null;
   loadingSnapshot = null;
+  loadGeneration += 1;
 }
