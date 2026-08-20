@@ -3,7 +3,7 @@ import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { colorPhoto } from "../lib/vehicleColor";
 import { convertImageFileToWebp } from "../lib/convertImageToWebp";
 import { vehicleImageUrl } from "../lib/vehicleImageUrl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
 import { api, UnauthorizedError } from "../api/client";
@@ -129,6 +129,22 @@ const COLUMNS: Record<CatalogTab, string[]> = {
   feeRules: ["feeDefinitionCode", "categoryCode", "feeZone", "calculationType", "fixedAmount", "percentage"],
 };
 
+type LookupKey = "brands" | "categories" | "locations" | "fees";
+
+const TAB_LOOKUPS: Partial<Record<Tab, LookupKey[]>> = {
+  vehicles: ["brands", "categories"],
+  dealers: ["brands"],
+  feeRules: ["categories", "locations", "fees"],
+  plateRegions: ["locations"],
+};
+
+const TAB_LOOKUP_SOURCE: Partial<Record<CatalogTab, LookupKey>> = {
+  brands: "brands",
+  categories: "categories",
+  locations: "locations",
+  feeDefinitions: "fees",
+};
+
 export function AdminDataPage() {
   const { t, lang } = useI18n();
   const [tab, setTab] = useState<Tab>("vehicles");
@@ -149,33 +165,110 @@ export function AdminDataPage() {
   const [catalogFilters, setCatalogFilters] = useState<Record<string, string>>({});
   const [pendingImages, setPendingImages] = useState<PendingImageUploads>(EMPTY_PENDING_IMAGES);
   const [processingImageKey, setProcessingImageKey] = useState<string | null>(null);
+  const lookupReady = useRef<Record<LookupKey, boolean>>({
+    brands: false,
+    categories: false,
+    locations: false,
+    fees: false,
+  });
+  const rowsCache = useRef<Partial<Record<CatalogTab, Record<string, unknown>[]>>>({});
+  const policyReady = useRef({ feePolicy: false, dealerPolicy: false, plateRegions: false });
 
-  async function loadLookups() {
-    const [nextBrands, nextCategories, nextLocations, nextFees] = await Promise.all([
-      api.listAdminBrands(),
-      api.listAdminCategories(),
-      api.listAdminLocations(),
-      api.listAdminFeeDefinitions(),
-    ]);
-    setBrands(nextBrands);
-    setCategories(nextCategories);
-    setLocations(nextLocations);
-    setFees(nextFees);
+  async function fetchLookup(key: LookupKey) {
+    switch (key) {
+      case "brands": {
+        const data = await api.listAdminBrands();
+        setBrands(data);
+        rowsCache.current.brands = data as unknown as Record<string, unknown>[];
+        break;
+      }
+      case "categories": {
+        const data = await api.listAdminCategories();
+        setCategories(data);
+        rowsCache.current.categories = data as unknown as Record<string, unknown>[];
+        break;
+      }
+      case "locations": {
+        const data = await api.listAdminLocations();
+        setLocations(data);
+        rowsCache.current.locations = data as unknown as Record<string, unknown>[];
+        break;
+      }
+      case "fees": {
+        const data = await api.listAdminFeeDefinitions();
+        setFees(data);
+        rowsCache.current.feeDefinitions = data as unknown as Record<string, unknown>[];
+        break;
+      }
+    }
+    lookupReady.current[key] = true;
   }
 
-  async function load(nextTab = tab) {
+  async function ensureLookups(keys: LookupKey[], force = false) {
+    const pending = keys.filter((key) => force || !lookupReady.current[key]);
+    await Promise.all(pending.map((key) => fetchLookup(key)));
+  }
+
+  function invalidateCatalogTab(nextTab: CatalogTab) {
+    delete rowsCache.current[nextTab];
+    const lookupKey = TAB_LOOKUP_SOURCE[nextTab];
+    if (lookupKey) {
+      lookupReady.current[lookupKey] = false;
+    }
+  }
+
+  async function loadCatalogTab(nextTab: CatalogTab, force = false) {
+    if (!force && rowsCache.current[nextTab]) {
+      setRows(rowsCache.current[nextTab]!);
+      return;
+    }
+    const lookupKey = TAB_LOOKUP_SOURCE[nextTab];
+    const data = (await listFor(nextTab)) as unknown as Record<string, unknown>[];
+    rowsCache.current[nextTab] = data;
+    setRows(data);
+    if (lookupKey) {
+      switch (lookupKey) {
+        case "brands":
+          setBrands(data as unknown as AdminBrand[]);
+          break;
+        case "categories":
+          setCategories(data as unknown as AdminCategory[]);
+          break;
+        case "locations":
+          setLocations(data as unknown as AdminLocation[]);
+          break;
+        case "fees":
+          setFees(data as unknown as AdminFeeDefinition[]);
+          break;
+      }
+      lookupReady.current[lookupKey] = true;
+    }
+  }
+
+  async function load(nextTab = tab, options?: { force?: boolean }) {
+    const force = options?.force ?? false;
     setLoading(true);
     setError(null);
     try {
-      await loadLookups();
+      await ensureLookups(TAB_LOOKUPS[nextTab] ?? [], force);
+
       if (nextTab === "feePolicy") {
-        setFeePolicy(await api.getAdminFeePolicy());
+        if (force || !policyReady.current.feePolicy) {
+          setFeePolicy(await api.getAdminFeePolicy());
+          policyReady.current.feePolicy = true;
+        }
       } else if (nextTab === "dealerPolicy") {
-        setDealerPolicy(await api.getAdminDealerPolicy());
+        if (force || !policyReady.current.dealerPolicy) {
+          setDealerPolicy(await api.getAdminDealerPolicy());
+          policyReady.current.dealerPolicy = true;
+        }
       } else if (nextTab === "plateRegions") {
-        setPlates(await api.getAdminPlateRegions());
+        if (force || !policyReady.current.plateRegions) {
+          setPlates(await api.getAdminPlateRegions());
+          policyReady.current.plateRegions = true;
+        }
       } else {
-        setRows((await listFor(nextTab)) as unknown as Record<string, unknown>[]);
+        await loadCatalogTab(nextTab, force);
       }
     } catch (err) {
       if (err instanceof UnauthorizedError) {
@@ -185,6 +278,22 @@ export function AdminDataPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function reloadAfterMutation() {
+    if (isCatalog(tab)) {
+      invalidateCatalogTab(tab);
+    }
+    if (tab === "feePolicy") {
+      policyReady.current.feePolicy = false;
+    }
+    if (tab === "dealerPolicy") {
+      policyReady.current.dealerPolicy = false;
+    }
+    if (tab === "plateRegions") {
+      policyReady.current.plateRegions = false;
+    }
+    await load(tab);
   }
 
   useEffect(() => {
@@ -358,7 +467,7 @@ export function AdminDataPage() {
       }
       setDraft(null);
       setNotice(t("admin.saved"));
-      await load();
+      await reloadAfterMutation();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("apiError"));
     } finally {
@@ -373,7 +482,7 @@ export function AdminDataPage() {
     try {
       await deleteFor(tab, id);
       setNotice(t("admin.deleted"));
-      await load();
+      await reloadAfterMutation();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("apiError"));
     }
