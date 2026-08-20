@@ -670,7 +670,7 @@ export function AdminDataPage() {
                       allLabel={t("filterAll")}
                     />
                   )}
-                  <button type="button" onClick={startNew} className="inline-flex items-center gap-1.5 text-sm font-semibold text-copper">
+                  <button type="button" onClick={startNew} className="inline-flex h-10 shrink-0 items-center gap-1.5 text-sm font-semibold text-copper">
                     <Plus className="h-4 w-4" />
                     {t("admin.new")}
                   </button>
