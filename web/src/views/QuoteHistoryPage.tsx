@@ -82,9 +82,9 @@ export function QuoteHistoryPage() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="mx-auto max-w-page px-5 py-6">
+      <main className="mx-auto max-w-page px-4 py-6 sm:px-6">
         <p className="text-xs uppercase tracking-[0.18em] text-copper">{t("quoteHistory.nav")}</p>
-        <h1 className="mt-1 font-display text-3xl">{t("quoteHistory.title")}</h1>
+        <h1 className="mt-1 font-display text-2xl sm:text-3xl">{t("quoteHistory.title")}</h1>
 
         <label className="relative mt-5 block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
@@ -98,45 +98,72 @@ export function QuoteHistoryPage() {
 
         {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-ink/8 bg-white shadow-card">
-          {loading ? (
-            <p className="px-4 py-8 text-sm text-ink/55">{t("loadingCatalog")}</p>
-          ) : visible.length === 0 ? (
-            <p className="px-4 py-8 text-sm text-ink/55">{t("quoteHistory.empty")}</p>
-          ) : (
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-paper text-[11px] uppercase tracking-wide text-ink/50">
-                <tr>
-                  <th className="px-3 py-2 font-medium">{t("quoteHistory.date")}</th>
-                  <th className="px-3 py-2 font-medium">{t("quoteHistory.customer")}</th>
-                  <th className="px-3 py-2 font-medium">{t("quoteHistory.vehicle")}</th>
-                  <th className="px-3 py-2 font-medium">{t("quoteHistory.location")}</th>
-                  <th className="px-3 py-2 font-medium">{t("quoteHistory.total")}</th>
-                  <th className="px-3 py-2 font-medium">{t("admin.actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((row) => (
-                  <tr key={row.id} className="border-t border-ink/6">
-                    <td className="px-3 py-2">{formatQuoteDate(row.createdAt, lang)}</td>
-                    <td className="px-3 py-2">
-                      <p className="font-medium">{row.customerName}</p>
-                      {row.customerAddress && <p className="text-xs text-ink/50">{row.customerAddress}</p>}
-                    </td>
-                    <td className="px-3 py-2">{row.vehicleName}</td>
-                    <td className="px-3 py-2">{row.locationName}</td>
-                    <td className="px-3 py-2">{formatVnd(row.onRoadTotal)}</td>
-                    <td className="px-3 py-2">
-                      <button type="button" onClick={() => openQuote(row)} className="text-sm font-semibold text-copper">
-                        {t("quoteHistory.open")}
-                      </button>
-                    </td>
+        {loading ? (
+          <p className="mt-4 rounded-2xl bg-white px-4 py-8 text-sm text-ink/55 shadow-card">{t("loadingCatalog")}</p>
+        ) : visible.length === 0 ? (
+          <p className="mt-4 rounded-2xl bg-white px-4 py-8 text-sm text-ink/55 shadow-card">{t("quoteHistory.empty")}</p>
+        ) : (
+          <>
+            <ul className="mt-4 space-y-3 md:hidden">
+              {visible.map((row) => (
+                <li key={row.id} className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{row.customerName}</p>
+                      <p className="mt-0.5 truncate text-sm text-ink/60">{row.vehicleName}</p>
+                    </div>
+                    <p className="shrink-0 text-sm font-semibold text-copper">{formatVnd(row.onRoadTotal)}</p>
+                  </div>
+                  <p className="mt-2 text-xs text-ink/50">
+                    {formatQuoteDate(row.createdAt, lang)}
+                    {row.locationName ? ` · ${row.locationName}` : ""}
+                  </p>
+                  {row.customerAddress && <p className="mt-1 text-xs text-ink/50">{row.customerAddress}</p>}
+                  <button
+                    type="button"
+                    onClick={() => openQuote(row)}
+                    className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-copper"
+                  >
+                    {t("quoteHistory.open")}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 hidden overflow-x-auto rounded-2xl border border-ink/8 bg-white shadow-card md:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-paper text-[11px] uppercase tracking-wide text-ink/50">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">{t("quoteHistory.date")}</th>
+                    <th className="px-3 py-2 font-medium">{t("quoteHistory.customer")}</th>
+                    <th className="px-3 py-2 font-medium">{t("quoteHistory.vehicle")}</th>
+                    <th className="px-3 py-2 font-medium">{t("quoteHistory.location")}</th>
+                    <th className="px-3 py-2 font-medium">{t("quoteHistory.total")}</th>
+                    <th className="px-3 py-2 font-medium">{t("admin.actions")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                </thead>
+                <tbody>
+                  {visible.map((row) => (
+                    <tr key={row.id} className="border-t border-ink/6">
+                      <td className="px-3 py-2">{formatQuoteDate(row.createdAt, lang)}</td>
+                      <td className="px-3 py-2">
+                        <p className="font-medium">{row.customerName}</p>
+                        {row.customerAddress && <p className="text-xs text-ink/50">{row.customerAddress}</p>}
+                      </td>
+                      <td className="px-3 py-2">{row.vehicleName}</td>
+                      <td className="px-3 py-2">{row.locationName}</td>
+                      <td className="px-3 py-2">{formatVnd(row.onRoadTotal)}</td>
+                      <td className="px-3 py-2">
+                        <button type="button" onClick={() => openQuote(row)} className="text-sm font-semibold text-copper">
+                          {t("quoteHistory.open")}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

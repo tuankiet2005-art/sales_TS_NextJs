@@ -89,11 +89,11 @@ export function HomePage() {
     <div className="min-h-screen">
       <Header />
       <main>
-        <section className="mx-auto max-w-page px-5 pb-8 pt-12">
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-copper">
+        <section className="mx-auto max-w-page px-4 pb-8 pt-8 sm:px-6 sm:pt-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-copper sm:text-sm">
             {brand?.name ?? t("heroKicker")} · {t("marketVietnam")}
           </p>
-          <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[1.05] text-ink sm:text-6xl">
+          <h1 className="mt-3 max-w-3xl text-balance font-display text-3xl leading-[1.1] text-ink sm:text-5xl lg:text-6xl lg:leading-[1.05]">
             {t("heroTitle")}
           </h1>
 
@@ -134,9 +134,9 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-page px-5 pb-16">
+        <section className="mx-auto max-w-page px-4 pb-16 sm:px-6">
           <div className="mb-6">
-            <h2 className="font-display text-3xl text-ink">
+            <h2 className="font-display text-2xl text-ink sm:text-3xl">
               {selectedCategory ? t(`category.${selectedCategory.code}`) : t("availableVehicles")}
             </h2>
             <p className="mt-1 text-sm text-ink/55">
@@ -165,7 +165,7 @@ export function HomePage() {
         </section>
 
         <section id="how-it-works" className="border-t border-ink/10 bg-white/70">
-          <div className="mx-auto grid max-w-page gap-6 px-5 py-14 md:grid-cols-4">
+          <div className="mx-auto grid max-w-page gap-6 px-4 py-10 sm:grid-cols-2 sm:px-6 sm:py-14 lg:grid-cols-4">
             {[
               ["01", "step1Title"],
               ["02", "step2Title"],

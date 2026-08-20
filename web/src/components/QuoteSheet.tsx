@@ -114,7 +114,7 @@ export function QuoteSheet({
   return (
     <article
       id="quote-sheet"
-      className="overflow-hidden rounded-sm border border-[#1f1f1f] bg-white text-[13px] text-[#1f1f1f] shadow-card print:shadow-none"
+      className="min-w-208 overflow-hidden rounded-sm border border-[#1f1f1f] bg-white text-[13px] text-[#1f1f1f] shadow-card print:min-w-0 print:shadow-none"
     >
       <table className="w-full table-fixed border-collapse">
         <colgroup>

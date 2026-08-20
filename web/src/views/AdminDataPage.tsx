@@ -340,17 +340,17 @@ export function AdminDataPage() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="mx-auto max-w-page px-5 py-6">
+      <main className="mx-auto max-w-page px-4 py-6 sm:px-6">
         <p className="text-xs uppercase tracking-[0.18em] text-copper">{t("admin.kicker")}</p>
-        <h1 className="mt-1 font-display text-3xl">{t("admin.title")}</h1>
+        <h1 className="mt-1 font-display text-2xl sm:text-3xl">{t("admin.title")}</h1>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           {TABS.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`rounded-full px-3 py-1.5 text-sm ${
+              className={`shrink-0 rounded-full px-3 py-1.5 text-sm ${
                 tab === item.id ? "bg-ink text-paper" : "bg-white text-ink/70 shadow-card"
               }`}
             >
@@ -431,14 +431,14 @@ export function AdminDataPage() {
                 <p className="text-sm font-semibold">
                   {t(TABS.find((item) => item.id === tab)?.labelKey ?? "")} · {visibleRows.length}
                 </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="relative">
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                  <label className="relative min-w-0 flex-1 sm:flex-none">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
                     <input
                       value={catalogQuery}
                       onChange={(event) => setCatalogQuery(event.target.value)}
                       placeholder={t("admin.search")}
-                      className="h-10 w-56 rounded-lg border border-ink/10 bg-paper pl-9 pr-3 text-sm"
+                      className="h-10 w-full min-w-0 rounded-lg border border-ink/10 bg-paper pl-9 pr-3 text-sm sm:w-56"
                     />
                   </label>
                   <button type="button" onClick={startNew} className="inline-flex items-center gap-1.5 text-sm font-semibold text-copper">
@@ -489,9 +489,9 @@ export function AdminDataPage() {
             </div>
 
             {draft && (
-              <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-ink/45 p-4 pt-16" onClick={() => setDraft(null)}>
+              <div className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto bg-ink/45 p-0 sm:items-start sm:p-4 sm:pt-16" onClick={() => setDraft(null)}>
                 <form
-                  className="w-full max-w-3xl rounded-2xl border border-ink/8 bg-white p-5 shadow-card"
+                  className="w-full max-h-[92dvh] overflow-y-auto rounded-t-2xl border border-ink/8 bg-white p-4 shadow-card sm:max-w-3xl sm:rounded-2xl sm:p-5"
                   onClick={(event) => event.stopPropagation()}
                   onSubmit={(event) => {
                     event.preventDefault();
@@ -636,7 +636,7 @@ function FieldInput({
         <p className="text-xs font-medium text-ink/70">{t("admin.field.colorPhotos")}</p>
         <div className="mt-2 space-y-2">
           {rows.map(([name, url], index) => (
-            <div key={index} className="grid gap-2 md:grid-cols-[8rem_1fr_4.5rem_auto]">
+            <div key={index} className="grid gap-2 sm:grid-cols-[8rem_1fr_4.5rem_auto]">
               <input
                 value={name}
                 placeholder={t("admin.colorName")}

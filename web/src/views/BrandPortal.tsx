@@ -18,9 +18,9 @@ export function BrandPortal() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="mx-auto max-w-page px-5 py-14">
-        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-copper">{t("marketVietnam")}</p>
-        <h1 className="mt-3 font-display text-5xl text-ink">{t("chooseBrand")}</h1>
+      <main className="mx-auto max-w-page px-4 py-8 sm:px-6 sm:py-14">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-copper sm:text-sm">{t("marketVietnam")}</p>
+        <h1 className="mt-3 text-balance font-display text-3xl text-ink sm:text-5xl">{t("chooseBrand")}</h1>
 
         {error && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -40,10 +40,10 @@ export function BrandPortal() {
                     <p className="text-xs uppercase tracking-[0.18em] text-white/70">
                       {brand.market === "Vietnam" ? t("marketVietnam") : brand.market}
                     </p>
-                    <h2 className="font-display text-3xl text-white">{brand.name}</h2>
+                    <h2 className="font-display text-2xl text-white sm:text-3xl">{brand.name}</h2>
                   </div>
                 </div>
-                <div className="flex items-end justify-end gap-4 p-5">
+                <div className="flex items-end justify-end gap-4 p-4 sm:p-5">
                   {brand.ready ? (
                     <span
                       className="shrink-0 rounded-full px-5 py-2 text-sm font-semibold text-white"

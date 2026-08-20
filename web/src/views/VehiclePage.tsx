@@ -97,7 +97,7 @@ export function VehiclePage() {
     return (
       <div className="min-h-screen">
         <Header />
-        <p className="mx-auto max-w-page px-5 py-16 text-ink/60">{t("loadingVehicle")}</p>
+        <p className="mx-auto max-w-page px-4 py-16 text-ink/60 sm:px-6">{t("loadingVehicle")}</p>
       </div>
     );
   }
@@ -106,7 +106,7 @@ export function VehiclePage() {
     return (
       <div className="min-h-screen">
         <Header />
-        <div className="mx-auto max-w-page px-5 py-16">
+        <div className="mx-auto max-w-page px-4 py-16 sm:px-6">
           <p className="text-ink/70">{error ?? t("vehicleNotFound")}</p>
           <Link href={`/brand/${brandCode}`} className="mt-4 inline-block text-copper">
             {t("backCatalog")}
@@ -121,20 +121,20 @@ export function VehiclePage() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="mx-auto max-w-page px-5 py-10">
+      <main className="mx-auto max-w-page px-4 py-6 sm:px-6 sm:py-10">
         <Link href={`/brand/${brandCode}`} className="text-sm text-ink/55 hover:text-ink">
           ← {t("backCatalog")}
         </Link>
 
         <form onSubmit={goToQuote}>
-        <div className="mt-6 grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
           <section>
             <div className="overflow-hidden rounded-3xl bg-mist shadow-card">
               <img src={vehicle.imageUrl} alt={vehicle.name} className="aspect-[16/10] w-full object-cover" />
             </div>
             <div className="mt-6">
               <p className="text-xs uppercase tracking-[0.18em] text-ink/45">{vehicle.brand}</p>
-              <h1 className="mt-1 font-display text-4xl text-ink">{vehicle.name}</h1>
+              <h1 className="mt-1 break-words font-display text-3xl text-ink sm:text-4xl">{vehicle.name}</h1>
               <p className="mt-2 text-ink/60">
                 {vehicle.model} · {vehicle.year} · {codedOption(vehicle.vehicleType, t)}
               </p>
@@ -164,7 +164,7 @@ export function VehiclePage() {
           </section>
 
           <aside className="space-y-5">
-            <div className="rounded-3xl border border-ink/8 bg-white p-6 shadow-card">
+            <div className="rounded-3xl border border-ink/8 bg-white p-4 shadow-card sm:p-6">
               <p className="text-xs uppercase tracking-[0.18em] text-copper">{t("calculateTitle")}</p>
               <h2 className="mt-2 font-display text-2xl">{t("confirmDetails")}</h2>
 
@@ -223,16 +223,16 @@ export function VehiclePage() {
               />
 
               <label className="mt-5 block text-sm font-medium">{t("vehicleColor")}</label>
-              <div className="mt-2 flex items-center gap-3">
+              <div className="mt-2 flex min-w-0 items-center gap-3">
                 <img
                   src={colorPhoto(color, vehicle.colorPhotos)}
                   alt={color}
-                  className="h-14 w-auto rounded-lg border border-ink/10 bg-paper object-contain"
+                  className="h-14 w-auto max-w-[5.5rem] shrink-0 rounded-lg border border-ink/10 bg-paper object-contain"
                 />
                 <select
                   value={color}
                   onChange={(event) => setColor(event.target.value)}
-                  className="h-12 flex-1 rounded-xl border border-ink/10 bg-paper px-3 text-ink"
+                  className="h-12 min-w-0 flex-1 rounded-xl border border-ink/10 bg-paper px-3 text-ink"
                 >
                   {(vehicle.availableColors ?? vehicle.defaultColor ?? "Trắng")
                     .split(",")
@@ -302,13 +302,15 @@ export function VehiclePage() {
           </aside>
         </div>
 
-        <button
-          type="submit"
-          disabled={!locationId}
-          className="mt-5 h-12 w-full rounded-xl bg-ink text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60"
-        >
-          {t("calculateButton")}
-        </button>
+        <div className="sticky bottom-0 z-20 -mx-4 mt-5 border-t border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
+          <button
+            type="submit"
+            disabled={!locationId}
+            className="h-12 w-full rounded-xl bg-ink text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60"
+          >
+            {t("calculateButton")}
+          </button>
+        </div>
         </form>
       </main>
     </div>
@@ -319,7 +321,7 @@ function Spec({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-white px-4 py-3 shadow-card">
       <dt className="text-xs uppercase tracking-[0.14em] text-ink/45">{label}</dt>
-      <dd className="mt-1 text-sm font-medium">{value}</dd>
+      <dd className="mt-1 break-words text-sm font-medium">{value}</dd>
     </div>
   );
 }

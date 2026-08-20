@@ -77,7 +77,7 @@ Default section order:
 ## User Preferences
 
 - Default UI and export language is Vietnamese (`vi`); keep `vi` first in language lists
-- Quote page: two equal sites — Price left, Accessories right; the report, Excel, and PDF follow `Bảng báo giá.xlsx`; Excel and PDF sit below the quote sheet
+- Quote page: two equal sites — Price left, Accessories right (stack on phones); the report, Excel, and PDF follow `Bảng báo giá.xlsx`; Excel and PDF sit below the quote sheet
 - Use Lucide icons only (the set used by shadcn/ui); do not install the full shadcn component library unless asked
 - Do not commit `.env.local` or Neon passwords
 - Production: Vercel (`web/` as Root Directory) + Neon PostgreSQL

@@ -22,9 +22,9 @@ export function VehicleCard({ vehicle, brandCode }: { vehicle: VehicleSummary; b
           {t(`category.${vehicle.category.code}`)}
         </span>
       </div>
-      <div className="space-y-2 p-5">
+      <div className="space-y-2 p-4 sm:p-5">
         <p className="text-xs uppercase tracking-[0.18em] text-ink/45">{vehicle.brand}</p>
-        <h3 className="font-display text-xl leading-tight text-ink">{vehicle.name}</h3>
+        <h3 className="font-display text-lg leading-tight text-ink sm:text-xl">{vehicle.name}</h3>
         <div className="flex items-end justify-between pt-2">
           <div>
             <p className="text-xs text-ink/50">{t("salePrice")}</p>

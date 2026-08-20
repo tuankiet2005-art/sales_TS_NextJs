@@ -30,10 +30,10 @@ export function LoginScreen() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex flex-1 items-center justify-center px-5 py-10">
+      <main className="flex flex-1 items-center justify-center px-4 py-8 sm:px-5 sm:py-10">
         <div className="w-full max-w-md text-center">
           <p className="text-xs uppercase tracking-[0.18em] text-copper">{t("login.kicker")}</p>
-          <h1 className="mt-1 font-display text-3xl">{t("login.title")}</h1>
+          <h1 className="mt-1 font-display text-2xl sm:text-3xl">{t("login.title")}</h1>
           <form onSubmit={submitLogin} className="mt-8 space-y-4 rounded-2xl bg-white p-6 text-left shadow-card">
             <label className="block text-sm font-medium text-ink">
               {t("login.username")}

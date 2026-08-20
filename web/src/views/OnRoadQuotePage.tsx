@@ -194,7 +194,7 @@ export function OnRoadQuotePage() {
     return (
       <div className="min-h-screen">
         <Header />
-        <p className="mx-auto max-w-page px-5 py-16 text-ink/60">{t("calculating")}</p>
+        <p className="mx-auto max-w-page px-4 py-16 text-ink/60 sm:px-6">{t("calculating")}</p>
       </div>
     );
   }
@@ -202,7 +202,7 @@ export function OnRoadQuotePage() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main className="mx-auto max-w-page px-5 py-6 print:max-w-none print:px-0">
+      <main className="mx-auto max-w-page px-4 py-5 sm:px-6 sm:py-6 print:max-w-none print:px-0">
         <div className="mb-4 print:hidden">
           <Link href={detailsHref} className="inline-flex items-center gap-1.5 text-sm text-ink/55 hover:text-ink">
             <ArrowLeft className="h-4 w-4" />
@@ -214,7 +214,7 @@ export function OnRoadQuotePage() {
         {notice && <p className="mb-3 text-sm text-forest print:hidden">{notice}</p>}
 
         {vehicle && (
-          <div className="mb-5 grid gap-3 print:hidden lg:grid-cols-2">
+          <div className="mb-5 grid gap-3 print:hidden md:grid-cols-2 md:*:min-w-0">
             <QuotePricePanel
               extras={extras}
               onChange={setExtras}
@@ -235,26 +235,28 @@ export function OnRoadQuotePage() {
         )}
 
         {vehicle && result && (
-          <QuoteSheet
-            vehicle={vehicle}
-            result={result}
-            customerName={customerName}
-            customerAddress={customerAddress}
-            color={color}
-            selectedAccessories={extras.accessories}
-            language={exportLang}
-          />
+          <div className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 print:mx-0 print:overflow-visible print:px-0">
+            <QuoteSheet
+              vehicle={vehicle}
+              result={result}
+              customerName={customerName}
+              customerAddress={customerAddress}
+              color={color}
+              selectedAccessories={extras.accessories}
+              language={exportLang}
+            />
+          </div>
         )}
 
         {result && (
-          <section className="mt-5 space-y-3 rounded-2xl border border-ink/8 bg-white p-3 shadow-card print:hidden">
+          <section className="mt-5 space-y-3 rounded-2xl border border-ink/8 bg-white p-3 shadow-card print:hidden sm:p-4">
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="block text-[11px] font-medium text-ink/75">
                 {t("customerName")}
                 <input
                   value={customerName}
                   onChange={(event) => setCustomerName(event.target.value)}
-                  className="mt-1 h-8 w-full rounded-md border border-ink/10 bg-paper px-2 text-sm"
+                  className="mt-1 h-11 w-full rounded-md border border-ink/10 bg-paper px-2 text-base sm:h-8 sm:text-sm"
                 />
               </label>
               <label className="block text-[11px] font-medium text-ink/75">
@@ -262,18 +264,18 @@ export function OnRoadQuotePage() {
                 <input
                   value={customerAddress}
                   onChange={(event) => setCustomerAddress(event.target.value)}
-                  className="mt-1 h-8 w-full rounded-md border border-ink/10 bg-paper px-2 text-sm"
+                  className="mt-1 h-11 w-full rounded-md border border-ink/10 bg-paper px-2 text-base sm:h-8 sm:text-sm"
                 />
               </label>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <label className="inline-flex items-center gap-2 text-sm text-ink/70">
-                <Languages className="h-4 w-4 text-copper" />
-                <span>{t("exportLanguage")}</span>
+                <Languages className="h-4 w-4 shrink-0 text-copper" />
+                <span className="shrink-0">{t("exportLanguage")}</span>
                 <select
                   value={exportLang}
                   onChange={(event) => setExportLang(event.target.value as Lang)}
-                  className="h-8 rounded-md border border-ink/15 bg-paper px-2 text-sm font-semibold text-ink"
+                  className="h-11 min-w-0 flex-1 rounded-md border border-ink/15 bg-paper px-2 text-base font-semibold text-ink sm:h-8 sm:flex-none sm:text-sm"
                 >
                   {languages.map((item) => (
                     <option key={item.code} value={item.code}>
@@ -282,12 +284,12 @@ export function OnRoadQuotePage() {
                   ))}
                 </select>
               </label>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
                 <button
                   type="button"
                   onClick={exportQuote}
                   disabled={exporting !== null}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-ink px-4 text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md bg-ink px-4 text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60 sm:h-8"
                 >
                   <FileSpreadsheet className="h-4 w-4" />
                   {exporting === "xlsx" ? t("exporting") : t("exportExcel")}
@@ -296,7 +298,7 @@ export function OnRoadQuotePage() {
                   type="button"
                   onClick={exportQuotePdf}
                   disabled={exporting !== null}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink/15 bg-white px-4 text-sm font-semibold text-ink hover:bg-paper disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md border border-ink/15 bg-white px-4 text-sm font-semibold text-ink hover:bg-paper disabled:opacity-60 sm:h-8"
                 >
                   <FileText className="h-4 w-4" />
                   {exporting === "pdf" ? t("exportingPdf") : t("exportPdf")}

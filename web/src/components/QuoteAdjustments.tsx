@@ -14,7 +14,7 @@ export function QuoteAdjustments({
   onChange: (next: QuoteExtras) => void;
 }) {
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-2 md:*:min-w-0">
       <QuotePricePanel extras={extras} onChange={onChange} />
       <QuoteAccessoriesPanel extras={extras} onChange={onChange} />
     </div>
@@ -121,7 +121,7 @@ export function QuoteAccessoriesPanel({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
         {MOVEO_ACCESSORIES.map((item) => {
           const selected = isSelected(item.id);
           return (
@@ -153,7 +153,10 @@ export function QuoteAccessoriesPanel({
       {extras.accessories.length > 0 && (
         <div className="mt-4 space-y-2 border-t border-ink/8 pt-3">
           {extras.accessories.map((item, index) => (
-            <div key={`${item.catalogId ?? item.name}-${index}`} className="grid grid-cols-[3.5rem_1fr_7.5rem_auto] items-center gap-2">
+            <div
+              key={`${item.catalogId ?? item.name}-${index}`}
+              className="grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[3.5rem_minmax(0,1fr)_7.5rem_auto]"
+            >
               {item.imageUrl ? (
                 <img src={item.imageUrl} alt="" className="h-12 w-14 rounded-xl object-cover" />
               ) : (
@@ -168,8 +171,21 @@ export function QuoteAccessoriesPanel({
                   onChange({ ...extras, accessories });
                 }}
                 placeholder={t("accessoryName")}
-                className="h-12 rounded-xl border border-ink/10 bg-paper px-3 text-base"
+                className="h-12 min-w-0 rounded-xl border border-ink/10 bg-paper px-3 text-base"
               />
+              <button
+                type="button"
+                onClick={() =>
+                  onChange({
+                    ...extras,
+                    accessories: extras.accessories.filter((_, rowIndex) => rowIndex !== index),
+                  })
+                }
+                className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-ink/10 text-ink/60 hover:bg-mist hover:text-red-700 sm:col-start-4 sm:row-start-1"
+                aria-label={t("removeAccessory")}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
               <input
                 type="number"
                 min="0"
@@ -182,21 +198,8 @@ export function QuoteAccessoriesPanel({
                   onChange({ ...extras, accessories });
                 }}
                 placeholder={t("amount")}
-                className="h-12 rounded-xl border border-ink/10 bg-paper px-3 text-base"
+                className="col-span-3 h-12 w-full rounded-xl border border-ink/10 bg-paper px-3 text-base sm:col-span-1 sm:col-start-3 sm:row-start-1"
               />
-              <button
-                type="button"
-                onClick={() =>
-                  onChange({
-                    ...extras,
-                    accessories: extras.accessories.filter((_, rowIndex) => rowIndex !== index),
-                  })
-                }
-                className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-ink/10 text-ink/60 hover:bg-mist hover:text-red-700"
-                aria-label={t("removeAccessory")}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
             </div>
           ))}
         </div>
