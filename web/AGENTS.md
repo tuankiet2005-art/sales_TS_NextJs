@@ -41,7 +41,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - AppShell waits to read the operator token before showing login; a signed-in reload must not flash the login screen
 - Quote page starts vehicle load and on-road calculation together
 - Excel export fills `src/server/assets/bang-bao-gia.xlsx` by labels on `vehicles.quote_sheet_name` (never hardcoded cells on sheet 0); unused tabs stay hidden
-- PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`
+- PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`/`lab` (canvas pixel sampling converts modern color functions to `rgb`/`rgba`)
 - Default UI language Vietnamese (`vi`); match `frontend/src/i18n/` behavior when UI is ported
 - Layout is mobile-first: phones stack, tablets use two columns where the contract needs them, desktop keeps the wide catalog
 - Quote page: Price left and Accessories right are equal columns from `md` up; they stack on phones. The Excel quote sheet stays desktop-width and scrolls sideways on small screens

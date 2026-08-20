@@ -8,7 +8,7 @@ Shared chrome and quote widgets used by pages.
 
 - `Header.tsx` / `LanguageSwitcher.tsx` / `LoginScreen.tsx` — site chrome; logo stays left with no tagline; nav is hidden until sign-in; after login shows Models, Change brand, History, Data, Sign out, and Language; header stays above admin popups (`z-50`); `AppShell` must not show `LoginScreen` until the token has been read
 - `QuotePricePanel` / `QuoteAccessoriesPanel` in `QuoteAdjustments.tsx` — equal left/right editors
-- `QuoteSheet.tsx` — visual replica of the dealer Excel quote; `#quote-sheet` is the PDF source (`lib/exportQuotePdf.ts` sanitizes Tailwind `oklch` before html2canvas)
+- `QuoteSheet.tsx` — visual replica of the dealer Excel quote; `#quote-sheet` is the PDF source (`lib/exportQuotePdf.ts` sanitizes Tailwind `oklch`/`lab` before html2canvas)
 - `VehicleCard.tsx`, `CostBreakdown.tsx` — catalog / fee list
 - `ProvincePicker.tsx` — type-to-filter province list; `Ha Noi` matches `Hà Nội`
 

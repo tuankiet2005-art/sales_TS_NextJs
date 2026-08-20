@@ -20,6 +20,35 @@ export function cssContainsUnsupportedColor(value: string): boolean {
   return COLOR_FUNCTIONS.some((name) => lower.includes(`${name}(`));
 }
 
+/** Browser-only: sample a modern color function via canvas so html2canvas never sees lab/oklch. */
+export function cssColorFunctionToRgb(fn: string): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) {
+    return "#000000";
+  }
+  try {
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillStyle = fn;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    if (a === 255) {
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    const alpha = Math.round((a / 255) * 10000) / 10000;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  } catch {
+    return "#000000";
+  }
+}
+
+export function cssColorValueToRgb(value: string): string {
+  const rewritten = rewriteCssColorFunctions(value, cssColorFunctionToRgb);
+  return cssContainsUnsupportedColor(rewritten) ? "#000000" : rewritten;
+}
+
 function innermostColorFunction(input: string): { start: number; end: number; text: string } | null {
   const lower = input.toLowerCase();
   let innerStart = -1;

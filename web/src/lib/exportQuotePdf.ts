@@ -1,4 +1,4 @@
-import { cssContainsUnsupportedColor, rewriteCssColorFunctions } from "./cssColor";
+import { cssColorValueToRgb, cssContainsUnsupportedColor } from "./cssColor";
 
 async function waitForImages(element: HTMLElement): Promise<void> {
   const images = Array.from(element.querySelectorAll("img"));
@@ -31,24 +31,6 @@ function lockImageToReportBox(original: HTMLImageElement, clone: HTMLImageElemen
   clone.removeAttribute("class");
 }
 
-function cssColorToRgb(value: string): string {
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    return rewriteCssColorFunctions(value, () => "#000000");
-  }
-  return rewriteCssColorFunctions(value, (fn) => {
-    try {
-      ctx.fillStyle = "#000000";
-      ctx.fillStyle = fn;
-      const out = ctx.fillStyle;
-      return typeof out === "string" && out.length > 0 ? out : "#000000";
-    } catch {
-      return "#000000";
-    }
-  });
-}
-
 function inlineComputedStyles(originalRoot: HTMLElement, cloneRoot: HTMLElement) {
   const originals = [originalRoot, ...originalRoot.querySelectorAll<HTMLElement>("*")];
   const clones = [cloneRoot, ...cloneRoot.querySelectorAll<HTMLElement>("*")];
@@ -60,7 +42,7 @@ function inlineComputedStyles(originalRoot: HTMLElement, cloneRoot: HTMLElement)
     for (const name of computed) {
       let value = computed.getPropertyValue(name);
       if (cssContainsUnsupportedColor(value)) {
-        value = cssColorToRgb(value);
+        value = cssColorValueToRgb(value);
       }
       clone.style.setProperty(name, value);
     }
@@ -71,7 +53,7 @@ function neutralizeModernCss(clonedDoc: Document, original: HTMLElement, clone: 
   inlineComputedStyles(original, clone);
   clonedDoc.querySelectorAll("style").forEach((node) => {
     if (node.textContent && cssContainsUnsupportedColor(node.textContent)) {
-      node.textContent = cssColorToRgb(node.textContent);
+      node.textContent = cssColorValueToRgb(node.textContent);
     }
   });
   clonedDoc.querySelectorAll("style, link[rel='stylesheet']").forEach((node) => node.remove());
