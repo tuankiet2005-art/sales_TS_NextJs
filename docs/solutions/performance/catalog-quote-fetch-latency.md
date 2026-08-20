@@ -17,6 +17,8 @@ Users perceived slow loads: the home page fired three HTTP calls, the quote flow
 | Server | `resolveQuoteCalculation` — reuse client `breakdown` on export/save when `vehicleId` matches |
 | Client | Home → single bootstrap call; VehiclePage → `sessionStorage` vehicle cache |
 | Client | Quote page: cached vehicle + calc-only when coming from confirm |
+| Client | Categories/locations: fast path + `sessionStorage` (`catalogReferenceCache`) — chips render before vehicle list |
+| API | Categories/locations: `max-age=3600, stale-while-revalidate=86400` |
 | DB | `idx_vehicles_active_brand` partial index in `neon-init.sql` |
 
 ## Measurement
@@ -31,6 +33,16 @@ Harness: `web/scripts/bench-quote-api.ts` (immutable for optimize runs).
 | `home_api_calls` | 3 | 1 |
 
 Client-perceived quote navigation is faster when vehicle cache is warm (calc-only vs full quote-load).
+
+## Category filter fast path (2026-08-21 follow-up)
+
+Bundled `/api/catalog` blocked category chips until all vehicles loaded. Home now:
+
+1. Hydrates categories from `sessionStorage` on first paint
+2. Refreshes via `/api/vehicle-categories` independently of the vehicle list
+3. Loads brand + vehicles in parallel (`vehiclesLoading` only gates the grid)
+
+Vehicle confirm page caches categories and locations the same way.
 
 ## Follow-ups
 

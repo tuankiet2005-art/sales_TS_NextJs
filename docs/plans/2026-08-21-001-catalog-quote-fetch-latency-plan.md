@@ -15,6 +15,7 @@ Reduce perceived data-fetch slowness across home catalog, vehicle→quote naviga
 4. Skip redundant `calculateOnRoad` on export/save when client sends matching `breakdown`
 5. Parallelize `loadQuotePageData` policy mapping
 6. Add partial DB index for active vehicles by brand
+7. Split category loading from vehicle list on home (fast path + reference cache)
 
 ## Verification
 

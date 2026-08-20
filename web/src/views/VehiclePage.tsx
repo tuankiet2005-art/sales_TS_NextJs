@@ -13,6 +13,12 @@ import { codedOption } from "../lib/labels";
 import { priceVehicleFromPolicy } from "../lib/dealerPricing";
 import { motionInteractive, motionPress } from "../lib/motion";
 import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
+import {
+  loadCategoryCache,
+  loadLocationCache,
+  saveCategoryCache,
+  saveLocationCache,
+} from "../lib/catalogReferenceCache";
 import { saveVehicleCache } from "../lib/vehicleCache";
 import { colorPhoto } from "../lib/vehicleColor";
 import { defaultPolicyChoices, loadPolicyChoices, localizedPolicyText, savePolicyChoices } from "../lib/quotePolicy";
@@ -27,8 +33,8 @@ export function VehiclePage() {
   const { t, lang } = useI18n();
 
   const [vehicle, setVehicle] = useState<VehicleDetail | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [categories, setCategories] = useState<Category[]>(() => loadCategoryCache() ?? []);
+  const [locations, setLocations] = useState<Location[]>(() => loadLocationCache() ?? []);
   const [categoryId, setCategoryId] = useState<number | undefined>();
   const [locationId, setLocationId] = useState<number | undefined>();
   const [includeOptional, setIncludeOptional] = useState(false);
@@ -57,6 +63,8 @@ export function VehiclePage() {
         setVehicle(nextVehicle);
         setCategories(nextCategories);
         setLocations(nextLocations);
+        saveCategoryCache(nextCategories);
+        saveLocationCache(nextLocations);
         setPolicy(nextPolicy);
         setCategoryId(nextVehicle.category.id);
         setColor(nextVehicle.defaultColor ?? "");

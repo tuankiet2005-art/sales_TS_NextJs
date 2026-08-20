@@ -8,6 +8,7 @@ import { ListFilterSelect } from "../components/ListFilterSelect";
 import { VehicleCard } from "../components/VehicleCard";
 import { useI18n } from "../i18n/LanguageContext";
 import { softIncludes } from "../lib/softSearch";
+import { loadCategoryCache, saveCategoryCache } from "../lib/catalogReferenceCache";
 import { motionInteractive, motionPress, motionStagger } from "../lib/motion";
 import type { Brand, Category, VehicleSummary } from "../types";
 
@@ -25,24 +26,38 @@ export function HomePage() {
   const [modelFilter, setModelFilter] = useState(searchParams?.get("model") ?? "");
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState(searchParams?.get("type") ?? "");
   const [brand, setBrand] = useState<Brand | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(() => loadCategoryCache() ?? []);
   const [vehicles, setVehicles] = useState<VehicleSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     api
-      .getCatalogBootstrap(brandCode)
+      .getCategories()
       .then((data) => {
+        if (!cancelled) {
+          setCategories(data);
+          saveCategoryCache(data);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setVehiclesLoading(true);
+    setError(null);
+    Promise.all([api.getBrand(brandCode), api.searchVehicles("", brandCode)])
+      .then(([nextBrand, data]) => {
         if (cancelled) {
           return;
         }
-        setBrand(data.brand);
-        setCategories(data.categories);
-        setVehicles(data.vehicles);
+        setBrand(nextBrand);
+        setVehicles(data);
       })
       .catch((err: Error) => {
         if (!cancelled) {
@@ -51,7 +66,7 @@ export function HomePage() {
       })
       .finally(() => {
         if (!cancelled) {
-          setLoading(false);
+          setVehiclesLoading(false);
         }
       });
     return () => {
@@ -207,7 +222,7 @@ export function HomePage() {
               {selectedCategory ? t(`category.${selectedCategory.code}`) : t("availableVehicles")}
             </h2>
             <p className="mt-1 text-sm text-ink/55">
-              {loading ? t("loadingCatalog") : t("modelsCount", { n: visibleVehicles.length })}
+              {vehiclesLoading ? t("loadingCatalog") : t("modelsCount", { n: visibleVehicles.length })}
             </p>
           </div>
 
@@ -218,7 +233,7 @@ export function HomePage() {
             </div>
           )}
 
-          {!loading && !error && visibleVehicles.length === 0 && (
+          {!vehiclesLoading && !error && visibleVehicles.length === 0 && (
             <p className="rounded-2xl bg-white px-5 py-10 text-center text-ink/60">
               {brand && !brand.ready ? t("emptyBrand") : t("emptySearch")}
             </p>

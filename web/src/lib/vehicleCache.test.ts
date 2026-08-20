@@ -1,14 +1,26 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { loadVehicleCache, saveVehicleCache, vehicleCacheKey } from "./vehicleCache";
 
+function mockSessionStorage() {
+  const store = new Map<string, string>();
+  vi.stubGlobal("sessionStorage", {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+    clear: () => {
+      store.clear();
+    },
+  });
+}
+
 describe("vehicleCache", () => {
   beforeEach(() => {
-    sessionStorage.clear();
-  });
-
-  afterEach(() => {
-    sessionStorage.clear();
+    mockSessionStorage();
   });
 
   it("round-trips vehicle detail in sessionStorage", () => {
