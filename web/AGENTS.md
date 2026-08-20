@@ -8,7 +8,7 @@ Target OnRoad monolith: App Router UI plus `/api` route handlers on Vercel, repl
 
 - App root: `web/`
 - Dev server: port `3000` (`npm run dev`)
-- Deploy: new Vercel project, root directory `web`
+- Deploy: Vercel project **Root Directory** must be `web` (Settings → General). Empty root makes `npm install` look for `/package.json` and fail with `ENOENT`
 - Migration plan: `docs/plans/2026-08-20-001-refactor-nextjs-monolith-plan.md`
 
 ## Local Contracts
@@ -44,7 +44,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 
 ## Verification
 
-- `npm run build` from `web/`
+- `npm run build` from `web/` — TypeScript skips `*.test.ts` (`tsconfig.json` exclude); Vitest still runs them
 - `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`), Excel fill (`src/server/services/quote-sheet-fill.test.ts`), PDF color rewrite (`src/lib/cssColor.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
 
 ## Child DOX Index

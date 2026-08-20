@@ -31,7 +31,7 @@ function cellText(sheet: ExcelJS.Worksheet, address: string): string {
 describe("fillQuoteWorkbook", () => {
   it("fills the Attrage CVT dealer sheet by labels without smashing gifts or the first Xpander tab", async () => {
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(await readFile(TEMPLATE));
+    await workbook.xlsx.load((await readFile(TEMPLATE)) as unknown as ExcelJS.Buffer);
 
     fillQuoteWorkbook(workbook, {
       language: "vi",
@@ -47,8 +47,8 @@ describe("fillQuoteWorkbook", () => {
       discountAmount: 5000000,
       salePrice: 106000000,
       fees: [
-        { code: "REGISTRATION_TAX", name: "Thuế trước bạ", amount: 11100000, includedInTotal: true },
-        { code: "LICENSE_PLATE", name: "Phí biển", amount: 20000000, includedInTotal: true },
+        { code: "REGISTRATION_TAX", amount: 11100000, includedInTotal: true },
+        { code: "LICENSE_PLATE", amount: 20000000, includedInTotal: true },
       ],
       totalMandatoryFees: 31100000,
       totalOptionalFees: 0,

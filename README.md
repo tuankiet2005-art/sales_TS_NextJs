@@ -23,6 +23,16 @@ npm run dev
 
 Open http://localhost:3000
 
+## Deploy (Vercel)
+
+The Git repo root has no `package.json`. The Next.js app is `web/`.
+
+In the Vercel project: **Settings → General → Root Directory** → set to `web` → Save → **Deployments → Redeploy**.
+
+If Root Directory is empty, `npm install` looks for `/package.json` and fails with `ENOENT`.
+
+Set these Vercel env vars (Production + Preview): `DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_TOKEN_SECRET`.
+
 ### Database
 
 1. Run `db/neon-init.sql` in the Neon SQL editor.
