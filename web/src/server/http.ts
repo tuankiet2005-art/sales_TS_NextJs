@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 
-export function json<T>(data: T, status = 200) {
-  return NextResponse.json(data, { status });
+export function json<T>(data: T, status = 200, headers?: HeadersInit) {
+  return NextResponse.json(data, { status, headers });
 }
+
+export const CATALOG_LIST_CACHE_CONTROL = "public, max-age=60";
 
 export function error(message: string, status = 400) {
   return NextResponse.json({ message }, { status });

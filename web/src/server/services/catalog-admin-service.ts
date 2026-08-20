@@ -12,6 +12,7 @@ import type {
   ImportResult,
 } from "@/types";
 import { getDb } from "../db/client";
+import { invalidateCatalogCache } from "./catalog-service";
 import {
   brands,
   dealers,
@@ -244,15 +245,18 @@ export async function upsertBrand(record: AdminBrand) {
   };
   if (record.id) {
     const rows = await db.update(brands).set(values).where(eq(brands.id, record.id)).returning();
+    invalidateCatalogCache();
     return rows[0];
   }
   const rows = await db.insert(brands).values(values).returning();
+  invalidateCatalogCache();
   return rows[0];
 }
 
 export async function deleteBrand(id: number) {
   const db = getDb();
   await db.delete(brands).where(eq(brands.id, id));
+  invalidateCatalogCache();
 }
 
 export async function listAdminCategories() {
@@ -274,15 +278,18 @@ export async function upsertCategory(record: AdminCategory) {
   };
   if (record.id) {
     const rows = await db.update(vehicleCategories).set(values).where(eq(vehicleCategories.id, record.id)).returning();
+    invalidateCatalogCache();
     return rows[0];
   }
   const rows = await db.insert(vehicleCategories).values(values).returning();
+  invalidateCatalogCache();
   return rows[0];
 }
 
 export async function deleteCategory(id: number) {
   const db = getDb();
   await db.delete(vehicleCategories).where(eq(vehicleCategories.id, id));
+  invalidateCatalogCache();
 }
 
 export async function listAdminLocations() {
@@ -304,15 +311,18 @@ export async function upsertLocation(record: AdminLocation) {
   };
   if (record.id) {
     const rows = await db.update(locations).set(values).where(eq(locations.id, record.id)).returning();
+    invalidateCatalogCache();
     return rows[0];
   }
   const rows = await db.insert(locations).values(values).returning();
+  invalidateCatalogCache();
   return rows[0];
 }
 
 export async function deleteLocation(id: number) {
   const db = getDb();
   await db.delete(locations).where(eq(locations.id, id));
+  invalidateCatalogCache();
 }
 
 export async function listAdminDealers() {

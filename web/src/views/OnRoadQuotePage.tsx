@@ -10,7 +10,7 @@ import { QuoteSheet } from "../components/QuoteSheet";
 import { useI18n } from "../i18n/LanguageContext";
 import { languages, type Lang } from "../i18n/translations";
 import { downloadQuotePdf } from "../lib/exportQuotePdf";
-import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
+import { extrasFromVehicle, extrasStorageKey, loadExtras, saveExtras } from "../lib/quoteExtras";
 import { defaultPolicyChoices, loadPolicyChoices } from "../lib/quotePolicy";
 import type { CostBreakdown as CostBreakdownType, QuoteExtras, VehicleDetail } from "../types";
 
@@ -60,24 +60,30 @@ export function OnRoadQuotePage() {
     setLoading(true);
     setError(null);
 
-    api.getVehicle(id)
-      .then(async (nextVehicle) => {
-        const nextExtras = loadExtras(id, extrasFromVehicle(nextVehicle));
-        const breakdown = await api.calculateOnRoadCost(
-          id,
-          locationId,
-          includeOptional,
-          categoryId,
-          nextExtras,
-          policyChoices.usageType,
-          policyChoices.selectedOfferIds,
-          policyChoices.forgoneOfferIds
-        );
+    const extrasForCalc =
+      typeof sessionStorage !== "undefined" && sessionStorage.getItem(extrasStorageKey(id))
+        ? loadExtras(id, { accessories: [] })
+        : undefined;
+
+    Promise.all([
+      api.getVehicle(id),
+      api.calculateOnRoadCost(
+        id,
+        locationId,
+        includeOptional,
+        categoryId,
+        extrasForCalc,
+        policyChoices.usageType,
+        policyChoices.selectedOfferIds,
+        policyChoices.forgoneOfferIds
+      ),
+    ])
+      .then(([nextVehicle, breakdown]) => {
         if (cancelled) {
           return;
         }
         setVehicle(nextVehicle);
-        setExtras(nextExtras);
+        setExtras(loadExtras(id, extrasFromVehicle(nextVehicle)));
         setResult(breakdown);
       })
       .catch((err: Error) => {
