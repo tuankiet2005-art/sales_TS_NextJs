@@ -37,6 +37,9 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 
 - Keep fee math in `src/server/domain/`; route handlers stay thin
 - Use `runtime = 'nodejs'` on Excel export and heavy DB routes
+- Catalog list GETs (`/api/brands`, `/api/vehicle-categories`, `/api/locations`, `/api/dealer-policy`) send `Cache-Control: public, max-age=60`. Brands, categories, and locations also cache in `catalog-service` until `invalidateCatalogCache()` from catalog admin writes
+- AppShell waits to read the operator token before showing login; a signed-in reload must not flash the login screen
+- Quote page starts vehicle load and on-road calculation together
 - Excel export fills `src/server/assets/bang-bao-gia.xlsx` by labels on `vehicles.quote_sheet_name` (never hardcoded cells on sheet 0); unused tabs stay hidden
 - PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`
 - Default UI language Vietnamese (`vi`); match `frontend/src/i18n/` behavior when UI is ported
@@ -48,7 +51,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 ## Verification
 
 - `npm run build` from `web/` — TypeScript skips `*.test.ts` (`tsconfig.json` exclude); Vitest still runs them
-- `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`), Excel fill (`src/server/services/quote-sheet-fill.test.ts`), PDF color rewrite (`src/lib/cssColor.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
+- `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`), Excel fill (`src/server/services/quote-sheet-fill.test.ts`), quote history reuse (`src/server/services/quote-history-rules.test.ts`), PDF color rewrite (`src/lib/cssColor.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
 
 ## Child DOX Index
 

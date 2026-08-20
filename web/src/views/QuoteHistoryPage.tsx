@@ -122,7 +122,7 @@ export function QuoteHistoryPage() {
                   <button
                     type="button"
                     onClick={() => openQuote(row)}
-                    className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-copper"
+                    className="mt-3 inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-copper"
                   >
                     {t("quoteHistory.open")}
                   </button>
@@ -153,7 +153,11 @@ export function QuoteHistoryPage() {
                       <td className="px-3 py-2">{row.locationName}</td>
                       <td className="px-3 py-2">{formatVnd(row.onRoadTotal)}</td>
                       <td className="px-3 py-2">
-                        <button type="button" onClick={() => openQuote(row)} className="text-sm font-semibold text-copper">
+                        <button
+                          type="button"
+                          onClick={() => openQuote(row)}
+                          className="cursor-pointer text-sm font-semibold text-copper"
+                        >
                           {t("quoteHistory.open")}
                         </button>
                       </td>

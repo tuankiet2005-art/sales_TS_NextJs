@@ -4,29 +4,10 @@ import ExcelJS from "exceljs";
 
 import { findActiveVehicleById } from "../db/repositories/catalog";
 import { calculateOnRoad } from "./catalog-service";
+import { persistCalculatedQuote, type QuoteSaveRequest } from "./quote-history-service";
 import { fillQuoteWorkbook, normalizeLanguage } from "./quote-sheet-fill";
-import { saveQuote } from "./quote-history-service";
 
-export async function exportQuote(body: {
-  vehicleId: number;
-  locationId: number;
-  categoryId?: number;
-  includeOptionalInsurance?: boolean;
-  customerName?: string;
-  customerAddress?: string;
-  color?: string;
-  language?: string;
-  usageType?: string;
-  selectedOfferIds?: string[];
-  forgoneOfferIds?: string[];
-  discountAmount?: number;
-  deposit?: number;
-  optionalBodyInsurance?: number;
-  registrationServiceFee?: number;
-  micaPlateFee?: number;
-  inspectionFee?: number;
-  accessories?: { name: string; amount: number }[];
-}) {
+export async function exportQuote(body: QuoteSaveRequest) {
   const calcResult = await calculateOnRoad(body);
   if (!calcResult || "error" in calcResult) {
     return null;
@@ -37,26 +18,7 @@ export async function exportQuote(body: {
     return null;
   }
 
-  await saveQuote({
-    customerName: body.customerName?.trim() || "Khách hàng",
-    customerAddress: body.customerAddress,
-    vehicleId: calc.vehicleId,
-    brandCode: calc.brand,
-    vehicleName: calc.vehicleName,
-    locationId: calc.locationId,
-    locationName: calc.locationName,
-    categoryId: body.categoryId,
-    color: body.color,
-    usageType: body.usageType,
-    language: body.language,
-    includeOptional: body.includeOptionalInsurance ?? false,
-    listPrice: calc.listPrice,
-    salePrice: calc.salePrice,
-    discountAmount: calc.discountAmount,
-    deposit: calc.deposit,
-    onRoadTotal: calc.estimatedOnRoadTotal,
-    payload: JSON.stringify({ calc, request: body }),
-  });
+  await persistCalculatedQuote(body, calc, vehicleRow.brand.code);
 
   const templatePath = path.join(process.cwd(), "src/server/assets/bang-bao-gia.xlsx");
   const template = await readFile(templatePath);

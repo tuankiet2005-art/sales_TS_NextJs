@@ -1,8 +1,32 @@
-import { desc, eq, ilike, or } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 import { getDb } from "../db/client";
+import { findActiveVehicleById } from "../db/repositories/catalog";
 import { quoteHistory } from "../db/schema";
-import type { QuoteHistory } from "@/types";
+import type { CostBreakdown, QuoteHistory } from "@/types";
+import { calculateOnRoad } from "./catalog-service";
+import { collapseRecentDuplicateQuotes, shouldReuseRecentQuote } from "./quote-history-rules";
+
+export type QuoteSaveRequest = {
+  vehicleId: number;
+  locationId: number;
+  categoryId?: number;
+  includeOptionalInsurance?: boolean;
+  customerName?: string;
+  customerAddress?: string;
+  color?: string;
+  language?: string;
+  usageType?: string;
+  selectedOfferIds?: string[];
+  forgoneOfferIds?: string[];
+  discountAmount?: number;
+  deposit?: number;
+  optionalBodyInsurance?: number;
+  registrationServiceFee?: number;
+  micaPlateFee?: number;
+  inspectionFee?: number;
+  accessories?: { name: string; amount: number }[];
+};
 
 function mapQuote(row: typeof quoteHistory.$inferSelect): QuoteHistory {
   return {
@@ -45,14 +69,14 @@ export async function searchQuotes(query?: string) {
       )
       .orderBy(desc(quoteHistory.createdAt))
       .limit(100);
-    return rows.map(mapQuote);
+    return collapseRecentDuplicateQuotes(rows.map(mapQuote));
   }
   const rows = await db
     .select()
     .from(quoteHistory)
     .orderBy(desc(quoteHistory.createdAt))
     .limit(100);
-  return rows.map(mapQuote);
+  return collapseRecentDuplicateQuotes(rows.map(mapQuote));
 }
 
 export async function getQuote(id: number) {
@@ -107,4 +131,55 @@ export async function saveQuote(input: {
     })
     .returning();
   return mapQuote(rows[0]);
+}
+
+export async function saveQuoteFromRequest(body: QuoteSaveRequest) {
+  const calcResult = await calculateOnRoad(body);
+  if (!calcResult || "error" in calcResult) {
+    return null;
+  }
+  const vehicleRow = await findActiveVehicleById(body.vehicleId);
+  if (!vehicleRow) {
+    return null;
+  }
+  return persistCalculatedQuote(body, calcResult.data, vehicleRow.brand.code);
+}
+
+export async function persistCalculatedQuote(body: QuoteSaveRequest, calc: CostBreakdown, brandCode: string) {
+  const customerName = body.customerName?.trim() || "Khách hàng";
+  const recent = await findRecentQuote(customerName, body.vehicleId);
+  if (recent && shouldReuseRecentQuote(recent, calc.estimatedOnRoadTotal)) {
+    return recent;
+  }
+  return saveQuote({
+    customerName,
+    customerAddress: body.customerAddress,
+    vehicleId: calc.vehicleId,
+    brandCode,
+    vehicleName: calc.vehicleName,
+    locationId: calc.locationId,
+    locationName: calc.locationName,
+    categoryId: body.categoryId,
+    color: body.color,
+    usageType: body.usageType,
+    language: body.language,
+    includeOptional: body.includeOptionalInsurance ?? false,
+    listPrice: calc.listPrice,
+    salePrice: calc.salePrice,
+    discountAmount: calc.discountAmount,
+    deposit: calc.deposit,
+    onRoadTotal: calc.estimatedOnRoadTotal,
+    payload: JSON.stringify({ calc, request: body }),
+  });
+}
+
+async function findRecentQuote(customerName: string, vehicleId: number) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(quoteHistory)
+    .where(and(eq(quoteHistory.vehicleId, vehicleId), sql`lower(${quoteHistory.customerName}) = lower(${customerName})`))
+    .orderBy(desc(quoteHistory.createdAt))
+    .limit(1);
+  return rows[0] ? mapQuote(rows[0]) : null;
 }

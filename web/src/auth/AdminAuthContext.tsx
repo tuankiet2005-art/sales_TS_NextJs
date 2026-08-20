@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { ADMIN_AUTH_EVENT, clearAdminToken, isAdminSignedIn, setAdminToken } from "../lib/adminAuth";
 
 interface AdminAuthContextValue {
+  ready: boolean;
   signedIn: boolean;
   signIn: (token: string) => void;
   signOut: () => void;
@@ -11,12 +12,13 @@ interface AdminAuthContextValue {
 const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
-    setSignedIn(isAdminSignedIn());
     function sync() {
       setSignedIn(isAdminSignedIn());
+      setReady(true);
     }
     sync();
     window.addEventListener(ADMIN_AUTH_EVENT, sync);
@@ -29,17 +31,20 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AdminAuthContextValue>(
     () => ({
+      ready,
       signedIn,
       signIn(token) {
         setAdminToken(token);
         setSignedIn(true);
+        setReady(true);
       },
       signOut() {
         clearAdminToken();
         setSignedIn(false);
+        setReady(true);
       },
     }),
-    [signedIn]
+    [ready, signedIn]
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

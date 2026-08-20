@@ -21,10 +21,35 @@ import {
 import { getDealerPolicy, getFeePolicy, getPlateRegions } from "../config/policy-store";
 import { calculateOnRoadCost } from "../domain/on-road-cost";
 import type { CalculateOnRoadInput } from "../domain/types";
+import type { Brand, Category, Location } from "@/types";
+
+type CatalogListCache = {
+  brands: Brand[] | null;
+  categories: Category[] | null;
+  locations: Location[] | null;
+};
+
+let catalogListCache: CatalogListCache = {
+  brands: null,
+  categories: null,
+  locations: null,
+};
+
+export function invalidateCatalogCache() {
+  catalogListCache = { brands: null, categories: null, locations: null };
+}
+
+export function resetCatalogCacheForTests() {
+  invalidateCatalogCache();
+}
 
 export async function getBrands() {
-  const rows = await listBrands();
-  return rows.map(mapBrand);
+  if (catalogListCache.brands) {
+    return catalogListCache.brands;
+  }
+  const mapped = (await listBrands()).map(mapBrand);
+  catalogListCache.brands = mapped;
+  return mapped;
 }
 
 export async function getBrand(code: string) {
@@ -36,13 +61,21 @@ export async function getBrand(code: string) {
 }
 
 export async function getCategories() {
-  const rows = await listCategories();
-  return rows.map(mapCategory);
+  if (catalogListCache.categories) {
+    return catalogListCache.categories;
+  }
+  const mapped = (await listCategories()).map(mapCategory);
+  catalogListCache.categories = mapped;
+  return mapped;
 }
 
 export async function getLocations() {
-  const rows = await listLocations();
-  return rows.map(mapLocation);
+  if (catalogListCache.locations) {
+    return catalogListCache.locations;
+  }
+  const mapped = (await listLocations()).map(mapLocation);
+  catalogListCache.locations = mapped;
+  return mapped;
 }
 
 export async function searchVehicles(params: {
@@ -95,32 +128,29 @@ export async function calculateOnRoad(body: {
   selectedOfferIds?: string[] | null;
   forgoneOfferIds?: string[] | null;
 }) {
-  const vehicleRow = await findActiveVehicleById(body.vehicleId);
-  if (!vehicleRow) {
-    return null;
-  }
-
-  const location = await findLocationById(body.locationId);
-  if (!location) {
-    return { error: "location" as const };
-  }
-
-  const selectedCategory =
-    body.categoryId != null
-      ? await findCategoryById(body.categoryId)
-      : vehicleRow.category;
-  if (!selectedCategory) {
-    return { error: "category" as const };
-  }
-
-  const [feePolicy, plateRegions, dealerPolicy, feeDefinitions, activeFeeRules] =
+  const [vehicleRow, location, categoryById, feePolicy, plateRegions, dealerPolicy, feeDefinitions, activeFeeRules] =
     await Promise.all([
+      findActiveVehicleById(body.vehicleId),
+      findLocationById(body.locationId),
+      body.categoryId != null ? findCategoryById(body.categoryId) : Promise.resolve(null),
       getFeePolicy(),
       getPlateRegions(),
       getDealerPolicy(),
       listActiveFeeDefinitions(),
       listActiveFeeRules(),
     ]);
+
+  if (!vehicleRow) {
+    return null;
+  }
+  if (!location) {
+    return { error: "location" as const };
+  }
+
+  const selectedCategory = body.categoryId != null ? categoryById : vehicleRow.category;
+  if (!selectedCategory) {
+    return { error: "category" as const };
+  }
 
   const input: CalculateOnRoadInput = {
     vehicle: {
