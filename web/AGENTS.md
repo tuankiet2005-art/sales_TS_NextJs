@@ -39,7 +39,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - Use `runtime = 'nodejs'` on Excel export and heavy DB routes
 - Catalog list GETs (`/api/brands`, `/api/vehicle-categories`, `/api/locations`, `/api/dealer-policy`) send `Cache-Control: public, max-age=60`. Brands, categories, and locations also cache in `catalog-service` until `invalidateCatalogCache()` from catalog admin writes
 - AppShell waits to read the operator token before showing login; a signed-in reload must not flash the login screen
-- Quote page starts vehicle load and on-road calculation together
+- Quote page loads vehicle + on-road breakdown via one `POST /api/quote-load` call (`loadQuotePageData`); `POST /api/calculate-on-road-cost` remains for recalculate-only
 - Excel export fills `src/server/assets/bang-bao-gia.xlsx` by labels on `vehicles.quote_sheet_name` (never hardcoded cells on sheet 0); unused tabs stay hidden
 - PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`/`lab` (canvas pixel sampling converts modern color functions to `rgb`/`rgba`)
 - Default UI language Vietnamese (`vi`); match `frontend/src/i18n/` behavior when UI is ported

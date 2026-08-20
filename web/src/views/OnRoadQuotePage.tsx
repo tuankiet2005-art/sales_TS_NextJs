@@ -65,9 +65,8 @@ export function OnRoadQuotePage() {
         ? loadExtras(id, { accessories: [] })
         : undefined;
 
-    Promise.all([
-      api.getVehicle(id),
-      api.calculateOnRoadCost(
+    api
+      .loadQuotePage(
         id,
         locationId,
         includeOptional,
@@ -76,9 +75,8 @@ export function OnRoadQuotePage() {
         policyChoices.usageType,
         policyChoices.selectedOfferIds,
         policyChoices.forgoneOfferIds
-      ),
-    ])
-      .then(([nextVehicle, breakdown]) => {
+      )
+      .then(({ vehicle: nextVehicle, breakdown }) => {
         if (cancelled) {
           return;
         }

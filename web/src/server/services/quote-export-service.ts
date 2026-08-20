@@ -2,7 +2,6 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import ExcelJS from "exceljs";
 
-import { findActiveVehicleById } from "../db/repositories/catalog";
 import { calculateOnRoad } from "./catalog-service";
 import { persistCalculatedQuote, type QuoteSaveRequest } from "./quote-history-service";
 import { fillQuoteWorkbook, normalizeLanguage } from "./quote-sheet-fill";
@@ -12,11 +11,7 @@ export async function exportQuote(body: QuoteSaveRequest) {
   if (!calcResult || "error" in calcResult) {
     return null;
   }
-  const calc = calcResult.data;
-  const vehicleRow = await findActiveVehicleById(body.vehicleId);
-  if (!vehicleRow) {
-    return null;
-  }
+  const { data: calc, vehicleRow } = calcResult;
 
   await persistCalculatedQuote(body, calc, vehicleRow.brand.code);
 

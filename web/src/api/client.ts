@@ -107,6 +107,30 @@ export const api = {
   getDealerPolicy() {
     return request<DealerPolicy>("/api/dealer-policy");
   },
+  loadQuotePage(
+    vehicleId: number,
+    locationId: number,
+    includeOptionalInsurance: boolean,
+    categoryId?: number,
+    extras?: QuoteExtras,
+    usageType?: UsageType,
+    selectedOfferIds?: string[],
+    forgoneOfferIds?: string[]
+  ) {
+    return request<{ vehicle: VehicleDetail; breakdown: CostBreakdown }>("/api/quote-load", {
+      method: "POST",
+      body: JSON.stringify({
+        vehicleId,
+        locationId,
+        categoryId,
+        includeOptionalInsurance,
+        usageType,
+        selectedOfferIds,
+        forgoneOfferIds,
+        ...(extras ? extrasPayload(extras) : {}),
+      }),
+    });
+  },
   calculateOnRoadCost(
     vehicleId: number,
     locationId: number,

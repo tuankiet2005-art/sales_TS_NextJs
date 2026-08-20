@@ -22,10 +22,12 @@ type PolicySnapshot = {
 
 let memoryOverrides: Partial<Record<keyof typeof APP_SETTING_KEYS, unknown>> = {};
 let cachedSnapshot: PolicySnapshot | null = null;
+let loadingSnapshot: Promise<PolicySnapshot> | null = null;
 
 export function resetPolicyStoreForTests() {
   memoryOverrides = {};
   cachedSnapshot = null;
+  loadingSnapshot = null;
 }
 
 export function setPolicyOverrideForTests(
@@ -38,6 +40,7 @@ export function setPolicyOverrideForTests(
     memoryOverrides[key] = value;
   }
   cachedSnapshot = null;
+  loadingSnapshot = null;
 }
 
 async function readSettingPayload<T>(settingKey: string): Promise<T | null> {
@@ -66,19 +69,24 @@ export async function loadPolicySnapshot(): Promise<PolicySnapshot> {
   if (cachedSnapshot) {
     return cachedSnapshot;
   }
+  if (!loadingSnapshot) {
+    loadingSnapshot = (async () => {
+      const [feeOverride, dealerOverride, plateOverride] = await Promise.all([
+        readSettingPayload<FeePolicyRecord>(APP_SETTING_KEYS.feePolicy),
+        readSettingPayload<DealerPolicyRecord>(APP_SETTING_KEYS.dealerPolicy),
+        readSettingPayload<PlateRegionsRecord>(APP_SETTING_KEYS.plateRegions),
+      ]);
 
-  const [feeOverride, dealerOverride, plateOverride] = await Promise.all([
-    readSettingPayload<FeePolicyRecord>(APP_SETTING_KEYS.feePolicy),
-    readSettingPayload<DealerPolicyRecord>(APP_SETTING_KEYS.dealerPolicy),
-    readSettingPayload<PlateRegionsRecord>(APP_SETTING_KEYS.plateRegions),
-  ]);
-
-  cachedSnapshot = {
-    feePolicy: feeOverride ?? loadDefaultFeePolicy(),
-    dealerPolicy: dealerOverride ?? loadDefaultDealerPolicy(),
-    plateRegions: plateOverride ?? loadDefaultPlateRegions(),
-  };
-  return cachedSnapshot;
+      const snapshot: PolicySnapshot = {
+        feePolicy: feeOverride ?? loadDefaultFeePolicy(),
+        dealerPolicy: dealerOverride ?? loadDefaultDealerPolicy(),
+        plateRegions: plateOverride ?? loadDefaultPlateRegions(),
+      };
+      cachedSnapshot = snapshot;
+      return snapshot;
+    })();
+  }
+  return loadingSnapshot;
 }
 
 export async function getFeePolicy(): Promise<FeePolicyRecord> {
@@ -95,4 +103,5 @@ export async function getPlateRegions(): Promise<PlateRegionsRecord> {
 
 export function invalidatePolicyCache() {
   cachedSnapshot = null;
+  loadingSnapshot = null;
 }
