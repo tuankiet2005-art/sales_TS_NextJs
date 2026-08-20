@@ -35,7 +35,8 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 
 ## Work Guidance
 
-- Keep fee math in `src/server/domain/`; route handlers stay thin
+- Fee math in `src/server/domain/`; route handlers stay thin
+- Public catalog list/detail prices use dealer policy (`privateDiscountPercent`) via `mapVehicleSummaryWithPolicy`, not legacy `vehicles.discount_amount` columns
 - Use `runtime = 'nodejs'` on Excel export and heavy DB routes
 - Catalog list GETs (`/api/brands`, `/api/vehicle-categories`, `/api/locations`, `/api/dealer-policy`) send `Cache-Control: public, max-age=60`. Brands, categories, and locations also cache in `catalog-service` until `invalidateCatalogCache()` from catalog admin writes
 - AppShell waits to read the operator token before showing login; a signed-in reload must not flash the login screen

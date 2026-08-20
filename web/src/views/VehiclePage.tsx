@@ -10,6 +10,7 @@ import { useI18n } from "../i18n/LanguageContext";
 import type { Lang } from "../i18n/translations";
 import { formatVnd } from "../lib/format";
 import { codedOption } from "../lib/labels";
+import { priceVehicleFromPolicy } from "../lib/dealerPricing";
 import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
 import { colorPhoto } from "../lib/vehicleColor";
 import { defaultPolicyChoices, loadPolicyChoices, localizedPolicyText, savePolicyChoices } from "../lib/quotePolicy";
@@ -117,6 +118,12 @@ export function VehiclePage() {
   }
 
   const specEntries = Object.entries(vehicle.specifications ?? {});
+  const displayPricing = policy
+    ? priceVehicleFromPolicy(policy, vehicle.listPrice, usageType, selectedOfferIds, forgoneOfferIds)
+    : {
+        salePrice: vehicle.salePrice ?? vehicle.listPrice,
+        discountAmount: vehicle.discountAmount ?? 0,
+      };
 
   return (
     <div className="min-h-screen">
@@ -143,13 +150,15 @@ export function VehiclePage() {
                 {vehicle.model} · {vehicle.year} · {codedOption(vehicle.vehicleType, t)}
               </p>
               <div className="mt-5 rounded-2xl bg-white px-5 py-4 shadow-card">
-                <p className="text-xs uppercase tracking-[0.16em] text-ink/45">{t("listPrice")}</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-ink/45">{t("salePrice")}</p>
                 <p className="font-display text-3xl text-copper">
-                  {formatVnd(vehicle.salePrice ?? vehicle.listPrice)}
+                  {formatVnd(displayPricing.salePrice)}
                 </p>
                 <p className="mt-1 text-sm text-ink/50">
                   {t("listPrice")}: {formatVnd(vehicle.listPrice)}
-                  {vehicle.discountAmount ? ` · ${t("discount")}: ${formatVnd(vehicle.discountAmount)}` : ""}
+                  {displayPricing.discountAmount > 0
+                    ? ` · ${t("discount")}: ${formatVnd(displayPricing.discountAmount)}`
+                    : ""}
                 </p>
               </div>
             </div>

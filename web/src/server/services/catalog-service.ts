@@ -16,7 +16,7 @@ import {
   mapCostBreakdown,
   mapLocation,
   mapVehicleDetail,
-  mapVehicleSummary,
+  mapVehicleSummaryWithPolicy,
 } from "../mappers";
 import { getDealerPolicy, loadPolicySnapshot } from "../config/policy-store";
 import { calculateOnRoadCost } from "../domain/on-road-cost";
@@ -120,16 +120,16 @@ export async function searchVehicles(params: {
   brandCode?: string;
   categoryId?: number;
 }) {
-  const rows = await searchActiveVehicles(params);
-  return rows.map(mapVehicleSummary);
+  const [rows, policy] = await Promise.all([searchActiveVehicles(params), getDealerPolicy()]);
+  return rows.map((row) => mapVehicleSummaryWithPolicy(row, policy));
 }
 
 export async function getVehicle(id: number) {
-  const row = await findActiveVehicleById(id);
+  const [row, policy] = await Promise.all([findActiveVehicleById(id), getDealerPolicy()]);
   if (!row) {
     return null;
   }
-  return mapVehicleDetail(row);
+  return mapVehicleDetail(row, policy);
 }
 
 export async function getDealerPolicyResponse() {
@@ -254,7 +254,10 @@ export async function calculateOnRoad(
 }
 
 export async function loadQuotePageData(body: CalculateOnRoadBody) {
-  const vehicleRow = await findActiveVehicleById(body.vehicleId);
+  const [vehicleRow, policy] = await Promise.all([
+    findActiveVehicleById(body.vehicleId),
+    getDealerPolicy(),
+  ]);
   if (!vehicleRow) {
     return null;
   }
@@ -263,7 +266,7 @@ export async function loadQuotePageData(body: CalculateOnRoadBody) {
     return calcResult;
   }
   return {
-    vehicle: mapVehicleDetail(vehicleRow),
+    vehicle: mapVehicleDetail(vehicleRow, policy),
     breakdown: calcResult.data,
   };
 }

@@ -309,7 +309,7 @@ INSERT INTO vehicles (
  'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80',
  '{"Market":"Vietnam","Source":"Bang bao gia"}', TRUE),
 (1, 3, 'Attrage', 'Attrage CVT Premium', 5, 'ICE', 2024, 1193, 'Gasoline', 'CVT',
- 490000000, 59000000, 431000000, 490000000, 20000000, 5000000, 400000, 140000, 'Trắng', 'Trắng,Đỏ,Xám,Đen',
+ 490000000, 24500000, 465500000, 490000000, 20000000, 5000000, 400000, 140000, 'Trắng', 'Trắng,Đỏ,Xám,Đen',
  'T1/2025', '3 năm/100.000km', 'Bao tay lái; 10L nhiên liệu', 'Attrage Premium',
  'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80',
  '{"Market":"Vietnam","Source":"Bang bao gia"}', TRUE),

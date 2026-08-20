@@ -11,7 +11,9 @@ import type { Brand as DbBrand, Location as DbLocation, Vehicle, vehicleCategori
 
 type VehicleCategory = typeof vehicleCategories.$inferSelect;
 import type { OnRoadCostResult } from "./domain/types";
+import { priceVehicle } from "./domain/dealer-policy";
 import { toNumber } from "./domain/money";
+import type { DealerPolicyRecord } from "./config/types";
 
 function num(value: string | number | null | undefined): number {
   return value == null ? 0 : Number(value);
@@ -57,16 +59,6 @@ export function mapLocation(location: DbLocation): Location {
   };
 }
 
-function salePrice(vehicle: Vehicle): number | undefined {
-  if (vehicle.salePrice != null) {
-    return num(vehicle.salePrice);
-  }
-  if (vehicle.discountAmount != null) {
-    return num(vehicle.listPrice) - num(vehicle.discountAmount);
-  }
-  return undefined;
-}
-
 export function mapVehicleSummary(row: {
   vehicle: Vehicle;
   brand: DbBrand;
@@ -83,10 +75,26 @@ export function mapVehicleSummary(row: {
     seats: vehicle.seats,
     vehicleType: vehicle.vehicleType ?? "",
     listPrice: num(vehicle.listPrice),
-    discountAmount: vehicle.discountAmount != null ? num(vehicle.discountAmount) : undefined,
-    salePrice: salePrice(vehicle),
     imageUrl: vehicleImageUrl(vehicle.imageUrl ?? ""),
     category: mapCategory(category),
+  };
+}
+
+/** Public catalog prices follow dealer policy (private usage), not legacy DB discount columns. */
+export function mapVehicleSummaryWithPolicy(
+  row: {
+    vehicle: Vehicle;
+    brand: DbBrand;
+    category: VehicleCategory;
+  },
+  policy: DealerPolicyRecord,
+): VehicleSummary {
+  const summary = mapVehicleSummary(row);
+  const pricing = priceVehicle(policy, summary.listPrice, "PRIVATE", [], [], null);
+  return {
+    ...summary,
+    discountAmount: pricing.discountAmount,
+    salePrice: pricing.salePrice,
   };
 }
 
@@ -109,12 +117,15 @@ function resolveColorPhotoMap(raw: Record<string, string>): Record<string, strin
   return resolved;
 }
 
-export function mapVehicleDetail(row: {
-  vehicle: Vehicle;
-  brand: DbBrand;
-  category: VehicleCategory;
-}): VehicleDetail {
-  const summary = mapVehicleSummary(row);
+export function mapVehicleDetail(
+  row: {
+    vehicle: Vehicle;
+    brand: DbBrand;
+    category: VehicleCategory;
+  },
+  policy?: DealerPolicyRecord,
+): VehicleDetail {
+  const summary = policy ? mapVehicleSummaryWithPolicy(row, policy) : mapVehicleSummary(row);
   const vehicle = row.vehicle;
   return {
     ...summary,
