@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         model,
         vehicleType,
         page,
-        pageSize: pageSize ?? 10,
+        pageSize: pageSize ?? 12,
       }),
       200,
       { "Cache-Control": CATALOG_LIST_CACHE_CONTROL },

@@ -3,16 +3,16 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useI18n } from "../i18n/LanguageContext";
 import { motionInteractive } from "../lib/motion";
 
-const PAGE_SIZE = 10;
+const CATALOG_PAGE_SIZE = 12;
 
 export function catalogPageSize(): number {
-  return PAGE_SIZE;
+  return CATALOG_PAGE_SIZE;
 }
 
 export function Pagination({
   page,
   total,
-  pageSize = PAGE_SIZE,
+  pageSize = CATALOG_PAGE_SIZE,
   onPageChange,
 }: {
   page: number;
