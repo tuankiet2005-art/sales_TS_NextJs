@@ -131,7 +131,7 @@ export const api = {
       params.set("type", options.vehicleType);
     }
     params.set("page", String(options.page ?? 1));
-    params.set("pageSize", String(options.pageSize ?? 10));
+    params.set("pageSize", String(options.pageSize ?? 12));
     return request<Paginated<VehicleSummary> & { filterOptions: { models: string[]; vehicleTypes: string[] } }>(
       `/api/vehicles/search?${params.toString()}`,
       init,

@@ -40,7 +40,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - Public catalog list/detail prices use dealer policy (`privateDiscountPercent`) via `mapVehicleSummaryWithPolicy`, not legacy `vehicles.discount_amount` columns
 - Use `runtime = 'nodejs'` on Excel export and heavy DB routes
 - Catalog list GETs (`/api/brands`, `/api/vehicle-categories`, `/api/locations`, `/api/dealer-policy`, `/api/catalog`, `/api/vehicles/search`, `/api/vehicles/[id]`, `/api/brands/[code]`) send `Cache-Control: public, max-age=60` except categories and locations use `max-age=3600, stale-while-revalidate=86400`. Brands, categories, locations, and brand-by-code also cache in `catalog-service` until `invalidateCatalogCache()` from catalog admin writes
-- Home catalog loads categories on a fast path (`sessionStorage` + `/api/vehicle-categories`) so filter chips render before the vehicle list finishes; vehicles load via paginated `GET /api/vehicles/search?page=&pageSize=10` (10 per page) with server-side filters
+- Home catalog loads categories on a fast path (`sessionStorage` + `/api/vehicle-categories`) so filter chips render before the vehicle list finishes; vehicles load via paginated `GET /api/vehicles/search?page=&pageSize=12` (12 per page) with server-side filters
 - Catalog vehicle **list** queries select only card fields (no `specifications`, `color_photos`, `gifts` blobs); detail still loads full row on `GET /api/vehicles/[id]`
 - Quote history list omits heavy `payload` JSON; pagination is 10 per page; opening a quote fetches full row via `GET /api/quotes/[id]`
 - Data-fetch benchmark: `npx tsx scripts/bench-data-fetch.ts`
@@ -55,12 +55,14 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - Quote page: Price left and Accessories right are equal columns from `md` up; they stack on phones. The Excel quote sheet stays desktop-width and scrolls sideways on small screens
 - Header: compact bar + hamburger below `lg`; language switcher stays on the bar
 - Do not add the full shadcn component kit unless asked
+- Favicon: drop a PNG, JPG, WebP, GIF, or SVG in `public/brand/favicon-drop/`. `npm run sync:favicon` writes `src/app/icon.png` (tab) and `src/app/apple-icon.png`, removes default `src/app/favicon.ico`, commits, and pushes. Local-only preview: `npm run apply:favicon`
 
 ## Verification
 
 - `npm run build` from `web/` — TypeScript skips `*.test.ts` (`tsconfig.json` exclude); Vitest still runs them
 - `npm test` from `web/` — policy loaders (`src/server/config/policy.test.ts`), domain fee math (`src/server/domain/*.test.ts`), Excel fill (`src/server/services/quote-sheet-fill.test.ts`), quote history reuse (`src/server/services/quote-history-rules.test.ts`), PDF color rewrite (`src/lib/cssColor.test.ts`), vehicle image import (`src/server/catalog/vehicle-import.test.ts`); optional Neon integration in `src/server/db/schema.test.ts` when `DATABASE_URL` is set
 - `npm run import:catalog` — operator import from registration-photo folder; optional `--dry-run` or `--source <path>`
+- `npm run sync:favicon` — after dropping an image in `public/brand/favicon-drop/` (apply + commit + push)
 
 ## Child DOX Index
 

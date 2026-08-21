@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
-import { Pagination, catalogPageSize } from "../components/Pagination";
+import { Pagination } from "../components/Pagination";
 import { useI18n } from "../i18n/LanguageContext";
 import { formatVnd } from "../lib/format";
 import { motionInteractive, motionStagger } from "../lib/motion";
@@ -13,7 +13,7 @@ import { saveExtras } from "../lib/quoteExtras";
 import { savePolicyChoices } from "../lib/quotePolicy";
 import type { QuoteExtras, QuoteHistory } from "../types";
 
-const PAGE_SIZE = catalogPageSize();
+const PAGE_SIZE = 10;
 
 export function QuoteHistoryPage() {
   const { t, lang } = useI18n();
