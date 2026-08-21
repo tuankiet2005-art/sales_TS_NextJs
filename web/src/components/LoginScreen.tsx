@@ -20,7 +20,7 @@ export function LoginScreen() {
     setError(null);
     try {
       const session = await api.login(username, password);
-      signIn(session.token);
+      signIn(session.token, session.role);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("login.invalid"));
     } finally {

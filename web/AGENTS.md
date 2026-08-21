@@ -26,8 +26,9 @@ Copy `web/.env.example` to `web/.env.local`. Never commit `.env.local`. Quote `A
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | Neon Postgres connection string |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Operator login for `/api/admin/**` |
-| `ADMIN_TOKEN_SECRET` | HMAC secret for admin bearer token |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Admin login (`admin` role) for `/api/admin/**` and catalog UI |
+| `OPERATOR_USERNAME` / `OPERATOR_PASSWORD` | Optional sales login (`sales` role) — quote/history only; omit for single admin account |
+| `ADMIN_TOKEN_SECRET` | HMAC secret for bearer token |
 
 ### API
 
@@ -48,6 +49,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - Excel export fills `src/server/assets/bang-bao-gia.xlsx` by labels on `vehicles.quote_sheet_name` (never hardcoded cells on sheet 0); unused tabs stay hidden
 - PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`/`lab` (canvas pixel sampling converts modern color functions to `rgb`/`rgba`)
 - Default UI language Vietnamese (`vi`); match `frontend/src/i18n/` behavior when UI is ported
+- Auth: HMAC bearer tokens with roles — `admin` (catalog + quotes) or `sales` (quotes only). Login via `POST /api/auth/login`. Operator APIs (`/api/quotes/**`, `/api/calculate-on-road-cost`, `/api/quote-load`, `/api/export-quote`) require a valid token; `/api/admin/**` requires the `admin` role. Catalog reference GETs stay public for cache parity
 - Layout is mobile-first: phones stack, tablets use two columns where the contract needs them, desktop keeps the wide catalog
 - UI motion is CSS-first (`globals.css` + `lib/motion.ts` + `PageMotion`); no animation library; keep transitions smooth and respect `prefers-reduced-motion`
 - Quote page: Price left and Accessories right are equal columns from `md` up; they stack on phones. The Excel quote sheet stays desktop-width and scrolls sideways on small screens

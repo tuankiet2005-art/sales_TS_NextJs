@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest } from "next/server";
 
 import { error, json, notFound } from "@/server/http";
+import { requireOperator } from "@/server/auth/require-operator";
 import {
   getQuoteFilterOptions,
   saveQuoteFromRequest,
@@ -10,6 +11,10 @@ import {
 } from "@/server/services/quote-history-service";
 
 export async function GET(request: NextRequest) {
+  const denied = requireOperator(request);
+  if (denied) {
+    return denied;
+  }
   const params = request.nextUrl.searchParams;
   if (params.get("filters") === "1") {
     return json(await getQuoteFilterOptions());
@@ -31,6 +36,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
+  const denied = requireOperator(request);
+  if (denied) {
+    return denied;
+  }
   const body = await request.json();
   if (!body?.vehicleId || !body?.locationId) {
     return error("vehicleId and locationId are required");

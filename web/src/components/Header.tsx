@@ -44,7 +44,7 @@ function NavItem({
 
 export function Header() {
   const { t } = useI18n();
-  const { signedIn, signOut } = useAdminAuth();
+  const { signedIn, signOut, isAdmin } = useAdminAuth();
   const params = useParams() ?? {};
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -70,9 +70,11 @@ export function Header() {
         <NavItem href="/quotes" stacked={stacked} onClick={() => setMenuOpen(false)}>
           {t("quoteHistory.nav")}
         </NavItem>
-        <NavItem href="/admin" stacked={stacked} onClick={() => setMenuOpen(false)}>
-          {t("admin.nav")}
-        </NavItem>
+        {isAdmin && (
+          <NavItem href="/admin" stacked={stacked} onClick={() => setMenuOpen(false)}>
+            {t("admin.nav")}
+          </NavItem>
+        )}
         <button
           type="button"
           onClick={() => {

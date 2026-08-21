@@ -1,3 +1,5 @@
+export type OperatorRole = "admin" | "sales";
+
 export interface Brand {
   id: number;
   code: string;

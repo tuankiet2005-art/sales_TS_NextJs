@@ -1,10 +1,13 @@
-import { unauthorized } from "../http";
-import { isAuthorizedAdmin } from "./admin-auth";
+import { forbidden, unauthorized } from "../http";
+import { resolveSession } from "./admin-auth";
 
 export function requireAdmin(request: Request) {
-  const header = request.headers.get("authorization");
-  if (!isAuthorizedAdmin(header)) {
+  const session = resolveSession(request.headers.get("authorization"));
+  if (!session) {
     return unauthorized("Invalid username or password");
+  }
+  if (session.role !== "admin") {
+    return forbidden("Admin access required");
   }
   return null;
 }

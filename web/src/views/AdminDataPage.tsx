@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
 import { api, UnauthorizedError } from "../api/client";
+import { useAdminAuth } from "../auth/AdminAuthContext";
 import { useI18n } from "../i18n/LanguageContext";
 import type { Lang } from "../i18n/translations";
 import { getAdminCatalog, invalidateAdminCatalog, type AdminCatalogKey } from "../lib/adminCatalogCache";
@@ -151,6 +152,7 @@ const TAB_TO_CACHE: Record<CatalogTab, AdminCatalogKey> = {
 
 export function AdminDataPage() {
   const { t, lang } = useI18n();
+  const { ready, isAdmin } = useAdminAuth();
   const [tab, setTab] = useState<Tab>("vehicles");
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -559,6 +561,17 @@ export function AdminDataPage() {
       );
     });
   }, [rows, catalogQuery, catalogFilters, tab, lang]);
+
+  if (ready && !isAdmin) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <main className="mx-auto max-w-page px-4 py-10 sm:px-6">
+          <p className="text-sm text-ink/70">{t("admin.forbidden")}</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">

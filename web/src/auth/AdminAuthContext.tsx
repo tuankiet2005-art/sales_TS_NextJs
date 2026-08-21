@@ -1,11 +1,20 @@
 "use client";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ADMIN_AUTH_EVENT, clearAdminToken, isAdminSignedIn, setAdminToken } from "../lib/adminAuth";
+import type { OperatorRole } from "../types";
+import {
+  ADMIN_AUTH_EVENT,
+  clearAdminToken,
+  getOperatorRole,
+  isAdminSignedIn,
+  setAdminSession,
+} from "../lib/adminAuth";
 
 interface AdminAuthContextValue {
   ready: boolean;
   signedIn: boolean;
-  signIn: (token: string) => void;
+  role: OperatorRole | null;
+  isAdmin: boolean;
+  signIn: (token: string, role: OperatorRole) => void;
   signOut: () => void;
 }
 
@@ -14,10 +23,12 @@ const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [role, setRole] = useState<OperatorRole | null>(null);
 
   useEffect(() => {
     function sync() {
       setSignedIn(isAdminSignedIn());
+      setRole(getOperatorRole());
       setReady(true);
     }
     sync();
@@ -33,18 +44,22 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     () => ({
       ready,
       signedIn,
-      signIn(token) {
-        setAdminToken(token);
+      role,
+      isAdmin: role === "admin",
+      signIn(token, nextRole) {
+        setAdminSession(token, nextRole);
         setSignedIn(true);
+        setRole(nextRole);
         setReady(true);
       },
       signOut() {
         clearAdminToken();
         setSignedIn(false);
+        setRole(null);
         setReady(true);
       },
     }),
-    [ready, signedIn]
+    [ready, signedIn, role],
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

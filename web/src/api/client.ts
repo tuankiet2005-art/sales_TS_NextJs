@@ -24,7 +24,7 @@ import type {
   VehicleSummary,
 } from "../types";
 import { extrasPayload } from "../lib/quoteExtras";
-import { clearAdminToken, getAdminToken } from "../lib/adminAuth";
+import { clearAdminToken, getAdminToken, isPublicApiPath } from "../lib/adminAuth";
 
 const API_BASE = "";
 
@@ -48,7 +48,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers["Content-Type"] = "application/json";
   }
   const token = getAdminToken();
-  if (token && (path.startsWith("/api/admin") || path.startsWith("/api/auth"))) {
+  if (token && !isPublicApiPath(path)) {
     headers.Authorization = `Bearer ${token}`;
   }
   const response = await fetch(apiUrl(path), {
@@ -71,7 +71,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   login(username: string, password: string) {
-    return request<{ token: string; username: string }>("/api/auth/login", {
+    return request<{ token: string; username: string; role: "admin" | "sales" }>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
@@ -225,9 +225,14 @@ export const api = {
     forgoneOfferIds?: string[];
     breakdown?: CostBreakdown;
   }) {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const token = getAdminToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
     const response = await fetch(apiUrl("/api/export-quote"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         ...payload,
         extras: undefined,
@@ -236,6 +241,10 @@ export const api = {
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        clearAdminToken();
+        throw new UnauthorizedError(body.message ?? "Sign in required");
+      }
       throw new Error(body.message ?? `Export failed (${response.status})`);
     }
     return response.blob();

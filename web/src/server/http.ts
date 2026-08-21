@@ -18,6 +18,10 @@ export function unauthorized(message = "Sign in required") {
   return error(message, 401);
 }
 
+export function forbidden(message = "Forbidden") {
+  return error(message, 403);
+}
+
 export function notFound(resource: string, id?: string | number) {
   const label = id == null ? resource : `${resource} ${id}`;
   return error(`${label} not found`, 404);
