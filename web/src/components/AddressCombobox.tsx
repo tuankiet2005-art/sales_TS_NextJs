@@ -28,24 +28,29 @@ export function AddressCombobox({
   const { t, lang } = useI18n();
   const [districts, setDistricts] = useState<LocationDistrict[]>([]);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [districtLoadError, setDistrictLoadError] = useState(false);
 
   useEffect(() => {
     if (!locationId) {
       setDistricts([]);
+      setDistrictLoadError(false);
       return;
     }
     let cancelled = false;
     setLoadingDistricts(true);
+    setDistrictLoadError(false);
     api
       .getLocationDistricts(locationId)
       .then((rows) => {
         if (!cancelled) {
           setDistricts(rows);
+          setDistrictLoadError(false);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setDistricts([]);
+          setDistrictLoadError(true);
         }
       })
       .finally(() => {
@@ -57,6 +62,8 @@ export function AddressCombobox({
       cancelled = true;
     };
   }, [locationId]);
+
+  const districtDisabled = !locationId || loadingDistricts;
 
   const heightClass = compact ? "h-11 sm:h-8" : "h-12";
 
@@ -76,25 +83,34 @@ export function AddressCombobox({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/50" />
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink/50" />
       </label>
       <label className="relative block">
         <select
           value={districtId ?? ""}
           onChange={(event) => onDistrictChange(Number(event.target.value))}
-          disabled={!locationId || loadingDistricts || districts.length === 0}
+          disabled={districtDisabled}
           className={`${selectClass} ${heightClass} ${compact ? "text-base sm:text-sm" : ""}`}
           aria-label={t("districtCounty")}
+          aria-busy={loadingDistricts}
         >
-          <option value="">{t("districtCounty")}</option>
+          <option value="">
+            {loadingDistricts ? t("loadingDistricts") : t("districtCounty")}
+          </option>
           {districts.map((item) => (
             <option key={item.id} value={item.id}>
               {districtLabel(item, lang)}
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/50" />
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink/50" />
       </label>
+      {districtLoadError && (
+        <p className="text-xs text-red-700 sm:col-span-2">{t("districtLoadError")}</p>
+      )}
+      {!districtLoadError && !loadingDistricts && locationId && districts.length === 0 && (
+        <p className="text-xs text-ink/55 sm:col-span-2">{t("districtListEmpty")}</p>
+      )}
     </div>
   );
 }

@@ -11,7 +11,9 @@
     "test:watch": "vitest",
     "import:catalog": "tsx src/server/catalog/run-vehicle-import.ts",
     "apply:favicon": "tsx scripts/apply-favicon.ts",
-    "sync:favicon": "tsx scripts/sync-favicon.ts"
+    "sync:favicon": "tsx scripts/sync-favicon.ts",
+    "generate:district-seed": "node scripts/generate-district-seed.mjs",
+    "seed:location-districts": "node scripts/seed-location-districts.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
