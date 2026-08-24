@@ -86,7 +86,7 @@ export function invalidateCatalogCache() {
     delete brandByCodeCache[key];
   }
   for (const key of Object.keys(locationDistrictsCache)) {
-    delete locationDistrictsCache[key];
+    delete locationDistrictsCache[Number(key)];
   }
 }
 

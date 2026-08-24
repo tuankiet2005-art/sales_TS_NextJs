@@ -80,7 +80,7 @@ export function VehiclePage() {
       .finally(() => setLoading(false));
   }, [id, brandCode]);
 
-  function goToQuote(event: FormEvent) {
+  async function goToQuote(event: FormEvent) {
     event.preventDefault();
     if (!id || !locationId || !districtId) {
       return;
@@ -91,6 +91,7 @@ export function VehiclePage() {
     const customerAddress = composeCustomerAddress(selectedDistrict, selectedLocation, lang);
     const params = new URLSearchParams();
     params.set("locationId", String(locationId));
+    params.set("districtId", String(districtId));
     if (categoryId) {
       params.set("categoryId", String(categoryId));
     }
@@ -253,10 +254,15 @@ export function VehiclePage() {
               />
 
               <label className="mt-5 block text-sm font-medium">{t("customerAddress")}</label>
-              <input
-                value={customerAddress}
-                onChange={(event) => setCustomerAddress(event.target.value)}
-                className="mt-1 h-12 w-full rounded-xl border border-ink/10 bg-paper px-3"
+              <AddressCombobox
+                locations={locations}
+                locationId={locationId}
+                districtId={districtId}
+                onLocationChange={(nextLocationId) => {
+                  setLocationId(nextLocationId);
+                  setDistrictId(undefined);
+                }}
+                onDistrictChange={setDistrictId}
               />
 
               <label className="mt-5 block text-sm font-medium">{t("vehicleColor")}</label>
@@ -284,9 +290,6 @@ export function VehiclePage() {
                     ))}
                 </select>
               </div>
-
-              <label className="mt-5 block text-sm font-medium">{t("provinceCity")}</label>
-              <ProvincePicker locations={locations} value={locationId} onChange={setLocationId} />
 
               <p className="mt-5 text-sm font-medium">{t("dealerPolicyTitle")}</p>
               {policy && (
@@ -344,7 +347,7 @@ export function VehiclePage() {
         <div className="sticky bottom-0 z-20 -mx-4 mt-5 border-t border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
           <button
             type="submit"
-            disabled={!locationId}
+            disabled={!locationId || !districtId}
             className={`h-12 w-full rounded-xl bg-ink text-sm font-semibold text-paper disabled:opacity-60 ${motionInteractive} ${motionPress} hover:bg-forest`}
           >
             {t("calculateButton")}
