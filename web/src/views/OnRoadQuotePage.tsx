@@ -1,9 +1,10 @@
 "use client";
 import { ArrowLeft, FileSpreadsheet, FileText, Languages, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "../api/client";
+import { AddressCombobox } from "../components/AddressCombobox";
 import { Header } from "../components/Header";
 import { PageLoadingScreen } from "../components/LoadingState";
 import { QuoteAccessoriesPanel, QuotePricePanel } from "../components/QuoteAdjustments";
@@ -11,11 +12,13 @@ import { QuoteSheet } from "../components/QuoteSheet";
 import { useI18n } from "../i18n/LanguageContext";
 import { languages, type Lang } from "../i18n/translations";
 import { downloadQuotePdf } from "../lib/exportQuotePdf";
+import { composeCustomerAddress, matchDistrictFromAddress } from "../lib/customerAddress";
+import { loadLocationCache, saveLocationCache } from "../lib/catalogReferenceCache";
 import { motionInteractive, motionPress } from "../lib/motion";
 import { extrasFromQuote, extrasFromVehicle, extrasStorageKey, loadExtras, saveExtras } from "../lib/quoteExtras";
 import { loadVehicleCache } from "../lib/vehicleCache";
 import { defaultPolicyChoices, loadPolicyChoices } from "../lib/quotePolicy";
-import type { CostBreakdown as CostBreakdownType, QuoteExtras, VehicleDetail } from "../types";
+import type { CostBreakdown as CostBreakdownType, Location, LocationDistrict, QuoteExtras, VehicleDetail } from "../types";
 
 export function OnRoadQuotePage() {
   const params = useParams() ?? {};
@@ -31,10 +34,15 @@ export function OnRoadQuotePage() {
   }, [lang]);
 
   const locationId = Number(searchParams?.get("locationId"));
+  const initialDistrictId = searchParams?.get("districtId") ? Number(searchParams.get("districtId")) : undefined;
+  const initialAddress = searchParams?.get("address") ?? "";
   const categoryId = searchParams?.get("categoryId") ? Number(searchParams.get("categoryId")) : undefined;
   const includeOptional = searchParams?.get("optional") === "1";
   const [customerName, setCustomerName] = useState(searchParams?.get("name") ?? "");
-  const [customerAddress, setCustomerAddress] = useState(searchParams?.get("address") ?? "");
+  const [locations, setLocations] = useState<Location[]>(() => loadLocationCache() ?? []);
+  const [quoteLocationId, setQuoteLocationId] = useState(locationId);
+  const [districtId, setDistrictId] = useState<number | undefined>(initialDistrictId);
+  const [districts, setDistricts] = useState<LocationDistrict[]>([]);
   const color = searchParams?.get("color") ?? "";
   const usageType = searchParams?.get("usage") === "commercial" ? "COMMERCIAL" : "PRIVATE";
   const policyChoices = id
@@ -51,6 +59,54 @@ export function OnRoadQuotePage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const detailsHref = `/brand/${brandCode}/vehicles/${id}`;
+
+  useEffect(() => {
+    api.getLocations().then((rows) => {
+      setLocations(rows);
+      saveLocationCache(rows);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!quoteLocationId) {
+      setDistricts([]);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getLocationDistricts(quoteLocationId)
+      .then((rows) => {
+        if (!cancelled) {
+          setDistricts(rows);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDistricts([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [quoteLocationId]);
+
+  useEffect(() => {
+    if (initialDistrictId || !initialAddress || !quoteLocationId || districts.length === 0) {
+      return;
+    }
+    const location = locations.find((item) => item.id === quoteLocationId);
+    const matched = matchDistrictFromAddress(initialAddress, districts, location, lang);
+    if (matched) {
+      setDistrictId(matched.id);
+    }
+  }, [districts, initialAddress, initialDistrictId, locations, quoteLocationId, lang]);
+
+  const customerAddress = useMemo(() => {
+    const location = locations.find((item) => item.id === quoteLocationId);
+    const district = districts.find((item) => item.id === districtId);
+    const composed = composeCustomerAddress(district, location, lang);
+    return composed || initialAddress;
+  }, [districtId, districts, initialAddress, lang, locations, quoteLocationId]);
 
   useEffect(() => {
     if (!id || !locationId) {
@@ -119,7 +175,7 @@ export function OnRoadQuotePage() {
   }, [id, brandCode, locationId, categoryId, includeOptional, t]);
 
   async function exportQuote() {
-    if (!id || !locationId) {
+    if (!id || !quoteLocationId) {
       setError(t("missingQuoteParams"));
       return;
     }
@@ -172,7 +228,7 @@ export function OnRoadQuotePage() {
   function quotePayload(name: string) {
     return {
       vehicleId: id,
-      locationId,
+      locationId: quoteLocationId,
       categoryId,
       includeOptionalInsurance: includeOptional,
       customerName: name,
@@ -187,7 +243,7 @@ export function OnRoadQuotePage() {
   }
 
   async function recalculate() {
-    if (!id || !locationId) {
+    if (!id || !quoteLocationId) {
       return;
     }
     setCalculating(true);
@@ -196,7 +252,7 @@ export function OnRoadQuotePage() {
     try {
       const breakdown = await api.calculateOnRoadCost(
         id,
-        locationId,
+        quoteLocationId,
         includeOptional,
         categoryId,
         extras,
@@ -270,7 +326,7 @@ export function OnRoadQuotePage() {
 
         {result && (
           <section className="mt-5 space-y-3 rounded-2xl border border-ink/8 bg-white p-3 shadow-card print:hidden sm:p-4">
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-3">
               <label className="block text-[11px] font-medium text-ink/75">
                 {t("customerName")}
                 <input
@@ -279,14 +335,20 @@ export function OnRoadQuotePage() {
                   className="mt-1 h-11 w-full rounded-md border border-ink/10 bg-paper px-2 text-base sm:h-8 sm:text-sm"
                 />
               </label>
-              <label className="block text-[11px] font-medium text-ink/75">
+              <div className="block text-[11px] font-medium text-ink/75">
                 {t("customerAddress")}
-                <input
-                  value={customerAddress}
-                  onChange={(event) => setCustomerAddress(event.target.value)}
-                  className="mt-1 h-11 w-full rounded-md border border-ink/10 bg-paper px-2 text-base sm:h-8 sm:text-sm"
+                <AddressCombobox
+                  compact
+                  locations={locations}
+                  locationId={quoteLocationId}
+                  districtId={districtId}
+                  onLocationChange={(nextLocationId) => {
+                    setQuoteLocationId(nextLocationId);
+                    setDistrictId(undefined);
+                  }}
+                  onDistrictChange={setDistrictId}
                 />
-              </label>
+              </div>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <label className="inline-flex items-center gap-2 text-sm text-ink/70">
