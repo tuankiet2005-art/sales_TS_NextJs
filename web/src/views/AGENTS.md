@@ -13,7 +13,7 @@ Route-level screens for brand pick, catalog search, vehicle confirm, and on-road
 - `AdminDataPage.tsx` — `/admin` easy forms; **admin role only** (sales operators see a forbidden message); catalog and plate lists have live soft search plus tab-specific dropdown filters (vehicles: brand, category, body style, status; locations: region, fee zone; dealers/fee rules: brand or category). Tab switches load only that tab’s list plus lookups the tab needs; `lib/adminCatalogCache.ts` deduplicates concurrent and repeat fetches until save/delete on that tab
 - App-wide login: `LoginScreen` via `AppShell`; pages render only after sign-in; reload with a token must not flash login
 - Page titles stand alone — no lead/tagline under the title
-- `QuoteHistoryPage.tsx` — `/quotes` server search with pagination (10 per page); brand and province filters; list rows omit `payload` (loaded on open)
+- `QuoteHistoryPage.tsx` — `/quotes` server search with pagination (10 per page); brand and province filters; list rows omit `payload` (loaded on open); desktop table rows hover and double-click to open; mobile cards support double-tap to open
 
 ## Local Contracts
 
@@ -27,7 +27,7 @@ Route-level screens for brand pick, catalog search, vehicle confirm, and on-road
 - Excel download uses the vehicle’s `quote_sheet_name` tab inside `bang-bao-gia.xlsx` (Attrage opens Attrage, not Xpander MT)
 - Header language (`vi` / `en` / `zh` / `ja`) drives the whole UI, including `/admin` tables, quote sheet, and Excel/PDF. Location rows use `name` / `nameEn` / `nameZh` / `nameJa`; categories and fees use `category.*` / `fee.*` keys; plate provinces reuse location names
 - Admin multilingual fields: type Vietnamese first; leaving the box calls `POST /api/admin/translate` and fills empty `en` / `zh` / `ja`. Save also fills copies of Vietnamese. Manual edits to those languages are kept
-- Add/edit catalog rows open in a popup, not under the table
+- Add/edit catalog rows open in a popup, not under the table; catalog table rows use shared `list-data-row` hover and double-click to edit (same as pencil)
 - Each vehicle color has its own photo stored in `vehicle_images`; admin upload converts to WebP in the browser first, then the API re-encodes with Sharp and saves the blob in the database. Quote and confirm pages load `/api/vehicle-images/{id}` for the matching color
 - Fee policy, dealer policy, and plate regions save through `/api/admin` and persist in `app_settings`
 - Fee rules tab lists only remaining rule-based fees (one row per fee + vehicle type). `LICENSE_PLATE` and `REGISTRATION_TAX` stay on their own tabs
@@ -36,6 +36,7 @@ Route-level screens for brand pick, catalog search, vehicle confirm, and on-road
 ## Work Guidance
 
 - Show the real API error under the generic `apiError` banner
+- Async page loads and reloads use `components/LoadingState.tsx` (spinner, skeletons, `PageLoadingScreen`) instead of plain text placeholders
 - After extras change, user must Recalculate before the sheet updates
 
 ## Verification

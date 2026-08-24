@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
+import { PageLoadingScreen } from "../components/LoadingState";
 import { QuoteAccessoriesPanel, QuotePricePanel } from "../components/QuoteAdjustments";
 import { QuoteSheet } from "../components/QuoteSheet";
 import { useI18n } from "../i18n/LanguageContext";
@@ -212,12 +213,7 @@ export function OnRoadQuotePage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen">
-        <Header />
-        <p className="mx-auto max-w-page px-4 py-16 text-ink/60 sm:px-6">{t("calculating")}</p>
-      </div>
-    );
+    return <PageLoadingScreen message={t("calculating")} />;
   }
 
   return (

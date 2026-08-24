@@ -109,6 +109,20 @@
   transition-timing-function: var(--ease-motion);
 }
 
+.list-data-row {
+  cursor: pointer;
+}
+
+.list-data-row:hover {
+  background-color: color-mix(in srgb, var(--color-mist) 70%, transparent);
+}
+
+.list-data-row.motion-interactive {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: var(--duration-motion-fast);
+  transition-timing-function: var(--ease-motion);
+}
+
 .motion-card {
   will-change: transform;
 }

@@ -41,6 +41,16 @@ export interface Location {
   centrallyGovernedCity: boolean;
 }
 
+export interface LocationDistrict {
+  id: number;
+  locationId: number;
+  code: string;
+  name: string;
+  nameEn: string;
+  nameZh: string;
+  nameJa: string;
+}
+
 export interface VehicleSummary {
   id: number;
   brand: string;

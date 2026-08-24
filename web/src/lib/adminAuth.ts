@@ -46,6 +46,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/brands",
   "/api/vehicle-categories",
   "/api/locations",
+  "/api/location-districts",
   "/api/dealer-policy",
   "/api/catalog",
   "/api/vehicles",

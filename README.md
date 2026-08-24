@@ -14,6 +14,16 @@ Fee math lives in `web/src/server/domain/`; policy defaults in `web/src/server/c
 
 ## Run locally
 
+From the repo root (after `web/.env.local` exists and `npm install` has been run in `web/`):
+
+```bash
+npm run dev
+# or
+npm start
+```
+
+Or from `web/`:
+
 ```bash
 cd web
 cp .env.example .env.local   # set DATABASE_URL (Neon)
@@ -23,13 +33,15 @@ npm run dev
 
 Open http://localhost:3000
 
+`npm start` in `web/` serves a production build when `.next` is complete; otherwise it starts `next dev`. Production-only: `npm run build && npm start` from `web/`.
+
 ## Deploy (Vercel)
 
-The Git repo root has no `package.json`. The Next.js app is `web/`.
+The Next.js app is `web/`. Root `package.json` is local convenience scripts only (no Next.js dependency).
 
 In the Vercel project: **Settings → General → Root Directory** → set to `web` → Save → **Deployments → Redeploy**.
 
-If Root Directory is empty, `npm install` looks for `/package.json` and fails with `ENOENT`.
+If Root Directory is empty, Vercel installs the root scripts package and will not find Next.js.
 
 Set these Vercel env vars (Production + Preview): `DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_TOKEN_SECRET`.
 

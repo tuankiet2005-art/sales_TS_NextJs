@@ -9,6 +9,7 @@ import {
   listActiveVehicleFilterOptions,
   listBrands,
   listCategories,
+  listDistrictsByLocationId,
   listLocations,
   searchActiveVehicles,
 } from "../db/repositories/catalog";
@@ -17,13 +18,14 @@ import {
   mapCategory,
   mapCostBreakdown,
   mapLocation,
+  mapLocationDistrict,
   mapVehicleDetail,
   mapVehicleSummaryWithPolicy,
 } from "../mappers";
 import { getDealerPolicy, loadPolicySnapshot } from "../config/policy-store";
 import { calculateOnRoadCost } from "../domain/on-road-cost";
 import type { CalculateOnRoadInput } from "../domain/types";
-import type { Brand, Category, CostBreakdown, Location, Paginated, VehicleSummary } from "@/types";
+import type { Brand, Category, CostBreakdown, Location, LocationDistrict, Paginated, VehicleSummary } from "@/types";
 
 type CatalogListCache = {
   brands: Brand[] | null;
@@ -38,6 +40,8 @@ let catalogListCache: CatalogListCache = {
 };
 
 const brandByCodeCache: Record<string, Brand> = {};
+
+const locationDistrictsCache: Record<number, LocationDistrict[]> = {};
 
 type FeeDataCache = {
   definitions: Awaited<ReturnType<typeof listActiveFeeDefinitions>>;
@@ -80,6 +84,9 @@ export function invalidateCatalogCache() {
   feeDataCache = null;
   for (const key of Object.keys(brandByCodeCache)) {
     delete brandByCodeCache[key];
+  }
+  for (const key of Object.keys(locationDistrictsCache)) {
+    delete locationDistrictsCache[key];
   }
 }
 
@@ -137,6 +144,15 @@ export async function getLocations() {
   }
   const mapped = (await listLocations()).map(mapLocation);
   catalogListCache.locations = mapped;
+  return mapped;
+}
+
+export async function getLocationDistricts(locationId: number) {
+  if (locationDistrictsCache[locationId]) {
+    return locationDistrictsCache[locationId];
+  }
+  const mapped = (await listDistrictsByLocationId(locationId)).map(mapLocationDistrict);
+  locationDistrictsCache[locationId] = mapped;
   return mapped;
 }
 

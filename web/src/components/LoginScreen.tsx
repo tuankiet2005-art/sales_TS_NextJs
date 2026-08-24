@@ -1,4 +1,5 @@
 "use client";
+import { Loader2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { api } from "../api/client";
 import { useAdminAuth } from "../auth/AdminAuthContext";
@@ -63,8 +64,9 @@ export function LoginScreen() {
             <button
               type="submit"
               disabled={saving}
-              className={`h-12 w-full rounded-full bg-ink text-base font-semibold text-paper disabled:opacity-60 ${motionInteractive} ${motionPress} hover:bg-forest`}
+              className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-ink text-base font-semibold text-paper disabled:opacity-60 ${motionInteractive} ${motionPress} hover:bg-forest`}
             >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
               {saving ? t("login.signingIn") : t("login.submit")}
             </button>
           </form>

@@ -5,6 +5,7 @@ import { useParams, usePathname, useRouter, useSearchParams } from "next/navigat
 import { api } from "../api/client";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
+import { VehicleCardSkeleton } from "../components/LoadingState";
 import { Pagination, catalogPageSize } from "../components/Pagination";
 import { VehicleCard } from "../components/VehicleCard";
 import { useI18n } from "../i18n/LanguageContext";
@@ -270,16 +271,17 @@ export function HomePage() {
             </p>
           )}
 
-          <div
-            className={`grid gap-5 sm:grid-cols-2 lg:grid-cols-3 ${vehiclesLoading ? "opacity-60" : ""}`}
-            aria-busy={vehiclesLoading}
-          >
-            {vehicles.map((vehicle, index) => (
-              <VehicleCard key={vehicle.id} vehicle={vehicle} brandCode={brandCode} index={index} />
-            ))}
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy={vehiclesLoading}>
+            {vehiclesLoading ? (
+              <VehicleCardSkeleton count={PAGE_SIZE} />
+            ) : (
+              vehicles.map((vehicle, index) => (
+                <VehicleCard key={vehicle.id} vehicle={vehicle} brandCode={brandCode} index={index} />
+              ))
+            )}
           </div>
 
-          <Pagination page={page} total={vehicleTotal} onPageChange={selectPage} />
+          {!vehiclesLoading ? <Pagination page={page} total={vehicleTotal} onPageChange={selectPage} /> : null}
         </section>
 
         <section id="how-it-works" className="border-t border-ink/10 bg-white/70">

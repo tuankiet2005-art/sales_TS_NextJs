@@ -4,12 +4,15 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { api } from "../api/client";
+import { AddressCombobox } from "../components/AddressCombobox";
+import { ColorPhotoImage } from "../components/ColorPhotoImage";
 import { Header } from "../components/Header";
-import { ProvincePicker } from "../components/ProvincePicker";
+import { PageLoadingScreen } from "../components/LoadingState";
 import { useI18n } from "../i18n/LanguageContext";
 import type { Lang } from "../i18n/translations";
 import { formatVnd } from "../lib/format";
 import { codedOption } from "../lib/labels";
+import { composeCustomerAddress } from "../lib/customerAddress";
 import { priceVehicleFromPolicy } from "../lib/dealerPricing";
 import { motionInteractive, motionPress } from "../lib/motion";
 import { extrasFromVehicle, loadExtras, saveExtras } from "../lib/quoteExtras";
@@ -37,9 +40,9 @@ export function VehiclePage() {
   const [locations, setLocations] = useState<Location[]>(() => loadLocationCache() ?? []);
   const [categoryId, setCategoryId] = useState<number | undefined>();
   const [locationId, setLocationId] = useState<number | undefined>();
+  const [districtId, setDistrictId] = useState<number | undefined>();
   const [includeOptional, setIncludeOptional] = useState(false);
   const [customerName, setCustomerName] = useState("");
-  const [customerAddress, setCustomerAddress] = useState("");
   const [color, setColor] = useState("");
   const [usageType, setUsageType] = useState<UsageType>("PRIVATE");
   const [policy, setPolicy] = useState<DealerPolicy | null>(null);
@@ -79,9 +82,13 @@ export function VehiclePage() {
 
   function goToQuote(event: FormEvent) {
     event.preventDefault();
-    if (!id || !locationId) {
+    if (!id || !locationId || !districtId) {
       return;
     }
+    const selectedLocation = locations.find((item) => item.id === locationId);
+    const districts = await api.getLocationDistricts(locationId).catch(() => []);
+    const selectedDistrict = districts.find((item) => item.id === districtId);
+    const customerAddress = composeCustomerAddress(selectedDistrict, selectedLocation, lang);
     const params = new URLSearchParams();
     params.set("locationId", String(locationId));
     if (categoryId) {
@@ -114,12 +121,7 @@ export function VehiclePage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen">
-        <Header />
-        <p className="mx-auto max-w-page px-4 py-16 text-ink/60 sm:px-6">{t("loadingVehicle")}</p>
-      </div>
-    );
+    return <PageLoadingScreen message={t("loadingVehicle")} />;
   }
 
   if (!vehicle) {
@@ -155,13 +157,13 @@ export function VehiclePage() {
         <form onSubmit={goToQuote}>
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8">
           <section>
-            <div className="overflow-hidden rounded-3xl bg-mist shadow-card motion-scale-in">
-              <img
-                src={colorPhoto(color || vehicle.defaultColor, vehicle.colorPhotos)}
-                alt={vehicle.name}
-                className="aspect-[16/10] w-full object-contain bg-paper"
-              />
-            </div>
+            <ColorPhotoImage
+              src={colorPhoto(color || vehicle.defaultColor, vehicle.colorPhotos)}
+              alt={vehicle.name}
+              wrapperClassName="overflow-hidden rounded-3xl bg-mist shadow-card motion-scale-in"
+              imgClassName="aspect-[16/10] w-full object-contain bg-paper"
+              spinnerSize="lg"
+            />
             <div className="mt-6">
               <p className="text-xs uppercase tracking-[0.18em] text-ink/45">{vehicle.brand}</p>
               <h1 className="mt-1 break-words font-display text-3xl text-ink sm:text-4xl">{vehicle.name}</h1>
@@ -259,10 +261,12 @@ export function VehiclePage() {
 
               <label className="mt-5 block text-sm font-medium">{t("vehicleColor")}</label>
               <div className="mt-2 flex min-w-0 items-center gap-3">
-                <img
+                <ColorPhotoImage
                   src={colorPhoto(color, vehicle.colorPhotos)}
                   alt={color}
-                  className="h-14 w-auto max-w-[5.5rem] shrink-0 rounded-lg border border-ink/10 bg-paper object-contain"
+                  wrapperClassName="h-14 w-[5.5rem] shrink-0 overflow-hidden rounded-lg border border-ink/10 bg-paper"
+                  imgClassName="h-full w-full object-contain"
+                  spinnerSize="sm"
                 />
                 <select
                   value={color}

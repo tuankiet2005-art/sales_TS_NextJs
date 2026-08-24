@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
+import { BrandCardSkeleton } from "../components/LoadingState";
 import { useI18n } from "../i18n/LanguageContext";
 import { motionCard, motionStagger } from "../lib/motion";
 import type { Brand } from "../types";
@@ -10,10 +11,16 @@ import type { Brand } from "../types";
 export function BrandPortal() {
   const { t } = useI18n();
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getBrands().then(setBrands).catch((err: Error) => setError(err.message));
+    setLoading(true);
+    api
+      .getBrands()
+      .then(setBrands)
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -32,8 +39,11 @@ export function BrandPortal() {
           </div>
         )}
 
-        <div className="mt-10 grid gap-5 sm:grid-cols-2">
-          {brands.map((brand, index) => {
+        <div className="mt-10 grid gap-5 sm:grid-cols-2" aria-busy={loading}>
+          {loading ? (
+            <BrandCardSkeleton count={2} />
+          ) : (
+            brands.map((brand, index) => {
             const card = (
               <>
                 <div className="relative aspect-[16/8] overflow-hidden bg-mist">
@@ -82,7 +92,8 @@ export function BrandPortal() {
                 {card}
               </article>
             );
-          })}
+          })
+          )}
         </div>
       </main>
     </div>
