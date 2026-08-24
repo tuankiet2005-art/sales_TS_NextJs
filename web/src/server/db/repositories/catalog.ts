@@ -5,6 +5,7 @@ import {
   brands,
   feeDefinitions,
   feeRules,
+  locationDistricts,
   locations,
   vehicleCategories,
   vehicles,
@@ -179,6 +180,21 @@ export async function listLocations() {
 export async function findLocationById(id: number) {
   const db = getDb();
   const rows = await db.select().from(locations).where(eq(locations.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listDistrictsByLocationId(locationId: number) {
+  const db = getDb();
+  return db
+    .select()
+    .from(locationDistricts)
+    .where(eq(locationDistricts.locationId, locationId))
+    .orderBy(locationDistricts.name);
+}
+
+export async function findDistrictById(id: number) {
+  const db = getDb();
+  const rows = await db.select().from(locationDistricts).where(eq(locationDistricts.id, id)).limit(1);
   return rows[0] ?? null;
 }
 

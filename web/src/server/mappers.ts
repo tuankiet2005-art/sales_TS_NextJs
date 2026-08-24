@@ -3,11 +3,12 @@ import type {
   Category,
   CostBreakdown,
   Location,
+  LocationDistrict,
   VehicleDetail,
   VehicleSummary,
 } from "@/types";
 import { vehicleImageUrl } from "@/lib/vehicleImageUrl";
-import type { Brand as DbBrand, Location as DbLocation, Vehicle, vehicleCategories } from "./db/schema";
+import type { Brand as DbBrand, Location as DbLocation, LocationDistrict as DbLocationDistrict, Vehicle, vehicleCategories } from "./db/schema";
 
 type VehicleCategory = typeof vehicleCategories.$inferSelect;
 import type { OnRoadCostResult } from "./domain/types";
@@ -56,6 +57,18 @@ export function mapLocation(location: DbLocation): Location {
     region: location.region,
     feeZone: location.feeZone,
     centrallyGovernedCity: location.centrallyGovernedCity,
+  };
+}
+
+export function mapLocationDistrict(district: DbLocationDistrict): LocationDistrict {
+  return {
+    id: district.id,
+    locationId: district.locationId,
+    code: district.code,
+    name: district.name,
+    nameEn: district.nameEn,
+    nameZh: district.nameZh,
+    nameJa: district.nameJa,
   };
 }
 

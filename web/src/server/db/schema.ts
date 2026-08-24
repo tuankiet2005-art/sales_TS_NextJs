@@ -47,6 +47,18 @@ export const locations = pgTable("locations", {
   centrallyGovernedCity: boolean("centrally_governed_city").notNull().default(false),
 });
 
+export const locationDistricts = pgTable("location_districts", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+  locationId: bigint("location_id", { mode: "number" })
+    .notNull()
+    .references(() => locations.id),
+  code: varchar("code", { length: 32 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  nameEn: varchar("name_en", { length: 160 }).notNull(),
+  nameZh: varchar("name_zh", { length: 160 }).notNull(),
+  nameJa: varchar("name_ja", { length: 160 }).notNull(),
+});
+
 export const dealers = pgTable("dealers", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
   brandId: bigint("brand_id", { mode: "number" })
@@ -181,4 +193,5 @@ export type Brand = typeof brands.$inferSelect;
 export type Vehicle = typeof vehicles.$inferSelect;
 export type VehicleImage = typeof vehicleImages.$inferSelect;
 export type Location = typeof locations.$inferSelect;
+export type LocationDistrict = typeof locationDistricts.$inferSelect;
 export type AppSetting = typeof appSettings.$inferSelect;

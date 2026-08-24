@@ -1,5 +1,6 @@
 import type ExcelJS from "exceljs";
 
+import { formatQuoteAmount } from "@/lib/format";
 import { translateQuoteLabel } from "@/lib/quoteLabels";
 import type { Lang } from "@/i18n/translations";
 
@@ -118,7 +119,7 @@ function fillQuote(sheet: ExcelJS.Worksheet, input: QuoteSheetFillInput) {
     !input.accessories?.length
       ? "Phụ kiện trang bị thêm (Nếu có)"
       : `Phụ kiện trang bị thêm: ${input.accessories
-          .map((item) => `${item.name} (${item.amount})`)
+          .map((item) => `${item.name} (${formatQuoteAmount(item.amount)})`)
           .join("; ")}`;
   const optionalBody = amounts.get("OPTIONAL_BODY_INSURANCE") ?? 0;
   const today = formatDate(new Date());

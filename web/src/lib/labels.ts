@@ -9,6 +9,15 @@ export function locationLabel(
   return named || location.name || location.nameEn || "";
 }
 
+export function districtLabel(
+  district: { name: string; nameEn?: string; nameZh?: string; nameJa?: string },
+  lang: Lang
+): string {
+  const named =
+    lang === "en" ? district.nameEn : lang === "zh" ? district.nameZh : lang === "ja" ? district.nameJa : district.name;
+  return named || district.name || district.nameEn || "";
+}
+
 export function codedOption(value: string | undefined | null, t: (key: string) => string): string {
   if (!value) {
     return "—";

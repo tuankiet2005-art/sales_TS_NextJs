@@ -1,0 +1,11 @@
+{
+  "name": "onroad",
+  "private": true,
+  "description": "Local convenience scripts. Vercel Root Directory must stay web/.",
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "start": "npm --prefix web run start",
+    "test": "npm --prefix web run test"
+  }
+}

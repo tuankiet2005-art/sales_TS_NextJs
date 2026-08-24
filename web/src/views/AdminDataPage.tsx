@@ -1,17 +1,20 @@
 "use client";
-import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { colorPhoto } from "../lib/vehicleColor";
 import { convertImageFileToWebp } from "../lib/convertImageToWebp";
 import { vehicleImageUrl } from "../lib/vehicleImageUrl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CurrencyInput } from "../components/CurrencyInput";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
+import { LoadingBlock, PanelLoading, TableRowsSkeleton } from "../components/LoadingState";
 import { api, UnauthorizedError } from "../api/client";
 import { useAdminAuth } from "../auth/AdminAuthContext";
 import { useI18n } from "../i18n/LanguageContext";
 import type { Lang } from "../i18n/translations";
 import { getAdminCatalog, invalidateAdminCatalog, type AdminCatalogKey } from "../lib/adminCatalogCache";
 import { fillFromVietnamese } from "../lib/fromVietnamese";
+import { formatMoneyColumn, isMoneyField } from "../lib/format";
 import { locationLabel } from "../lib/labels";
 import { softIncludes } from "../lib/softSearch";
 import type {
@@ -455,6 +458,14 @@ export function AdminDataPage() {
     }
   }
 
+  function openRowEdit(row: Record<string, unknown>) {
+    if (draft) {
+      return;
+    }
+    setPendingImages(EMPTY_PENDING_IMAGES);
+    setDraft(prepareDraft(row));
+  }
+
   function optionLabel(value: string, field: Field) {
     if (!value) {
       return t("admin.any");
@@ -513,6 +524,10 @@ export function AdminDataPage() {
     }
     if (typeof value === "boolean") {
       return value ? t("admin.yes") : t("admin.no");
+    }
+    const money = formatMoneyColumn(column, value);
+    if (money) {
+      return money;
     }
     if (value == null || value === "") {
       return "—";
@@ -598,67 +613,76 @@ export function AdminDataPage() {
         {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
         {notice && <p className="mt-3 text-sm text-forest">{notice}</p>}
 
-        {tab === "feePolicy" && feePolicy && (
-          <FeePolicyForm
-            value={feePolicy}
-            saving={saving}
-            t={t}
-            onChange={setFeePolicy}
-            onSave={async () => {
-              setSaving(true);
-              try {
-                setFeePolicy(await api.saveAdminFeePolicy(feePolicy));
-                setNotice(t("admin.saved"));
-              } catch (err) {
-                setError(err instanceof Error ? err.message : t("apiError"));
-              } finally {
-                setSaving(false);
-              }
-            }}
-          />
-        )}
+        {tab === "feePolicy" &&
+          (loading && !feePolicy ? (
+            <PanelLoading message={t("loadingCatalog")} />
+          ) : feePolicy ? (
+            <FeePolicyForm
+              value={feePolicy}
+              saving={saving}
+              t={t}
+              onChange={setFeePolicy}
+              onSave={async () => {
+                setSaving(true);
+                try {
+                  setFeePolicy(await api.saveAdminFeePolicy(feePolicy));
+                  setNotice(t("admin.saved"));
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : t("apiError"));
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            />
+          ) : null)}
 
-        {tab === "dealerPolicy" && dealerPolicy && (
-          <DealerPolicyForm
-            value={dealerPolicy}
-            saving={saving}
-            t={t}
-            onChange={setDealerPolicy}
-            onSave={async () => {
-              setSaving(true);
-              try {
-                setDealerPolicy(await api.saveAdminDealerPolicy(dealerPolicy));
-                setNotice(t("admin.saved"));
-              } catch (err) {
-                setError(err instanceof Error ? err.message : t("apiError"));
-              } finally {
-                setSaving(false);
-              }
-            }}
-          />
-        )}
+        {tab === "dealerPolicy" &&
+          (loading && !dealerPolicy ? (
+            <PanelLoading message={t("loadingCatalog")} />
+          ) : dealerPolicy ? (
+            <DealerPolicyForm
+              value={dealerPolicy}
+              saving={saving}
+              t={t}
+              onChange={setDealerPolicy}
+              onSave={async () => {
+                setSaving(true);
+                try {
+                  setDealerPolicy(await api.saveAdminDealerPolicy(dealerPolicy));
+                  setNotice(t("admin.saved"));
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : t("apiError"));
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            />
+          ) : null)}
 
-        {tab === "plateRegions" && plates && (
-          <PlateRegionsForm
-            value={plates}
-            locations={locations}
-            lang={lang}
-            saving={saving}
-            t={t}
-            onChange={setPlates}
-            onSave={async () => {
-              setSaving(true);
-              try {
-                setPlates(await api.saveAdminPlateRegions(plates));
-                setNotice(t("admin.saved"));
-              } catch (err) {
-                setError(err instanceof Error ? err.message : t("apiError"));
-              } finally {
-                setSaving(false);
-              }
-            }}
-          />
-        )}
+        {tab === "plateRegions" &&
+          (loading && !plates ? (
+            <PanelLoading message={t("loadingCatalog")} />
+          ) : plates ? (
+            <PlateRegionsForm
+              value={plates}
+              locations={locations}
+              lang={lang}
+              saving={saving}
+              t={t}
+              onChange={setPlates}
+              onSave={async () => {
+                setSaving(true);
+                try {
+                  setPlates(await api.saveAdminPlateRegions(plates));
+                  setNotice(t("admin.saved"));
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : t("apiError"));
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            />
+          ) : null)}
 
         {isCatalog(tab) && (
           <>
@@ -770,7 +794,24 @@ export function AdminDataPage() {
                 </div>
               </div>
               {loading ? (
-                <p className="px-4 py-8 text-sm text-ink/55">{t("loadingCatalog")}</p>
+                <>
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-paper text-[11px] uppercase tracking-wide text-ink/50">
+                      <tr>
+                        {COLUMNS[tab].map((column) => (
+                          <th key={column} className="px-3 py-2 font-medium">
+                            {t(`admin.field.${column}`)}
+                          </th>
+                        ))}
+                        <th className="px-3 py-2 font-medium">{t("admin.actions")}</th>
+                      </tr>
+                    </thead>
+                    <TableRowsSkeleton rows={8} columns={COLUMNS[tab].length + 1} />
+                  </table>
+                  <div className="border-t border-ink/8 px-4 py-4">
+                    <LoadingBlock message={t("loadingCatalog")} size="sm" />
+                  </div>
+                </>
               ) : (
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-paper text-[11px] uppercase tracking-wide text-ink/50">
@@ -785,7 +826,11 @@ export function AdminDataPage() {
                   </thead>
                   <tbody>
                     {visibleRows.map((row) => (
-                      <tr key={String(row.id)} className="border-t border-ink/6">
+                      <tr
+                        key={String(row.id)}
+                        className="list-data-row motion-interactive border-t border-ink/6"
+                        onDoubleClick={() => openRowEdit(row)}
+                      >
                         {COLUMNS[tab].map((column) => (
                           <td key={column} className="px-3 py-2">
                             {displayCell(column, row)}
@@ -795,16 +840,19 @@ export function AdminDataPage() {
                           <div className="flex gap-2">
                             <button
                               type="button"
-                              onClick={() => {
-                                setPendingImages(EMPTY_PENDING_IMAGES);
-                                setDraft(prepareDraft(row));
-                              }}
+                              onClick={() => openRowEdit(row)}
+                              onDoubleClick={(event) => event.stopPropagation()}
                               className="text-ink/60 hover:text-ink"
                             >
                               <Pencil className="h-4 w-4" />
                             </button>
                             {typeof row.id === "number" && (
-                              <button type="button" onClick={() => void remove(row.id as number)} className="text-ink/60 hover:text-red-700">
+                              <button
+                                type="button"
+                                onClick={() => void remove(row.id as number)}
+                                onDoubleClick={(event) => event.stopPropagation()}
+                                className="text-ink/60 hover:text-red-700"
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             )}
@@ -1192,6 +1240,12 @@ function FieldInput({
           rows={3}
           className="mt-1 w-full rounded-lg border border-ink/10 bg-paper px-3 py-2 text-sm"
         />
+      ) : field.type === "number" && isMoneyField(field.key) ? (
+        <CurrencyInput
+          value={draft[field.key] == null ? undefined : Number(draft[field.key])}
+          onChange={(next) => setDraft({ ...draft, [field.key]: next ?? null })}
+          className="mt-1 h-10 w-full rounded-lg border border-ink/10 bg-paper px-3 text-sm"
+        />
       ) : (
         <input
           type={field.type === "number" ? "number" : "text"}
@@ -1284,7 +1338,7 @@ function DealerPolicyForm({
             </select>
           </label>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <NumberField label={t("admin.field.amount")} value={offer.amount ?? 0} onChange={(next) => updateOffer(index, { ...offer, amount: next })} />
+            <NumberField currency label={t("admin.field.amount")} value={offer.amount ?? 0} onChange={(next) => updateOffer(index, { ...offer, amount: next })} />
             <NumberField label={t("admin.field.percent")} value={offer.percent ?? 0} onChange={(next) => updateOffer(index, { ...offer, percent: next })} />
           </div>
           <OfferLangFields
@@ -1454,10 +1508,10 @@ function PlateRegionsForm({
       <div className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
         <div className="grid gap-3 md:grid-cols-10">
           <div className="md:col-span-6">
-            <NumberField label={t("admin.field.areaIAmount")} value={areaI} onChange={(next) => setAmount("AREA_I", next)} />
+            <NumberField currency label={t("admin.field.areaIAmount")} value={areaI} onChange={(next) => setAmount("AREA_I", next)} />
           </div>
           <div className="md:col-span-4">
-            <NumberField label={t("admin.field.areaIIAmount")} value={areaII} onChange={(next) => setAmount("AREA_II", next)} />
+            <NumberField currency label={t("admin.field.areaIIAmount")} value={areaII} onChange={(next) => setAmount("AREA_II", next)} />
           </div>
         </div>
         <label className="relative mt-3 block">
@@ -1540,23 +1594,47 @@ function PlateRegionsForm({
   );
 }
 
-function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function NumberField({
+  label,
+  value,
+  onChange,
+  currency = false,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  currency?: boolean;
+}) {
   return (
     <label className="block text-xs font-medium text-ink/70">
       {label}
-      <input
-        type="number"
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-1 h-10 w-full rounded-lg border border-ink/10 bg-paper px-3 text-sm"
-      />
+      {currency ? (
+        <CurrencyInput
+          value={Number.isFinite(value) ? value : 0}
+          onChange={(next) => onChange(next ?? 0)}
+          className="mt-1 h-10 w-full rounded-lg border border-ink/10 bg-paper px-3 text-sm"
+        />
+      ) : (
+        <input
+          type="number"
+          value={Number.isFinite(value) ? value : 0}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="mt-1 h-10 w-full rounded-lg border border-ink/10 bg-paper px-3 text-sm"
+        />
+      )}
     </label>
   );
 }
 
 function SaveButton({ saving, t, onClick }: { saving: boolean; t: (key: string) => string; onClick: () => void }) {
   return (
-    <button type="button" disabled={saving} onClick={onClick} className="h-10 rounded-lg bg-ink px-4 text-sm font-semibold text-paper disabled:opacity-60">
+    <button
+      type="button"
+      disabled={saving}
+      onClick={onClick}
+      className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-paper disabled:opacity-60"
+    >
+      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
       {saving ? t("admin.saving") : t("admin.save")}
     </button>
   );

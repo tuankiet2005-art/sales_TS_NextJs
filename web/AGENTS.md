@@ -7,8 +7,9 @@ Target OnRoad monolith: App Router UI plus `/api` route handlers on Vercel, repl
 ## Ownership
 
 - App root: `web/`
-- Dev server: port `3000` (`npm run dev`)
-- Deploy: Vercel project **Root Directory** must be `web` (Settings → General). Empty root makes `npm install` look for `/package.json` and fail with `ENOENT`
+- Dev server: port `3000` (`npm run dev` from `web/`, or `npm run dev` / `npm start` from the repo root)
+- `npm start` in `web/` runs `next start` when a production `.next` exists; otherwise it starts `next dev`
+- Deploy: Vercel project **Root Directory** must be `web` (Settings → General). Repo-root `package.json` is local scripts only — empty Root Directory will not install Next.js
 - Migration plan: `docs/plans/2026-08-20-001-refactor-nextjs-monolith-plan.md`
 
 ## Local Contracts
@@ -49,6 +50,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - Excel export fills `src/server/assets/bang-bao-gia.xlsx` by labels on `vehicles.quote_sheet_name` (never hardcoded cells on sheet 0); unused tabs stay hidden
 - PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`/`lab` (canvas pixel sampling converts modern color functions to `rgb`/`rgba`)
 - Default UI language Vietnamese (`vi`); match `frontend/src/i18n/` behavior when UI is ported
+- Money display uses `lib/format.ts`: `formatVnd` for UI (₫ symbol), `formatQuoteAmount` for the dealer quote sheet beside "ĐVT: VNĐ"; editable money fields use `CurrencyInput`
 - Auth: HMAC bearer tokens with roles — `admin` (catalog + quotes) or `sales` (quotes only). Login via `POST /api/auth/login`. Operator APIs (`/api/quotes/**`, `/api/calculate-on-road-cost`, `/api/quote-load`, `/api/export-quote`) require a valid token; `/api/admin/**` requires the `admin` role. Catalog reference GETs stay public for cache parity
 - Layout is mobile-first: phones stack, tablets use two columns where the contract needs them, desktop keeps the wide catalog
 - UI motion is CSS-first (`globals.css` + `lib/motion.ts` + `PageMotion`); no animation library; keep transitions smooth and respect `prefers-reduced-motion`

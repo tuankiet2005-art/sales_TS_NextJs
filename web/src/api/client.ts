@@ -16,6 +16,7 @@ import type {
   DealerPolicy,
   ImportResult,
   Location,
+  LocationDistrict,
   Paginated,
   QuoteExtras,
   QuoteHistory,
@@ -158,6 +159,9 @@ export const api = {
   },
   getLocations() {
     return request<Location[]>("/api/locations");
+  },
+  getLocationDistricts(locationId: number) {
+    return request<LocationDistrict[]>(`/api/location-districts?locationId=${locationId}`);
   },
   getDealerPolicy() {
     return request<DealerPolicy>("/api/dealer-policy");

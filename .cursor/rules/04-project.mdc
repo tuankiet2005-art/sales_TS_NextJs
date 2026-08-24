@@ -1,0 +1,51 @@
+---
+description: OnRoad — stack, run commands, auth, and domain overview
+alwaysApply: true
+---
+
+# OnRoad (vehicle sales & on-road quotes)
+
+`project_tracker: github`
+
+## What this is
+
+Next.js monolith for Vietnam vehicle catalog and location-based on-road cost quotes. App lives in `web/`; Neon PostgreSQL is the database.
+
+## Run
+
+| Command | Effect |
+|---|---|
+| `npm run dev` or `npm start` (repo root) | Next.js on `:3000` (`web/`) |
+| `npm run dev` (from `web/`) | Same — local development |
+| `npm run build && npm start` (from `web/`) | Production server (needs a complete `.next` build) |
+
+Do not expect a Vite `:5173` or Spring Boot `:8002` process. There is no `frontend/` + `backend/` split.
+
+## Stack
+
+- **App:** Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4 (`web/`)
+- **API:** Next.js route handlers under `web/src/app/api/`
+- **Database:** Neon PostgreSQL via Drizzle (`web/src/server/db/`)
+
+## Key paths
+
+| Area | Contract doc |
+|---|---|
+| Repo-wide DOX | `AGENTS.md` |
+| Next.js app | `web/AGENTS.md` |
+| Neon SQL | `db/AGENTS.md` |
+| Domain vocabulary | `CONCEPTS.md` |
+| Past solutions | `docs/solutions/` (search before debugging) |
+| CE skills | `.cursor/skills/` |
+
+## Auth & security notes
+
+- HMAC bearer tokens: `admin` (catalog + quotes) or `sales` (quotes only)
+- Login: `POST /api/auth/login`
+- Do not commit `.env.local` or Neon passwords
+
+## Environment
+
+- Copy `web/.env.example` → `web/.env.local`
+- Quote `ADMIN_PASSWORD` — unquoted `!` breaks bash `source`. Do not `source` `.env.local`
+- Production: Vercel Root Directory = `web` + Neon `DATABASE_URL`

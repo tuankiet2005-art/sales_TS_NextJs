@@ -3,6 +3,7 @@ import { Check, CircleDollarSign, Package, Plus, Trash2, type LucideIcon } from 
 import type { ReactNode } from "react";
 import { MOVEO_ACCESSORIES } from "../lib/accessories";
 import { useI18n } from "../i18n/LanguageContext";
+import { CurrencyInput } from "./CurrencyInput";
 import { formatVnd } from "../lib/format";
 import type { QuoteExtras } from "../types";
 
@@ -183,14 +184,11 @@ export function QuoteAccessoriesPanel({
               >
                 <Trash2 className="h-4 w-4" />
               </button>
-              <input
-                type="number"
-                min="0"
-                step="1000"
-                value={item.amount || ""}
-                onChange={(event) => {
+              <CurrencyInput
+                value={item.amount || undefined}
+                onChange={(next) => {
                   const accessories = extras.accessories.map((row, rowIndex) =>
-                    rowIndex === index ? { ...row, amount: Number(event.target.value) || 0 } : row
+                    rowIndex === index ? { ...row, amount: next ?? 0 } : row
                   );
                   onChange({ ...extras, accessories });
                 }}
@@ -226,12 +224,9 @@ function MoneyField({
   return (
     <label className="block text-sm">
       <span className="font-medium text-ink/80">{label}</span>
-      <input
-        type="number"
-        min="0"
-        step="1000"
-        value={value ?? ""}
-        onChange={(event) => onChange(event.target.value)}
+      <CurrencyInput
+        value={value}
+        onChange={(next) => onChange(next == null ? "" : String(next))}
         className="mt-1.5 h-12 w-full rounded-xl border border-ink/10 bg-paper px-3 text-base"
       />
     </label>

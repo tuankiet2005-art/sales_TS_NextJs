@@ -93,5 +93,5 @@ Default section order:
 ### Project facts
 
 - Brand: **OnRoad** — Vietnam vehicle sales and on-road cost quotes (Mitsubishi catalog from the dealer Excel template)
-- App: Next.js 16 in `web/`, port **3000** (`npm run dev`)
+- App: Next.js 16 in `web/`, port **3000** (`npm run dev` or `npm start` from repo root; both delegate to `web/`)
 - Database: Neon PostgreSQL (`DATABASE_URL` in `web/.env.local`)

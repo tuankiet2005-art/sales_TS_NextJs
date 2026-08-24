@@ -7,10 +7,13 @@ Shared chrome and quote widgets used by pages.
 ## Ownership
 
 - `Header.tsx` / `LanguageSwitcher.tsx` / `LoginScreen.tsx` — site chrome; logo stays left with no tagline; nav is hidden until sign-in; after login shows Models, Change brand, History, and Sign out for all roles; **Data** nav and `/admin` are admin-only; active nav tab shows a copper border frame; header stays above admin popups (`z-50`); `AppShell` must not show `LoginScreen` until the token has been read
+- `ColorPhotoImage.tsx` — vehicle color thumbnail and hero photo; shows spinner overlay while the selected color image loads from `/api/vehicle-images/{id}` or static `/colors/*`
+- `LoadingState.tsx` — shared spinner, page loading shell, and skeleton placeholders for catalog cards, brand cards, and admin/history tables; use for any async fetch or reload
 - `PageMotion.tsx` — route enter animation keyed by pathname; wraps signed-in pages from `AppShell`
 - `QuotePricePanel` / `QuoteAccessoriesPanel` in `QuoteAdjustments.tsx` — equal left/right editors; `PanelHeader` gives icon badge and title the same `h-8` height with centered text
 - `QuoteSheet.tsx` — visual replica of the dealer Excel quote; `#quote-sheet` is the PDF source (`lib/exportQuotePdf.ts` sanitizes Tailwind `oklch`/`lab` before html2canvas)
 - `VehicleCard.tsx`, `CostBreakdown.tsx` — catalog / fee list
+- `CurrencyInput.tsx` — VND money fields (`formatVnd` on blur, raw digits while editing)
 - `ProvincePicker.tsx` — type-to-filter province list; `Ha Noi` matches `Hà Nội`
 
 ## Local Contracts
