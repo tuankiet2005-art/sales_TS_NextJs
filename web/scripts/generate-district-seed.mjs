@@ -155,5 +155,20 @@ const body =
 const sql = `${header}INSERT INTO location_districts (location_id, code, name, name_en, name_zh, name_ja) VALUES\n${body};\n`;
 
 const outPath = join(dirname(fileURLToPath(import.meta.url)), "../../db/location-districts-seed.sql");
+const jsonPath = join(dirname(fileURLToPath(import.meta.url)), "../../db/location-districts-seed.json");
 writeFileSync(outPath, sql, "utf8");
-console.log(`Wrote ${rows.length} districts to ${outPath}`);
+writeFileSync(
+  jsonPath,
+  JSON.stringify(
+    rows.map((row) => ({
+      locationId: row.locationId,
+      code: row.code,
+      name: row.name,
+      nameEn: row.nameEn,
+    })),
+    null,
+    2,
+  ),
+  "utf8",
+);
+console.log(`Wrote ${rows.length} districts to ${outPath} and ${jsonPath}`);

@@ -17,6 +17,7 @@ Operator SQL that creates and seeds the Neon (and optional local Postgres) schem
 - Current seed: Mitsubishi Vietnam vehicles, 34 VN locations, fee rules from the Excel “Dữ liệu nguồn”, dealer MITSUBISHI MOVEO NEW CITY (Bình Dương)
 - Day-to-day catalog and policy changes use `/admin` after operator login; `app_settings`, `vehicles.color_photos`, and `quote_history` are created automatically if missing. Do not drop `quote_history` when re-running this SQL.
 - Bulk vehicle refresh from registration photos: `npm run import:catalog` in `web/` (reads `HÌNH ĐĂNG KÝ XE` by default, converts JPEGs to WebP, stores blobs in `vehicle_images`, replaces all `vehicles` rows with folder-backed trims and VN seed prices from this SQL)
+- Quote address districts (`location_districts`, 696 former Quận/Huyện): after schema change run `npm run seed:location-districts` in `web/` (or paste `db/add-location-districts.sql` + `db/location-districts-seed.sql` in Neon)
 - Do not re-run this SQL just to add a vehicle
 - Thuế trước bạ percents are not in this SQL — edit `/admin` Registration tax (defaults in `fee-policy.yml`)
 - Phí bấm biển số is not in this SQL — edit `/admin` License plate fees (defaults in `license-plate-regions.yml`)
