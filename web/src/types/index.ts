@@ -1,3 +1,7 @@
+import type { CustomerRelationshipType } from "../lib/customerRelationships";
+import type { StructuredAddress } from "../lib/customerAddress";
+import type { RelationshipDiscountOffer } from "../lib/customerRelationshipDiscount";
+
 export type OperatorRole = "admin" | "sales";
 
 export interface Brand {
@@ -67,7 +71,37 @@ export interface VehicleSummary {
   category: Category;
 }
 
+export interface VehicleModelContext {
+  model: string;
+  year: number;
+  availableYears: number[];
+  trimsForYear: VehicleSummary[];
+}
+
+export interface VehicleModelSummary {
+  brand: string;
+  brandCode: string;
+  model: string;
+  yearMin: number | null;
+  yearMax: number | null;
+  minListPrice: number;
+  minSalePrice?: number;
+  imageUrl: string;
+  category: Category;
+  trimCount: number;
+}
+
+export interface VehicleModelDetail {
+  brand: string;
+  brandCode: string;
+  model: string;
+  years: number[];
+  defaultYear: number;
+  trimsByYear: Record<string, VehicleDetail[]>;
+}
+
 export interface VehicleDetail extends VehicleSummary {
+  modelContext?: VehicleModelContext;
   engineCc: number | null;
   fuelType: string;
   transmission: string;
@@ -77,7 +111,7 @@ export interface VehicleDetail extends VehicleSummary {
   inspectionFee?: number;
   defaultColor?: string;
   availableColors?: string;
-  colorPhotos?: Record<string, string>;
+  colorPhotos?: Record<string, string[]>;
   deliveryNote?: string;
   warrantyNote?: string;
   gifts?: string;
@@ -119,18 +153,82 @@ export interface DealerPolicy {
   offers: DealerOffer[];
 }
 
+export interface QuoteBankLoan {
+  bankId?: number;
+  bankName?: string;
+  monthlyInterestRate?: number;
+  loanTermYears?: number;
+  fixedRatePeriodYears?: number;
+  consultingEmployeeId?: number;
+  consultingEmployeeName?: string;
+  consultingEmployeePhone?: string;
+}
+
 export interface QuoteExtras {
+  listPrice?: number;
   discountAmount?: number;
+  basePolicyDiscountAmount?: number;
+  relationshipDiscount?: RelationshipDiscountOffer;
   deposit?: number;
-  optionalBodyInsurance?: number;
+  bankLoan?: QuoteBankLoan;
+  registrationTax?: number;
+  licensePlateFee?: number;
   registrationServiceFee?: number;
-  micaPlateFee?: number;
   inspectionFee?: number;
+  roadUseFee?: number;
+  compulsoryInsurance?: number;
+  optionalBodyInsurance?: number;
+  micaPlateFee?: number;
   accessories: AccessoryItem[];
+}
+
+export interface Customer {
+  id: number;
+  fullName: string;
+  phone?: string;
+  permanentAddress: StructuredAddress;
+  temporaryAddress: StructuredAddress;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type { StructuredAddress, CustomerAddressKind, CustomerFieldValues } from "../lib/customerAddress";
+
+export interface CustomerRelationshipInput {
+  relatedCustomerId?: number;
+  relationshipType?: CustomerRelationshipType;
+  note?: string;
+}
+
+export interface CustomerRelationship {
+  id: number;
+  relationshipType: CustomerRelationshipType;
+  note?: string;
+  relatedCustomer: {
+    id: number;
+    fullName: string;
+    phone?: string;
+  };
+}
+
+export interface CustomerPurchase {
+  id: number;
+  vehicleName: string;
+  brandCode: string;
+  onRoadTotal: number;
+  createdAt: string;
+}
+
+export interface CustomerDetail extends Customer {
+  relationships: CustomerRelationship[];
+  purchases: CustomerPurchase[];
 }
 
 export interface QuoteHistory {
   id: number;
+  customerId?: number;
   customerName: string;
   customerAddress?: string;
   vehicleId: number;
@@ -221,6 +319,75 @@ export interface AdminDealer {
   active?: boolean;
 }
 
+export interface AccessoryCatalogItem {
+  id: number;
+  code: string;
+  name: string;
+  nameEn?: string;
+  nameZh?: string;
+  nameJa?: string;
+  amount: number;
+  imageUrl?: string;
+}
+
+export interface AdminAccessory {
+  id?: number;
+  code?: string;
+  name: string;
+  nameEn?: string;
+  nameZh?: string;
+  nameJa?: string;
+  amount: number;
+  imageUrl?: string;
+  active?: boolean;
+  sortOrder?: number;
+}
+
+export interface AdminBank {
+  id?: number;
+  code: string;
+  name: string;
+  active?: boolean;
+  sortOrder?: number;
+}
+
+export interface AdminConsultingEmployee {
+  id?: number;
+  code: string;
+  name: string;
+  phone?: string;
+  active?: boolean;
+  isDefault?: boolean;
+  sortOrder?: number;
+}
+
+export interface AdminBankLoan {
+  id?: number;
+  bankId: number;
+  bankName?: string;
+  monthlyInterestRate: number;
+  loanTermYears: number;
+  fixedRatePeriodYears: number;
+  consultingEmployeeId: number;
+  consultingEmployeeName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Bank {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface ConsultingEmployee {
+  id: number;
+  code: string;
+  name: string;
+  phone?: string;
+  isDefault?: boolean;
+}
+
 export interface AdminFeeDefinition {
   id?: number;
   code: string;
@@ -253,7 +420,7 @@ export interface AdminVehicle {
   inspectionFee?: number | null;
   defaultColor?: string;
   availableColors?: string;
-  colorPhotos?: Record<string, string>;
+  colorPhotos?: Record<string, string[]>;
   deliveryNote?: string;
   warrantyNote?: string;
   gifts?: string;

@@ -1,13 +1,17 @@
 "use client";
-import { Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, ImagePlus, Loader2, Plus, Search, X } from "lucide-react";
 import { colorPhoto } from "../lib/vehicleColor";
+import { normalizeColorPhotos, type ColorPhotoMap } from "../lib/colorPhotos";
+import { accessoryImageUrl } from "../lib/accessoryImageUrl";
 import { convertImageFileToWebp } from "../lib/convertImageToWebp";
 import { vehicleImageUrl } from "../lib/vehicleImageUrl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CenteredModal } from "../components/CenteredModal";
 import { CurrencyInput } from "../components/CurrencyInput";
+import { BankLoanForm } from "../components/BankLoanForm";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
-import { LoadingBlock, PanelLoading, TableRowsSkeleton } from "../components/LoadingState";
+import { LoadingBlock, TableRowsSkeleton } from "../components/LoadingState";
 import { api, UnauthorizedError } from "../api/client";
 import { useAdminAuth } from "../auth/AdminAuthContext";
 import { useI18n } from "../i18n/LanguageContext";
@@ -15,11 +19,15 @@ import type { Lang } from "../i18n/translations";
 import { getAdminCatalog, invalidateAdminCatalog, type AdminCatalogKey } from "../lib/adminCatalogCache";
 import { fillFromVietnamese } from "../lib/fromVietnamese";
 import { formatMoneyColumn, isMoneyField } from "../lib/format";
-import { locationLabel } from "../lib/labels";
+import { accessoryLabel, locationLabel } from "../lib/labels";
 import { softIncludes } from "../lib/softSearch";
 import type {
+  AdminAccessory,
+  AdminBank,
+  AdminBankLoan,
   AdminBrand,
   AdminCategory,
+  AdminConsultingEmployee,
   AdminDealer,
   AdminDealerPolicy,
   AdminFeeDefinition,
@@ -31,36 +39,77 @@ import type {
   DealerOffer,
 } from "../types";
 
-type CatalogTab = "brands" | "categories" | "locations" | "dealers" | "vehicles" | "feeDefinitions" | "feeRules";
+type CatalogTab =
+  | "brands"
+  | "categories"
+  | "locations"
+  | "dealers"
+  | "vehicles"
+  | "accessories"
+  | "feeDefinitions"
+  | "feeRules"
+  | "banks"
+  | "consultingEmployees"
+  | "bankLoans";
 type Tab = CatalogTab | "feePolicy" | "dealerPolicy" | "plateRegions";
 
-type FieldType = "text" | "number" | "boolean" | "textarea" | "select" | "langs" | "specs" | "colors" | "vehicleImage";
+type FieldType = "text" | "number" | "boolean" | "textarea" | "select" | "langs" | "specs" | "colors" | "accessoryImage";
 
 interface PendingImageUploads {
-  hero?: File;
-  colorRows: Record<number, File>;
+  colorPhotoRows: Record<string, Record<number, File>>;
+  accessoryImage?: File | null;
 }
 
-const EMPTY_PENDING_IMAGES: PendingImageUploads = { colorRows: {} };
+const EMPTY_PENDING_IMAGES: PendingImageUploads = { colorPhotoRows: {}, accessoryImage: null };
 
 interface Field {
   key: string;
   type: FieldType;
   options?: string[];
   ref?: "brand" | "category" | "location" | "fee";
+  labelKey?: string;
 }
 
 const TABS: { id: Tab; labelKey: string }[] = [
   { id: "vehicles", labelKey: "admin.vehicles" },
+  { id: "accessories", labelKey: "admin.accessories" },
   { id: "brands", labelKey: "admin.brands" },
   { id: "categories", labelKey: "admin.categories" },
   { id: "locations", labelKey: "admin.locations" },
   { id: "dealers", labelKey: "admin.dealers" },
+  { id: "banks", labelKey: "admin.banks" },
+  { id: "consultingEmployees", labelKey: "admin.consultingEmployees" },
+  { id: "bankLoans", labelKey: "admin.bankLoans" },
   { id: "feePolicy", labelKey: "admin.feePolicy" },
   { id: "dealerPolicy", labelKey: "admin.dealerPolicy" },
   { id: "plateRegions", labelKey: "admin.plateRegions" },
   { id: "feeDefinitions", labelKey: "admin.feeDefinitions" },
   { id: "feeRules", labelKey: "admin.feeRules" },
+];
+
+const SIDEBAR_GROUPS: { id: string; labelKey: string; tabs: Tab[] }[] = [
+  {
+    id: "car",
+    labelKey: "admin.group.carResource",
+    tabs: [
+      "vehicles",
+      "accessories",
+      "brands",
+      "categories",
+      "locations",
+      "dealers",
+      "feePolicy",
+      "dealerPolicy",
+      "plateRegions",
+      "feeDefinitions",
+      "feeRules",
+    ],
+  },
+  {
+    id: "hr",
+    labelKey: "admin.group.humanResources",
+    tabs: ["banks", "consultingEmployees", "bankLoans"],
+  },
 ];
 
 const FIELDS: Record<CatalogTab, Field[]> = {
@@ -102,8 +151,13 @@ const FIELDS: Record<CatalogTab, Field[]> = {
     { key: "fuelType", type: "select", options: ["Gasoline", "Diesel", "Hybrid", "Electric"] },
     { key: "transmission", type: "select", options: ["Automatic", "CVT", "Manual"] },
     { key: "colorPhotos", type: "colors" },
-    { key: "imageUrl", type: "vehicleImage" },
     { key: "specifications", type: "specs" },
+    { key: "active", type: "boolean" },
+  ],
+  accessories: [
+    { key: "name", type: "langs" },
+    { key: "amount", type: "number" },
+    { key: "imageUrl", type: "accessoryImage" },
     { key: "active", type: "boolean" },
   ],
   feeDefinitions: [
@@ -122,6 +176,17 @@ const FIELDS: Record<CatalogTab, Field[]> = {
     { key: "percentage", type: "number" },
     { key: "active", type: "boolean" },
   ],
+  banks: [
+    { key: "name", type: "text" },
+    { key: "active", type: "boolean" },
+  ],
+  consultingEmployees: [
+    { key: "name", type: "text" },
+    { key: "phone", type: "text" },
+    { key: "active", type: "boolean", labelKey: "admin.field.working" },
+    { key: "isDefault", type: "boolean", labelKey: "admin.field.defaultConsultant" },
+  ],
+  bankLoans: [],
 };
 
 const COLUMNS: Record<CatalogTab, string[]> = {
@@ -129,18 +194,23 @@ const COLUMNS: Record<CatalogTab, string[]> = {
   categories: ["name"],
   locations: ["name", "region"],
   dealers: ["brandCode", "name"],
-  vehicles: ["name", "brandCode", "categoryCode", "listPrice"],
+  vehicles: ["model", "name", "brandCode", "categoryCode", "listPrice", "year"],
+  accessories: ["name", "amount", "imageUrl", "active"],
   feeDefinitions: ["name", "mandatory"],
   feeRules: ["feeDefinitionCode", "categoryCode", "feeZone", "calculationType", "fixedAmount", "percentage"],
+  banks: ["name", "active"],
+  consultingEmployees: ["name", "phone", "active", "isDefault"],
+  bankLoans: ["bankName", "monthlyInterestRate", "loanTermYears", "fixedRatePeriodYears", "consultingEmployeeName"],
 };
 
-type LookupKey = "brands" | "categories" | "locations" | "fees";
+type LookupKey = "brands" | "categories" | "locations" | "fees" | "banks" | "consultingEmployees";
 
 const TAB_LOOKUPS: Partial<Record<Tab, LookupKey[]>> = {
   vehicles: ["brands", "categories"],
   dealers: ["brands"],
   feeRules: ["categories", "locations", "fees"],
   plateRegions: ["locations"],
+  bankLoans: ["banks", "consultingEmployees"],
 };
 
 const TAB_TO_CACHE: Record<CatalogTab, AdminCatalogKey> = {
@@ -149,18 +219,25 @@ const TAB_TO_CACHE: Record<CatalogTab, AdminCatalogKey> = {
   locations: "locations",
   dealers: "dealers",
   vehicles: "vehicles",
+  accessories: "accessories",
   feeDefinitions: "fees",
   feeRules: "feeRules",
+  banks: "banks",
+  consultingEmployees: "consultingEmployees",
+  bankLoans: "bankLoans",
 };
 
 export function AdminDataPage() {
   const { t, lang } = useI18n();
   const { ready, isAdmin } = useAdminAuth();
   const [tab, setTab] = useState<Tab>("vehicles");
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ car: true, hr: false });
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [locations, setLocations] = useState<AdminLocation[]>([]);
   const [fees, setFees] = useState<AdminFeeDefinition[]>([]);
+  const [bankCatalog, setBankCatalog] = useState<AdminBank[]>([]);
+  const [employeeCatalog, setEmployeeCatalog] = useState<AdminConsultingEmployee[]>([]);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
   const [feePolicy, setFeePolicy] = useState<AdminFeePolicy | null>(null);
@@ -190,6 +267,12 @@ export function AdminDataPage() {
       case "fees":
         setFees(data as AdminFeeDefinition[]);
         break;
+      case "banks":
+        setBankCatalog(data as AdminBank[]);
+        break;
+      case "consultingEmployees":
+        setEmployeeCatalog(data as AdminConsultingEmployee[]);
+        break;
     }
   }
 
@@ -212,6 +295,12 @@ export function AdminDataPage() {
     setRows(data as unknown as Record<string, unknown>[]);
     if (cacheKey === "brands" || cacheKey === "categories" || cacheKey === "locations" || cacheKey === "fees") {
       syncLookupState(cacheKey, data);
+    }
+    if (cacheKey === "banks") {
+      syncLookupState("banks", data);
+    }
+    if (cacheKey === "consultingEmployees") {
+      syncLookupState("consultingEmployees", data);
     }
   }
 
@@ -274,6 +363,13 @@ export function AdminDataPage() {
     setCatalogFilters({});
   }, [tab]);
 
+  useEffect(() => {
+    const group = SIDEBAR_GROUPS.find((item) => item.tabs.includes(tab));
+    if (group) {
+      setExpandedGroups((current) => ({ ...current, [group.id]: true }));
+    }
+  }, [tab]);
+
   function startNew() {
     const firstBrand = brands[0]?.code ?? "";
     const firstCategory = categories.find((item) => item.code === "PASSENGER_CAR_4")?.code ?? categories[0]?.code ?? "";
@@ -305,71 +401,262 @@ export function AdminDataPage() {
       Object.assign(base, { region: "SOUTH", feeZone: "STANDARD" });
     } else if (tab === "feeRules") {
       Object.assign(base, { feeDefinitionCode: firstFee, calculationType: "FIXED", categoryCode: firstCategory });
+    } else if (tab === "bankLoans") {
+      Object.assign(base, {
+        bankId: bankCatalog[0]?.id ?? 0,
+        monthlyInterestRate: 0.65,
+        loanTermYears: 5,
+        fixedRatePeriodYears: 2,
+        consultingEmployeeId:
+          employeeCatalog.find((item) => item.isDefault)?.id ?? employeeCatalog[0]?.id ?? 0,
+      });
+    } else if (tab === "accessories") {
+      Object.assign(base, { amount: 0 });
     }
     setDraft(base);
     setPendingImages(EMPTY_PENDING_IMAGES);
   }
 
-  async function processVehicleImagePick(input: {
+  function colorPhotosDraft(): ColorPhotoMap {
+    return normalizeColorPhotos(draft?.colorPhotos);
+  }
+
+  function setColorPhotosDraft(photos: ColorPhotoMap) {
+    if (!draft) {
+      return;
+    }
+    setDraft({ ...draft, colorPhotos: photos });
+  }
+
+  function coverImageId(photos: ColorPhotoMap, defaultColor: string): string {
+    const preferred = photos[defaultColor]?.find((item) => item.trim());
+    if (preferred) {
+      return preferred;
+    }
+    for (const ids of Object.values(photos)) {
+      const first = ids.find((item) => item.trim());
+      if (first) {
+        return first;
+      }
+    }
+    return "";
+  }
+
+  async function processColorPhotoPick(input: {
     file: File;
-    kind: "hero" | "color";
-    colorName?: string;
-    rowIndex?: number;
+    colorName: string;
+    photoIndex: number;
   }) {
     if (!draft) {
       return;
     }
+    const colorName = input.colorName.trim();
+    if (!colorName) {
+      setError(t("admin.colorNameRequired"));
+      return;
+    }
 
-    const processKey = input.kind === "hero" ? "hero" : `color-${input.rowIndex ?? 0}`;
+    const processKey = `color-${colorName}-${input.photoIndex}`;
     setProcessingImageKey(processKey);
     setError(null);
     try {
-      if (input.kind === "color" && !input.colorName?.trim()) {
-        setError(t("admin.colorNameRequired"));
-        return;
-      }
       const webp = await convertImageFileToWebp(input.file);
       const vehicleId = Number(draft.id);
+      const photos = colorPhotosDraft();
+      const list = [...(photos[colorName] ?? [])];
+      while (list.length <= input.photoIndex) {
+        list.push("");
+      }
 
       if (Number.isFinite(vehicleId) && vehicleId > 0) {
         const uploaded = await api.uploadVehicleImage({
           vehicleId,
-          kind: input.kind,
-          colorName: input.colorName,
+          kind: "color",
+          colorName,
           file: webp,
         });
-        if (input.kind === "hero") {
-          setDraft({ ...draft, imageUrl: String(uploaded.id) });
-          setPendingImages({ ...pendingImages, hero: undefined });
-        } else if (input.colorName) {
-          const photos = { ...((draft.colorPhotos as Record<string, string>) ?? {}) };
-          photos[input.colorName] = String(uploaded.id);
-          const nextPending = { ...pendingImages.colorRows };
-          if (input.rowIndex != null) {
-            delete nextPending[input.rowIndex];
+        list[input.photoIndex] = String(uploaded.id);
+        photos[colorName] = list.filter((item) => item.trim());
+        const defaultColor = String(draft.defaultColor ?? "");
+        setDraft({
+          ...draft,
+          colorPhotos: photos,
+          imageUrl: coverImageId(photos, defaultColor) || draft.imageUrl,
+        });
+        const nextPending = { ...pendingImages.colorPhotoRows };
+        if (nextPending[colorName]) {
+          delete nextPending[colorName][input.photoIndex];
+          if (Object.keys(nextPending[colorName]).length === 0) {
+            delete nextPending[colorName];
           }
-          setPendingImages({ ...pendingImages, colorRows: nextPending });
-          setDraft({ ...draft, colorPhotos: photos });
         }
+        setPendingImages({ ...pendingImages, colorPhotoRows: nextPending });
         return;
       }
 
-      if (input.kind === "hero") {
-        setPendingImages({ ...pendingImages, hero: webp });
-        return;
-      }
-      if (input.rowIndex == null) {
-        return;
-      }
+      list[input.photoIndex] = "";
+      photos[colorName] = list;
+      setColorPhotosDraft(photos);
       setPendingImages({
         ...pendingImages,
-        colorRows: { ...pendingImages.colorRows, [input.rowIndex]: webp },
+        colorPhotoRows: {
+          ...pendingImages.colorPhotoRows,
+          [colorName]: {
+            ...(pendingImages.colorPhotoRows[colorName] ?? {}),
+            [input.photoIndex]: webp,
+          },
+        },
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.imageConvertFailed"));
     } finally {
       setProcessingImageKey(null);
     }
+  }
+
+  async function addColorPhotos(colorName: string, files: FileList | File[]) {
+    if (!draft) {
+      return;
+    }
+    const name = colorName.trim();
+    if (!name) {
+      setError(t("admin.colorNameRequired"));
+      return;
+    }
+    const picked = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (picked.length === 0) {
+      return;
+    }
+
+    const photos = colorPhotosDraft();
+    const list = [...(photos[name] ?? [])];
+    const startIndex = list.length;
+    list.push(...picked.map(() => ""));
+    photos[name] = list;
+    setColorPhotosDraft(photos);
+
+    for (const [offset, file] of picked.entries()) {
+      await processColorPhotoPick({ file, colorName: name, photoIndex: startIndex + offset });
+    }
+  }
+
+  async function removeColorPhoto(colorName: string, photoIndex: number) {
+    if (!draft) {
+      return;
+    }
+    const photos = colorPhotosDraft();
+    const list = [...(photos[colorName] ?? [])];
+    const removedId = list[photoIndex]?.trim();
+    list.splice(photoIndex, 1);
+    if (list.length > 0) {
+      photos[colorName] = list;
+    } else {
+      delete photos[colorName];
+    }
+
+    const nextPending = { ...pendingImages.colorPhotoRows };
+    const pendingForColor: Record<number, File> = {};
+    for (const [key, file] of Object.entries(nextPending[colorName] ?? {})) {
+      const index = Number(key);
+      if (index < photoIndex) {
+        pendingForColor[index] = file;
+      } else if (index > photoIndex) {
+        pendingForColor[index - 1] = file;
+      }
+    }
+    if (Object.keys(pendingForColor).length > 0) {
+      nextPending[colorName] = pendingForColor;
+    } else {
+      delete nextPending[colorName];
+    }
+    setPendingImages({ ...pendingImages, colorPhotoRows: nextPending });
+
+    const defaultColor = String(draft.defaultColor ?? "");
+    setDraft({
+      ...draft,
+      colorPhotos: photos,
+      imageUrl: coverImageId(photos, defaultColor),
+    });
+
+    if (removedId && /^\d+$/.test(removedId)) {
+      try {
+        await api.deleteAdminVehicleImage(Number(removedId));
+      } catch {
+        // Ignore delete failures for ids already removed from the vehicle record.
+      }
+    }
+  }
+
+  function moveColorPhoto(colorName: string, photoIndex: number, delta: number) {
+    if (!draft) {
+      return;
+    }
+    const photos = colorPhotosDraft();
+    const list = [...(photos[colorName] ?? [])];
+    const target = photoIndex + delta;
+    if (target < 0 || target >= list.length) {
+      return;
+    }
+    [list[photoIndex], list[target]] = [list[target], list[photoIndex]];
+    photos[colorName] = list;
+
+    const nextPending = { ...pendingImages.colorPhotoRows };
+    const colorPending = { ...(nextPending[colorName] ?? {}) };
+    const pendingFile = colorPending[photoIndex];
+    const targetPending = colorPending[target];
+    if (pendingFile || targetPending) {
+      if (pendingFile) {
+        colorPending[target] = pendingFile;
+      } else {
+        delete colorPending[target];
+      }
+      if (targetPending) {
+        colorPending[photoIndex] = targetPending;
+      } else {
+        delete colorPending[photoIndex];
+      }
+      nextPending[colorName] = colorPending;
+    }
+    setPendingImages({ ...pendingImages, colorPhotoRows: nextPending });
+    setDraft({ ...draft, colorPhotos: photos });
+  }
+
+  async function processAccessoryImagePick(file: File) {
+    if (!draft) {
+      return;
+    }
+    setProcessingImageKey("accessory-image");
+    setError(null);
+    try {
+      const webp = await convertImageFileToWebp(file);
+      const accessoryId = Number(draft.id);
+      if (Number.isFinite(accessoryId) && accessoryId > 0) {
+        const uploaded = await api.uploadAccessoryImage({ accessoryId, file: webp });
+        setDraft({ ...draft, imageUrl: String(uploaded.id) });
+      } else {
+        setPendingImages({ ...pendingImages, accessoryImage: webp });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("apiError"));
+    } finally {
+      setProcessingImageKey(null);
+    }
+  }
+
+  async function removeAccessoryImage() {
+    if (!draft) {
+      return;
+    }
+    const imageId = String(draft.imageUrl ?? "").trim();
+    if (/^\d+$/.test(imageId)) {
+      try {
+        await api.deleteAdminAccessoryImage(Number(imageId));
+      } catch {
+        // Ignore if already removed.
+      }
+    }
+    setPendingImages({ ...pendingImages, accessoryImage: null });
+    setDraft({ ...draft, imageUrl: "" });
   }
 
   async function saveDraft() {
@@ -379,12 +666,22 @@ export function AdminDataPage() {
     setSaving(true);
     setError(null);
     try {
+      if (tab === "bankLoans") {
+        await api.saveAdminBankLoan(draft as unknown as AdminBankLoan);
+        setNotice(t("admin.saved"));
+        setDraft(null);
+        await reloadAfterMutation();
+        return;
+      }
+
       const payload = { ...draft };
       if (tab === "vehicles") {
-        const photos = (payload.colorPhotos as Record<string, string>) ?? {};
+        const photos = normalizeColorPhotos(payload.colorPhotos);
         const names = Object.keys(photos).map((name) => name.trim()).filter(Boolean);
         payload.availableColors = names.join(", ");
         payload.defaultColor = String(payload.defaultColor || names[0] || "");
+        payload.colorPhotos = photos;
+        payload.imageUrl = coverImageId(photos, String(payload.defaultColor ?? ""));
 
         const saved = (await saveFor(tab, payload)) as { id: number };
         const vehicleId = saved.id;
@@ -392,37 +689,30 @@ export function AdminDataPage() {
         let imageUrl = String(payload.imageUrl ?? "");
         let hasImageUpdates = false;
 
-        if (pendingImages.hero) {
-          const uploaded = await api.uploadVehicleImage({
-            vehicleId,
-            kind: "hero",
-            file: pendingImages.hero,
-          });
-          imageUrl = String(uploaded.id);
-          hasImageUpdates = true;
-        }
-
-        const colorRows = Object.entries(colorPhotos);
-        for (const [index, file] of Object.entries(pendingImages.colorRows)) {
-          const colorName = colorRows[Number(index)]?.[0]?.trim();
-          if (!colorName) {
+        for (const [colorName, byIndex] of Object.entries(pendingImages.colorPhotoRows)) {
+          if (!colorName.trim()) {
             continue;
           }
-          const uploaded = await api.uploadVehicleImage({
-            vehicleId,
-            kind: "color",
-            colorName,
-            file,
-          });
-          colorPhotos[colorName] = String(uploaded.id);
-          hasImageUpdates = true;
+          const list = [...(colorPhotos[colorName] ?? [])];
+          for (const [index, file] of Object.entries(byIndex)) {
+            const uploaded = await api.uploadVehicleImage({
+              vehicleId,
+              kind: "color",
+              colorName,
+              file,
+            });
+            const photoIndex = Number(index);
+            while (list.length <= photoIndex) {
+              list.push("");
+            }
+            list[photoIndex] = String(uploaded.id);
+            hasImageUpdates = true;
+          }
+          colorPhotos[colorName] = list.filter((item) => item.trim());
         }
 
         if (hasImageUpdates) {
-          const defaultColor = String(payload.defaultColor ?? "");
-          if (!imageUrl && defaultColor && colorPhotos[defaultColor]) {
-            imageUrl = colorPhotos[defaultColor];
-          }
+          imageUrl = coverImageId(colorPhotos, String(payload.defaultColor ?? ""));
           await api.saveAdminVehicle({
             ...(payload as unknown as AdminVehicle),
             id: vehicleId,
@@ -431,6 +721,17 @@ export function AdminDataPage() {
           });
         }
 
+        setPendingImages(EMPTY_PENDING_IMAGES);
+      } else if (tab === "accessories") {
+        const saved = (await saveFor(tab, payload)) as AdminAccessory;
+        const accessoryId = saved.id;
+        if (accessoryId && pendingImages.accessoryImage) {
+          const uploaded = await api.uploadAccessoryImage({
+            accessoryId,
+            file: pendingImages.accessoryImage,
+          });
+          await api.saveAdminAccessory({ ...saved, imageUrl: String(uploaded.id) });
+        }
         setPendingImages(EMPTY_PENDING_IMAGES);
       } else {
         await saveFor(tab, payload);
@@ -509,6 +810,15 @@ export function AdminDataPage() {
     if (column === "name") {
       return localizedName(tab, row, lang, t);
     }
+    if (column === "imageUrl" && tab === "accessories") {
+      const preview = accessoryImageUrl(String(row.imageUrl ?? ""));
+      if (!preview) {
+        return "—";
+      }
+      return (
+        <img src={preview} alt="" className="h-10 w-16 rounded-lg object-cover" />
+      );
+    }
     const value = row[column];
     if (column === "brandCode") {
       return optionLabel(String(value ?? ""), { key: column, type: "select", ref: "brand" });
@@ -522,7 +832,16 @@ export function AdminDataPage() {
     if (column === "region" || column === "feeZone" || column === "calculationType") {
       return optionLabel(String(value ?? ""), { key: column, type: "select" });
     }
+    if (column === "monthlyInterestRate") {
+      return value == null || value === "" ? "—" : `${value}${t("bankLoan.unit.monthlyRate")}`;
+    }
     if (typeof value === "boolean") {
+      if (tab === "consultingEmployees" && column === "active") {
+        return value ? t("admin.field.working") : t("admin.field.notWorking");
+      }
+      if (tab === "consultingEmployees" && column === "isDefault") {
+        return value ? t("admin.field.defaultConsultant") : "—";
+      }
       return value ? t("admin.yes") : t("admin.no");
     }
     const money = formatMoneyColumn(column, value);
@@ -544,6 +863,7 @@ export function AdminDataPage() {
         tab === "vehicles" &&
         ((catalogFilters.brandCode && String(row.brandCode ?? "") !== catalogFilters.brandCode) ||
           (catalogFilters.categoryCode && String(row.categoryCode ?? "") !== catalogFilters.categoryCode) ||
+          (catalogFilters.model && String(row.model ?? "") !== catalogFilters.model) ||
           (catalogFilters.vehicleType && String(row.vehicleType ?? "") !== catalogFilters.vehicleType) ||
           (catalogFilters.active === "true" && row.active !== true) ||
           (catalogFilters.active === "false" && row.active !== false))
@@ -577,6 +897,36 @@ export function AdminDataPage() {
     });
   }, [rows, catalogQuery, catalogFilters, tab, lang]);
 
+  const vehicleModelFilterOptions = useMemo(() => {
+    if (tab !== "vehicles") {
+      return [];
+    }
+    const models = new Set<string>();
+    for (const row of rows) {
+      if (typeof row.model === "string" && row.model.trim()) {
+        models.add(row.model);
+      }
+    }
+    return [...models].sort((a, b) => a.localeCompare(b)).map((model) => ({ value: model, label: model }));
+  }, [rows, tab]);
+
+  function startVehicleVariant(mode: "year" | "trim") {
+    if (!draft || tab !== "vehicles") {
+      return;
+    }
+    const nextYear = mode === "year" ? Number(draft.year ?? new Date().getFullYear()) + 1 : draft.year;
+    setPendingImages(EMPTY_PENDING_IMAGES);
+    setDraft({
+      ...draft,
+      id: undefined,
+      year: nextYear,
+      name: mode === "trim" ? "" : draft.name,
+      listPrice: mode === "year" ? "" : draft.listPrice,
+      colorPhotos: mode === "year" ? {} : draft.colorPhotos,
+      imageUrl: mode === "year" ? "" : draft.imageUrl,
+    });
+  }
+
   if (ready && !isAdmin) {
     return (
       <div className="min-h-screen">
@@ -595,27 +945,65 @@ export function AdminDataPage() {
         <p className="text-xs uppercase tracking-[0.18em] text-copper">{t("admin.kicker")}</p>
         <h1 className="mt-1 font-display text-2xl sm:text-3xl">{t("admin.title")}</h1>
 
-        <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setTab(item.id)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-sm ${
-                tab === item.id ? "bg-ink text-paper" : "bg-white text-ink/70 shadow-card"
-              }`}
-            >
-              {t(item.labelKey)}
-            </button>
-          ))}
-        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,14rem)_1fr] lg:items-stretch">
+          <aside className="flex h-full flex-col rounded-2xl border border-ink/8 bg-white shadow-card p-3">
+            <nav className="flex-1" aria-label={t("admin.kicker")}>
+              {SIDEBAR_GROUPS.map((group) => {
+                const expanded = expandedGroups[group.id];
+                return (
+                  <div key={group.id} className="mb-2 last:mb-0">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedGroups((current) => ({ ...current, [group.id]: !current[group.id] }))}
+                      className="flex w-full items-center gap-1.5 rounded-lg px-2 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-copper hover:bg-mist/60"
+                      aria-expanded={expanded}
+                    >
+                      {expanded ? (
+                        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-copper/70" aria-hidden />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-copper/70" aria-hidden />
+                      )}
+                      {t(group.labelKey)}
+                    </button>
+                    {expanded ? (
+                      <div className="ml-2 space-y-0.5 border-l border-ink/10 pl-2 pb-1">
+                        {group.tabs.map((tabId) => {
+                          const tabDef = TABS.find((item) => item.id === tabId);
+                          if (!tabDef) {
+                            return null;
+                          }
+                          return (
+                            <button
+                              key={tabId}
+                              type="button"
+                              onClick={() => setTab(tabId)}
+                              className={`w-full rounded-md px-2.5 py-1.5 text-left text-sm ${
+                                tab === tabId
+                                  ? "bg-ink font-medium text-paper"
+                                  : "font-normal text-ink/65 hover:bg-mist/70 hover:text-ink"
+                              }`}
+                            >
+                              {t(tabDef.labelKey)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </nav>
+          </aside>
 
-        {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-        {notice && <p className="mt-3 text-sm text-forest">{notice}</p>}
+          <div className="flex h-full min-w-0 flex-col rounded-2xl border border-ink/8 bg-white shadow-card overflow-hidden">
+        {error && <p className="px-4 pt-3 text-sm text-red-700">{error}</p>}
+        {notice && <p className="px-4 pt-3 text-sm text-forest">{notice}</p>}
 
         {tab === "feePolicy" &&
           (loading && !feePolicy ? (
-            <PanelLoading message={t("loadingCatalog")} />
+            <div className="p-4 sm:p-5">
+              <LoadingBlock message={t("loadingCatalog")} />
+            </div>
           ) : feePolicy ? (
             <FeePolicyForm
               value={feePolicy}
@@ -638,7 +1026,9 @@ export function AdminDataPage() {
 
         {tab === "dealerPolicy" &&
           (loading && !dealerPolicy ? (
-            <PanelLoading message={t("loadingCatalog")} />
+            <div className="p-4 sm:p-5">
+              <LoadingBlock message={t("loadingCatalog")} />
+            </div>
           ) : dealerPolicy ? (
             <DealerPolicyForm
               value={dealerPolicy}
@@ -661,7 +1051,9 @@ export function AdminDataPage() {
 
         {tab === "plateRegions" &&
           (loading && !plates ? (
-            <PanelLoading message={t("loadingCatalog")} />
+            <div className="p-4 sm:p-5">
+              <LoadingBlock message={t("loadingCatalog")} />
+            </div>
           ) : plates ? (
             <PlateRegionsForm
               value={plates}
@@ -686,7 +1078,7 @@ export function AdminDataPage() {
 
         {isCatalog(tab) && (
           <>
-            <div className="mt-4 overflow-x-auto rounded-2xl border border-ink/8 bg-white shadow-card">
+            <div className="flex flex-1 flex-col min-h-0 overflow-x-auto">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/8 px-4 py-3">
                 <p className="text-sm font-semibold">
                   {t(TABS.find((item) => item.id === tab)?.labelKey ?? "")} · {visibleRows.length}
@@ -718,6 +1110,13 @@ export function AdminDataPage() {
                           value: item.code,
                           label: optionLabel(item.code, { key: "categoryCode", type: "select", ref: "category" }),
                         }))}
+                        allLabel={t("filterAll")}
+                      />
+                      <ListFilterSelect
+                        label={t("filterModel")}
+                        value={catalogFilters.model ?? ""}
+                        onChange={(value) => setCatalogFilters((current) => ({ ...current, model: value }))}
+                        options={vehicleModelFilterOptions}
                         allLabel={t("filterAll")}
                       />
                       <ListFilterSelect
@@ -800,7 +1199,7 @@ export function AdminDataPage() {
                       <tr>
                         {COLUMNS[tab].map((column) => (
                           <th key={column} className="px-3 py-2 font-medium">
-                            {t(`admin.field.${column}`)}
+                            {columnLabel(tab, column, t)}
                           </th>
                         ))}
                         <th className="px-3 py-2 font-medium">{t("admin.actions")}</th>
@@ -818,7 +1217,7 @@ export function AdminDataPage() {
                     <tr>
                       {COLUMNS[tab].map((column) => (
                         <th key={column} className="px-3 py-2 font-medium">
-                          {t(`admin.field.${column}`)}
+                          {columnLabel(tab, column, t)}
                         </th>
                       ))}
                       <th className="px-3 py-2 font-medium">{t("admin.actions")}</th>
@@ -837,23 +1236,23 @@ export function AdminDataPage() {
                           </td>
                         ))}
                         <td className="px-3 py-2">
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => openRowEdit(row)}
                               onDoubleClick={(event) => event.stopPropagation()}
-                              className="text-ink/60 hover:text-ink"
+                              className="inline-flex h-8 items-center rounded-lg border border-ink/10 bg-white px-2.5 text-xs font-semibold text-ink hover:border-copper hover:text-copper"
                             >
-                              <Pencil className="h-4 w-4" />
+                              {t("admin.edit")}
                             </button>
                             {typeof row.id === "number" && (
                               <button
                                 type="button"
                                 onClick={() => void remove(row.id as number)}
                                 onDoubleClick={(event) => event.stopPropagation()}
-                                className="text-ink/60 hover:text-red-700"
+                                className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-white px-2.5 text-xs font-semibold text-red-700 hover:bg-red-50"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                {t("admin.delete")}
                               </button>
                             )}
                           </div>
@@ -866,13 +1265,14 @@ export function AdminDataPage() {
             </div>
 
             {draft && (
-              <div className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto bg-ink/45 p-0 sm:items-start sm:p-4 sm:pt-16" onClick={() => {
-                setDraft(null);
-                setPendingImages(EMPTY_PENDING_IMAGES);
-              }}>
+              <CenteredModal
+                onClose={() => {
+                  setDraft(null);
+                  setPendingImages(EMPTY_PENDING_IMAGES);
+                }}
+                panelClassName="rounded-2xl border border-ink/8 bg-white p-4 shadow-card sm:max-w-3xl sm:p-5"
+              >
                 <form
-                  className="w-full max-h-[92dvh] overflow-y-auto rounded-t-2xl border border-ink/8 bg-white p-4 shadow-card sm:max-w-3xl sm:rounded-2xl sm:p-5"
-                  onClick={(event) => event.stopPropagation()}
                   onSubmit={(event) => {
                     event.preventDefault();
                     void saveDraft();
@@ -887,24 +1287,61 @@ export function AdminDataPage() {
                       <X className="h-5 w-5" />
                     </button>
                   </div>
-                  <div className="mt-3 grid max-h-[70vh] gap-3 overflow-y-auto pr-1 md:grid-cols-2">
-                    {FIELDS[tab].map((field) => (
-                      <FieldInput
-                        key={field.key}
-                        field={field}
-                        draft={draft}
-                        setDraft={setDraft}
-                        t={t}
-                        options={fieldOptions(field)}
-                        optionLabel={(value) => optionLabel(value, field)}
-                        pendingImages={pendingImages}
-                        setPendingImages={setPendingImages}
-                        processingImageKey={processingImageKey}
-                        onPickVehicleImage={processVehicleImagePick}
-                      />
-                    ))}
+                  <div className="form-fields-row form-fields-row--auto mt-3 pr-1">
+                    {tab === "bankLoans" ? (
+                      <div className="col-span-full">
+                        <BankLoanForm
+                          value={draft as unknown as AdminBankLoan}
+                          banks={bankCatalog}
+                          employees={employeeCatalog}
+                          saving={saving}
+                          onChange={(next) => setDraft(next as unknown as Record<string, unknown>)}
+                          onSubmit={() => saveDraft()}
+                          onCancel={() => setDraft(null)}
+                        />
+                      </div>
+                    ) : (
+                      FIELDS[tab].map((field) => (
+                        <FieldInput
+                          key={field.key}
+                          field={field}
+                          draft={draft}
+                          setDraft={setDraft}
+                          t={t}
+                          options={fieldOptions(field)}
+                          optionLabel={(value) => optionLabel(value, field)}
+                          pendingImages={pendingImages}
+                          setPendingImages={setPendingImages}
+                          processingImageKey={processingImageKey}
+                          onAddColorPhotos={addColorPhotos}
+                          onRemoveColorPhoto={removeColorPhoto}
+                          onMoveColorPhoto={moveColorPhoto}
+                          onAccessoryImagePick={(file) => void processAccessoryImagePick(file)}
+                          onRemoveAccessoryImage={() => void removeAccessoryImage()}
+                        />
+                      ))
+                    )}
                   </div>
-                  <div className="mt-4 flex gap-2">
+                  {tab !== "bankLoans" ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {tab === "vehicles" ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => startVehicleVariant("year")}
+                          className="h-10 rounded-lg border border-ink/10 px-4 text-sm font-semibold text-ink hover:border-copper hover:text-copper"
+                        >
+                          {t("admin.addModelYear")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startVehicleVariant("trim")}
+                          className="h-10 rounded-lg border border-ink/10 px-4 text-sm font-semibold text-ink hover:border-copper hover:text-copper"
+                        >
+                          {t("admin.addModelTrim")}
+                        </button>
+                      </>
+                    ) : null}
                     <button type="submit" disabled={saving} className="h-10 rounded-lg bg-ink px-4 text-sm font-semibold text-paper disabled:opacity-60">
                       {saving ? t("admin.saving") : t("admin.save")}
                     </button>
@@ -915,11 +1352,14 @@ export function AdminDataPage() {
                       {t("admin.cancel")}
                     </button>
                   </div>
+                  ) : null}
                 </form>
-              </div>
+              </CenteredModal>
             )}
           </>
         )}
+          </div>
+        </div>
       </main>
     </div>
   );
@@ -963,8 +1403,8 @@ function LangFields({
   }
 
   return (
-    <div className="md:col-span-2 grid gap-3 md:grid-cols-2">
-      <label className="block text-xs font-medium text-ink/70 md:col-span-2">
+    <div className="col-span-full form-fields-row form-fields-row--auto">
+      <label className="block text-xs font-medium text-ink/70 col-span-full">
         {t("admin.field.name_vi")}
         <input
           value={String(draft.name ?? "")}
@@ -1003,7 +1443,11 @@ function FieldInput({
   pendingImages,
   setPendingImages,
   processingImageKey,
-  onPickVehicleImage,
+  onAddColorPhotos,
+  onRemoveColorPhoto,
+  onMoveColorPhoto,
+  onAccessoryImagePick,
+  onRemoveAccessoryImage,
 }: {
   field: Field;
   draft: Record<string, unknown>;
@@ -1014,12 +1458,11 @@ function FieldInput({
   pendingImages: PendingImageUploads;
   setPendingImages: (next: PendingImageUploads) => void;
   processingImageKey: string | null;
-  onPickVehicleImage: (input: {
-    file: File;
-    kind: "hero" | "color";
-    colorName?: string;
-    rowIndex?: number;
-  }) => Promise<void>;
+  onAddColorPhotos: (colorName: string, files: FileList | File[]) => Promise<void>;
+  onRemoveColorPhoto: (colorName: string, photoIndex: number) => Promise<void>;
+  onMoveColorPhoto: (colorName: string, photoIndex: number, delta: number) => void;
+  onAccessoryImagePick: (file: File) => void;
+  onRemoveAccessoryImage: () => void;
 }) {
   if (field.type === "langs") {
     return (
@@ -1031,81 +1474,207 @@ function FieldInput({
     );
   }
 
-  if (field.type === "colors") {
-    const photos = (draft.colorPhotos as Record<string, string>) ?? {};
-    const rows = Object.keys(photos).length ? Object.entries(photos) : [["", ""]];
+  if (field.type === "accessoryImage") {
+    const pendingFile = pendingImages.accessoryImage;
+    const previewUrl = pendingFile
+      ? URL.createObjectURL(pendingFile)
+      : accessoryImageUrl(String(draft.imageUrl ?? ""));
+    const isProcessing = processingImageKey === "accessory-image";
     return (
-      <div className="md:col-span-2">
+      <div className="col-span-full">
+        <p className="text-xs font-medium text-ink/70">{t("admin.field.accessoryPhoto")}</p>
+        <p className="mt-1 text-[11px] text-ink/45">{t("admin.accessoryImageHint")}</p>
+        <div className="mt-3 flex flex-wrap items-start gap-3">
+          {previewUrl ? (
+            <div className="relative overflow-hidden rounded-xl border border-ink/10 bg-mist">
+              {isProcessing ? (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-mist/90">
+                  <Loader2 className="h-5 w-5 animate-spin text-copper" aria-hidden />
+                </div>
+              ) : null}
+              <img src={previewUrl} alt="" className="aspect-[16/10] w-40 object-cover" />
+            </div>
+          ) : (
+            <div className="flex h-24 w-40 items-center justify-center rounded-xl border border-dashed border-ink/15 bg-mist text-xs text-ink/45">
+              {t("admin.noImage")}
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <label
+              className={`inline-flex h-10 items-center gap-2 rounded-lg border border-dashed border-copper/40 px-3 text-sm font-semibold text-copper ${
+                isProcessing ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-copper/5"
+              }`}
+            >
+              <ImagePlus className="h-4 w-4" aria-hidden />
+              <span>{t("admin.uploadImage")}</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={isProcessing}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) {
+                    onAccessoryImagePick(file);
+                  }
+                }}
+              />
+            </label>
+            {(previewUrl || pendingFile) && (
+              <button
+                type="button"
+                onClick={onRemoveAccessoryImage}
+                className="text-sm font-semibold text-red-700 hover:text-red-800"
+              >
+                {t("admin.remove")}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (field.type === "colors") {
+    const photos = normalizeColorPhotos(draft.colorPhotos);
+    const rows: [string, string[]][] =
+      Object.keys(photos).length > 0 ? Object.entries(photos) : [["", []]];
+    return (
+      <div className="col-span-full">
         <p className="text-xs font-medium text-ink/70">{t("admin.field.colorPhotos")}</p>
-        <div className="mt-2 space-y-2">
-          {rows.map(([name, imageId], index) => {
-            const pendingFile = pendingImages.colorRows[index];
-            const previewUrl = pendingFile
-              ? URL.createObjectURL(pendingFile)
-              : colorPhoto(name, photos);
-            const isProcessing = processingImageKey === `color-${index}`;
+        <p className="mt-1 text-[11px] text-ink/45">{t("admin.colorPhotosHint")}</p>
+        <div className="mt-3 space-y-4">
+          {rows.map(([name, imageIds], index) => {
+            const colorName = name.trim();
+            const photoList = imageIds.length > 0 ? imageIds : [""];
             return (
-              <div key={index} className="grid gap-2 sm:grid-cols-[8rem_1fr_4.5rem_auto]">
-                <input
-                  value={name}
-                  placeholder={t("admin.colorName")}
-                  onChange={(event) => {
-                    const next = Object.fromEntries(rows.map((row, rowIndex) => (rowIndex === index ? [event.target.value, row[1]] : row)));
-                    setDraft({ ...draft, colorPhotos: next, defaultColor: draft.defaultColor === name ? event.target.value : draft.defaultColor });
-                  }}
-                  className="h-10 rounded-lg border border-ink/10 bg-paper px-3 text-sm"
-                />
-                <label className={`flex h-10 items-center rounded-lg border border-ink/10 bg-paper px-3 text-sm text-ink/70 ${isProcessing ? "cursor-wait opacity-70" : "cursor-pointer hover:bg-ink/5"}`}>
-                  <span className="truncate">
-                    {isProcessing
-                      ? t("admin.convertingImage")
-                      : pendingFile
-                        ? pendingFile.name
-                        : imageId
-                          ? t("admin.imageStored")
-                          : t("admin.uploadImage")}
-                  </span>
+              <div key={`${name}-${index}`} className="rounded-2xl border border-ink/10 bg-paper/70 p-3 sm:p-4">
+                <div className="flex flex-wrap items-center gap-2">
                   <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    disabled={isProcessing}
+                    value={name}
+                    placeholder={t("admin.colorName")}
                     onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.target.value = "";
-                      if (!file) {
-                        return;
+                      const nextName = event.target.value;
+                      const next = { ...photos };
+                      delete next[name];
+                      if (nextName.trim() || imageIds.length > 0) {
+                        next[nextName] = imageIds;
                       }
-                      const colorName = name.trim();
-                      if (!colorName) {
-                        return;
-                      }
-                      void onPickVehicleImage({ file, kind: "color", colorName, rowIndex: index });
+                      setDraft({
+                        ...draft,
+                        colorPhotos: next,
+                        defaultColor: draft.defaultColor === name ? nextName : draft.defaultColor,
+                      });
                     }}
+                    className="h-10 min-w-[8rem] flex-1 rounded-lg border border-ink/10 bg-paper px-3 text-sm"
                   />
-                </label>
-                <img src={previewUrl} alt="" className="h-10 w-full rounded-md object-contain bg-paper" />
-                <button
-                  type="button"
-                  className="text-sm text-red-700"
-                  onClick={() => {
-                    const next = Object.fromEntries(rows.filter((_, rowIndex) => rowIndex !== index));
-                    const nextPending = { ...pendingImages.colorRows };
-                    delete nextPending[index];
-                    setPendingImages({ ...pendingImages, colorRows: nextPending });
-                    setDraft({ ...draft, colorPhotos: next });
-                  }}
-                >
-                  {t("admin.remove")}
-                </button>
+                  <label
+                    className={`inline-flex h-10 items-center gap-2 rounded-lg border border-dashed border-copper/40 px-3 text-sm font-semibold text-copper ${
+                      !colorName ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-copper/5"
+                    }`}
+                  >
+                    <ImagePlus className="h-4 w-4" aria-hidden />
+                    <span>{t("admin.addColorPhotos")}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      disabled={!colorName}
+                      onChange={(event) => {
+                        const files = event.target.files;
+                        event.target.value = "";
+                        if (!files?.length || !colorName) {
+                          return;
+                        }
+                        void onAddColorPhotos(colorName, files);
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="text-sm text-red-700"
+                    onClick={() => {
+                      const next = { ...photos };
+                      delete next[name];
+                      const nextPending = { ...pendingImages.colorPhotoRows };
+                      delete nextPending[name];
+                      setPendingImages({ ...pendingImages, colorPhotoRows: nextPending });
+                      setDraft({ ...draft, colorPhotos: next, defaultColor: draft.defaultColor === name ? "" : draft.defaultColor });
+                    }}
+                  >
+                    {t("admin.removeColor")}
+                  </button>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {photoList.map((imageId, photoIndex) => {
+                    const pendingFile = pendingImages.colorPhotoRows[name]?.[photoIndex];
+                    const previewUrl = pendingFile
+                      ? URL.createObjectURL(pendingFile)
+                      : vehicleImageUrl(imageId) || colorPhoto(name, photos);
+                    const isProcessing = processingImageKey === `color-${name}-${photoIndex}`;
+                    return (
+                      <div
+                        key={`${name}-${photoIndex}-${imageId || "pending"}`}
+                        className="overflow-hidden rounded-xl border border-ink/10 bg-paper shadow-card"
+                      >
+                        <div className="relative aspect-4/3 bg-mist">
+                          {isProcessing ? (
+                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-mist/90">
+                              <Loader2 className="h-5 w-5 animate-spin text-copper" aria-hidden />
+                            </div>
+                          ) : null}
+                          <img src={previewUrl} alt="" className="h-full w-full object-contain" />
+                          {photoIndex === 0 ? (
+                            <span className="absolute left-2 top-2 rounded-full bg-copper px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-paper">
+                              {t("admin.galleryCover")}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center justify-between gap-1 border-t border-ink/8 px-2 py-1.5">
+                          <span className="text-[11px] font-medium text-ink/50">{photoIndex + 1}</span>
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              disabled={photoIndex === 0}
+                              aria-label={t("admin.moveUp")}
+                              onClick={() => onMoveColorPhoto(name, photoIndex, -1)}
+                              className="rounded-md p-1 text-ink/55 hover:bg-ink/5 disabled:opacity-30"
+                            >
+                              <ChevronUp className="h-4 w-4" aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={photoIndex === photoList.length - 1}
+                              aria-label={t("admin.moveDown")}
+                              onClick={() => onMoveColorPhoto(name, photoIndex, 1)}
+                              className="rounded-md p-1 text-ink/55 hover:bg-ink/5 disabled:opacity-30"
+                            >
+                              <ChevronDown className="h-4 w-4" aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void onRemoveColorPhoto(name, photoIndex)}
+                              className="rounded-md px-1.5 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-50"
+                            >
+                              {t("admin.remove")}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
         </div>
         <button
           type="button"
-          className="mt-2 text-sm font-semibold text-copper"
-          onClick={() => setDraft({ ...draft, colorPhotos: { ...photos, "": "" } })}
+          className="mt-3 text-sm font-semibold text-copper"
+          onClick={() => setDraft({ ...draft, colorPhotos: { ...photos, "": [] } })}
         >
           {t("admin.addColor")}
         </button>
@@ -1127,46 +1696,6 @@ function FieldInput({
     );
   }
 
-  if (field.type === "vehicleImage") {
-    const imageId = String(draft.imageUrl ?? "");
-    const pendingFile = pendingImages.hero;
-    const previewUrl = pendingFile ? URL.createObjectURL(pendingFile) : vehicleImageUrl(imageId) || colorPhoto();
-    const isProcessing = processingImageKey === "hero";
-    return (
-      <div className="md:col-span-2">
-        <p className="text-xs font-medium text-ink/70">{t("admin.field.imageUrl")}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <label className={`inline-flex h-10 items-center rounded-lg border border-ink/10 bg-paper px-3 text-sm text-ink/70 ${isProcessing ? "cursor-wait opacity-70" : "cursor-pointer hover:bg-ink/5"}`}>
-            <span>
-              {isProcessing
-                ? t("admin.convertingImage")
-                : pendingFile
-                  ? pendingFile.name
-                  : imageId
-                    ? t("admin.imageStored")
-                    : t("admin.uploadImage")}
-            </span>
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              disabled={isProcessing}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (!file) {
-                  return;
-                }
-                void onPickVehicleImage({ file, kind: "hero" });
-              }}
-            />
-          </label>
-          {previewUrl ? <img src={previewUrl} alt="" className="h-16 w-24 rounded-md object-contain bg-paper" /> : null}
-        </div>
-      </div>
-    );
-  }
-
   if (field.type === "specs") {
     const specs = (draft.specifications as Record<string, string>) ?? {};
     const rows = Object.entries(specs);
@@ -1174,7 +1703,7 @@ function FieldInput({
       rows.push(["", ""]);
     }
     return (
-      <div className="md:col-span-2">
+      <div className="col-span-full">
         <p className="text-xs font-medium text-ink/70">{t("admin.field.specifications")}</p>
         <div className="mt-1 space-y-2">
           {rows.map(([key, value], index) => (
@@ -1212,16 +1741,25 @@ function FieldInput({
   }
 
   return (
-    <label className="block text-xs font-medium text-ink/70">
-      {t(`admin.field.${field.key}`)}
+    <label
+      className={`flex h-full flex-col text-xs font-medium text-ink/70${
+        field.type === "boolean" ? " justify-end" : ""
+      }${field.type === "textarea" ? " col-span-full" : ""}`}
+    >
       {field.type === "boolean" ? (
-        <input
-          type="checkbox"
-          checked={Boolean(draft[field.key])}
-          onChange={(event) => setDraft({ ...draft, [field.key]: event.target.checked })}
-          className="ml-2 align-middle"
-        />
-      ) : field.type === "select" ? (
+        <span className="flex h-10 items-center gap-2">
+          {t(field.labelKey ?? `admin.field.${field.key}`)}
+          <input
+            type="checkbox"
+            checked={Boolean(draft[field.key])}
+            onChange={(event) => setDraft({ ...draft, [field.key]: event.target.checked })}
+            className="h-4 w-4 shrink-0 accent-copper"
+          />
+        </span>
+      ) : (
+        <>
+      {t(field.labelKey ?? `admin.field.${field.key}`)}
+      {field.type === "select" ? (
         <select
           value={String(draft[field.key] ?? "")}
           onChange={(event) => setDraft({ ...draft, [field.key]: event.target.value || null })}
@@ -1259,6 +1797,8 @@ function FieldInput({
           className="mt-1 h-10 w-full rounded-lg border border-ink/10 bg-paper px-3 text-sm"
         />
       )}
+        </>
+      )}
     </label>
   );
 }
@@ -1277,8 +1817,8 @@ function FeePolicyForm({
   t: (key: string) => string;
 }) {
   return (
-    <section className="mt-4 rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
-      <div className="grid gap-3 md:grid-cols-2">
+    <section className="p-4 sm:p-5">
+      <div className="form-fields-row form-fields-row--auto">
         <NumberField label={t("admin.field.registrationTaxPercent")} value={value.registrationTaxPercent} onChange={(next) => onChange({ ...value, registrationTaxPercent: next })} />
         <NumberField label={t("admin.field.registrationTaxCommercialPercent")} value={value.registrationTaxCommercialPercent} onChange={(next) => onChange({ ...value, registrationTaxCommercialPercent: next })} />
       </div>
@@ -1308,9 +1848,9 @@ function DealerPolicyForm({
   }
 
   return (
-    <section className="mt-4 space-y-4">
+    <section className="space-y-4 p-4 sm:p-5">
       <div className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="form-fields-row form-fields-row--auto">
           <NumberField label={t("admin.field.privateDiscountPercent")} value={value.privateDiscountPercent} onChange={(next) => onChange({ ...value, privateDiscountPercent: next })} />
           <NumberField label={t("admin.field.commercialDiscountPercent")} value={value.commercialDiscountPercent} onChange={(next) => onChange({ ...value, commercialDiscountPercent: next })} />
         </div>
@@ -1337,7 +1877,7 @@ function DealerPolicyForm({
               ))}
             </select>
           </label>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="form-fields-row form-fields-row--auto mt-3">
             <NumberField currency label={t("admin.field.amount")} value={offer.amount ?? 0} onChange={(next) => updateOffer(index, { ...offer, amount: next })} />
             <NumberField label={t("admin.field.percent")} value={offer.percent ?? 0} onChange={(next) => updateOffer(index, { ...offer, percent: next })} />
           </div>
@@ -1415,8 +1955,8 @@ function OfferLangFields({
   }
 
   return (
-    <div className="mt-3 grid gap-3 md:grid-cols-2">
-      <label className="block text-xs font-medium text-ink/70 md:col-span-2">
+    <div className="form-fields-row form-fields-row--auto mt-3">
+      <label className="block text-xs font-medium text-ink/70 col-span-full">
         {t("admin.field.offerTitle_vi")}
         <input
           value={offer.title?.vi ?? ""}
@@ -1438,7 +1978,7 @@ function OfferLangFields({
           />
         </label>
       ))}
-      <label className="block text-xs font-medium text-ink/70 md:col-span-2">
+      <label className="block text-xs font-medium text-ink/70 col-span-full">
         {t("admin.field.offerDesc_vi")}
         <textarea
           value={offer.description?.vi ?? ""}
@@ -1504,15 +2044,11 @@ function PlateRegionsForm({
   }
 
   return (
-    <section className="mt-4 space-y-4">
+    <section className="space-y-4 p-4 sm:p-5">
       <div className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
-        <div className="grid gap-3 md:grid-cols-10">
-          <div className="md:col-span-6">
-            <NumberField currency label={t("admin.field.areaIAmount")} value={areaI} onChange={(next) => setAmount("AREA_I", next)} />
-          </div>
-          <div className="md:col-span-4">
-            <NumberField currency label={t("admin.field.areaIIAmount")} value={areaII} onChange={(next) => setAmount("AREA_II", next)} />
-          </div>
+        <div className="form-fields-row form-fields-row--auto">
+          <NumberField currency label={t("admin.field.areaIAmount")} value={areaI} onChange={(next) => setAmount("AREA_I", next)} />
+          <NumberField currency label={t("admin.field.areaIIAmount")} value={areaII} onChange={(next) => setAmount("AREA_II", next)} />
         </div>
         <label className="relative mt-3 block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
@@ -1641,14 +2177,14 @@ function SaveButton({ saving, t, onClick }: { saving: boolean; t: (key: string) 
 }
 
 function prepareDraft(row: Record<string, unknown>): Record<string, unknown> {
-  const photos = { ...((row.colorPhotos as Record<string, string>) ?? {}) };
+  const photos = normalizeColorPhotos(row.colorPhotos);
   const listed = String(row.availableColors ?? "")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
   for (const name of listed) {
     if (!photos[name]) {
-      photos[name] = "";
+      photos[name] = [];
     }
   }
   return { ...row, colorPhotos: photos };
@@ -1656,6 +2192,16 @@ function prepareDraft(row: Record<string, unknown>): Record<string, unknown> {
 
 function isCatalog(tab: Tab): tab is CatalogTab {
   return !["feePolicy", "dealerPolicy", "plateRegions"].includes(tab);
+}
+
+function columnLabel(tab: CatalogTab, column: string, t: (key: string) => string) {
+  if (tab === "consultingEmployees" && column === "active") {
+    return t("admin.field.working");
+  }
+  if (tab === "consultingEmployees" && column === "isDefault") {
+    return t("admin.field.defaultConsultant");
+  }
+  return t(`admin.field.${column}`);
 }
 
 function localizedName(
@@ -1672,6 +2218,17 @@ function localizedName(
         nameZh: String(row.nameZh ?? ""),
         nameJa: String(row.nameJa ?? ""),
       } as AdminLocation,
+      lang
+    );
+  }
+  if (tab === "accessories") {
+    return accessoryLabel(
+      {
+        name: String(row.name ?? ""),
+        nameEn: String(row.nameEn ?? ""),
+        nameZh: String(row.nameZh ?? ""),
+        nameJa: String(row.nameJa ?? ""),
+      },
       lang
     );
   }
@@ -1715,10 +2272,18 @@ function saveFor(tab: CatalogTab, item: Record<string, unknown>) {
       return api.saveAdminDealer(item as unknown as AdminDealer);
     case "vehicles":
       return api.saveAdminVehicle(item as unknown as AdminVehicle);
+    case "accessories":
+      return api.saveAdminAccessory(item as unknown as AdminAccessory);
     case "feeDefinitions":
       return api.saveAdminFeeDefinition(item as unknown as AdminFeeDefinition);
     case "feeRules":
       return api.saveAdminFeeRule(item as unknown as AdminFeeRule);
+    case "banks":
+      return api.saveAdminBank(item as unknown as AdminBank);
+    case "consultingEmployees":
+      return api.saveAdminConsultingEmployee(item as unknown as AdminConsultingEmployee);
+    case "bankLoans":
+      return api.saveAdminBankLoan(item as unknown as AdminBankLoan);
   }
 }
 
@@ -1734,9 +2299,17 @@ function deleteFor(tab: CatalogTab, id: number) {
       return api.deleteAdminDealer(id);
     case "vehicles":
       return api.deleteAdminVehicle(id);
+    case "accessories":
+      return api.deleteAdminAccessory(id);
     case "feeDefinitions":
       return api.deleteAdminFeeDefinition(id);
     case "feeRules":
       return api.deleteAdminFeeRule(id);
+    case "banks":
+      return api.deleteAdminBank(id);
+    case "consultingEmployees":
+      return api.deleteAdminConsultingEmployee(id);
+    case "bankLoans":
+      return api.deleteAdminBankLoan(id);
   }
 }

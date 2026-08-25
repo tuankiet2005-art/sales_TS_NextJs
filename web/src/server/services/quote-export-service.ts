@@ -39,6 +39,7 @@ export async function exportQuote(body: QuoteSaveRequest) {
     accessoriesTotal: calc.accessoriesTotal ?? 0,
     estimatedOnRoadTotal: calc.estimatedOnRoadTotal,
     deposit: calc.deposit ?? 0,
+    bankLoan: body.bankLoan,
     accessories: calc.accessories,
   });
 

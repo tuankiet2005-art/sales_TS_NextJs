@@ -5,9 +5,13 @@ import type {
   Location,
   LocationDistrict,
   VehicleDetail,
+  VehicleModelContext,
+  VehicleModelDetail,
+  VehicleModelSummary,
   VehicleSummary,
 } from "@/types";
 import { vehicleImageUrl } from "@/lib/vehicleImageUrl";
+import { parseColorPhotosJson, resolveColorPhotoMap } from "@/lib/colorPhotos";
 import type { Brand as DbBrand, Location as DbLocation, LocationDistrict as DbLocationDistrict, Vehicle, vehicleCategories } from "./db/schema";
 
 type VehicleCategory = typeof vehicleCategories.$inferSelect;
@@ -15,6 +19,7 @@ import type { OnRoadCostResult } from "./domain/types";
 import { priceVehicle } from "./domain/dealer-policy";
 import { toNumber } from "./domain/money";
 import type { DealerPolicyRecord } from "./config/types";
+import type { ActiveModelSummaryRow } from "./db/repositories/catalog";
 
 function num(value: string | number | null | undefined): number {
   return value == null ? 0 : Number(value);
@@ -112,6 +117,63 @@ export function mapVehicleSummaryWithPolicy(
   };
 }
 
+export function mapVehicleModelSummary(row: ActiveModelSummaryRow, policy: DealerPolicyRecord, trimCount: number): VehicleModelSummary {
+  const minListPrice = num(row.minListPrice);
+  const pricing = priceVehicle(policy, minListPrice, "PRIVATE", [], [], null);
+  return {
+    brand: row.brandName,
+    brandCode: row.brandCode,
+    model: row.model,
+    yearMin: row.yearMin,
+    yearMax: row.yearMax,
+    minListPrice,
+    minSalePrice: pricing.salePrice,
+    imageUrl: vehicleImageUrl(row.repImageUrl ?? ""),
+    category: mapCategory(row.category),
+    trimCount,
+  };
+}
+
+export function buildVehicleModelContext(
+  model: string,
+  current: VehicleSummary,
+  variants: VehicleSummary[],
+): VehicleModelContext {
+  const years = [...new Set(variants.map((item) => item.year).filter((year) => year > 0))].sort((a, b) => b - a);
+  const trimsForYear = variants
+    .filter((item) => item.year === current.year)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return {
+    model,
+    year: current.year,
+    availableYears: years,
+    trimsForYear,
+  };
+}
+
+export function mapVehicleModelDetail(
+  model: string,
+  brand: Pick<DbBrand, "name" | "code">,
+  variants: VehicleDetail[],
+): VehicleModelDetail {
+  const years = [...new Set(variants.map((item) => item.year).filter((year) => year > 0))].sort((a, b) => b - a);
+  const defaultYear = years[0] ?? variants[0]?.year ?? 0;
+  const trimsByYear: Record<string, VehicleDetail[]> = {};
+  for (const year of years) {
+    trimsByYear[String(year)] = variants
+      .filter((item) => item.year === year)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return {
+    brand: brand.name,
+    brandCode: brand.code,
+    model,
+    years,
+    defaultYear,
+    trimsByYear,
+  };
+}
+
 function parseJsonRecord(value: string | null | undefined): Record<string, string> {
   if (!value?.trim()) {
     return {};
@@ -121,14 +183,6 @@ function parseJsonRecord(value: string | null | undefined): Record<string, strin
   } catch {
     return {};
   }
-}
-
-function resolveColorPhotoMap(raw: Record<string, string>): Record<string, string> {
-  const resolved: Record<string, string> = {};
-  for (const [color, value] of Object.entries(raw)) {
-    resolved[color] = vehicleImageUrl(value);
-  }
-  return resolved;
 }
 
 export function mapVehicleDetail(
@@ -149,7 +203,7 @@ export function mapVehicleDetail(
     inspectionFee: vehicle.inspectionFee != null ? num(vehicle.inspectionFee) : undefined,
     defaultColor: vehicle.defaultColor ?? undefined,
     availableColors: vehicle.availableColors ?? undefined,
-    colorPhotos: resolveColorPhotoMap(parseJsonRecord(vehicle.colorPhotos)),
+    colorPhotos: resolveColorPhotoMap(parseColorPhotosJson(vehicle.colorPhotos)),
     deliveryNote: vehicle.deliveryNote ?? undefined,
     warrantyNote: vehicle.warrantyNote ?? undefined,
     gifts: vehicle.gifts ?? undefined,

@@ -161,6 +161,10 @@ function overrideAmount(
   request: CalculateOnRoadInput,
 ): number | null {
   switch (feeCode) {
+    case "REGISTRATION_TAX":
+      return request.registrationTax ?? null;
+    case "LICENSE_PLATE":
+      return request.licensePlateFee ?? null;
     case "REGISTRATION_FEE":
     case "REGISTRATION_SERVICE":
       return firstPresent(
@@ -171,6 +175,10 @@ function overrideAmount(
       return firstPresent(request.micaPlateFee, vehicle.micaPlateFee);
     case "INSPECTION":
       return firstPresent(request.inspectionFee, vehicle.inspectionFee);
+    case "ROAD_USE":
+      return request.roadUseFee ?? null;
+    case "COMPULSORY_INSURANCE":
+      return request.compulsoryInsurance ?? null;
     case "OPTIONAL_BODY_INSURANCE":
       return request.optionalBodyInsurance ?? null;
     default:

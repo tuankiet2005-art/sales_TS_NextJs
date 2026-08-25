@@ -1,11 +1,14 @@
 "use client";
 import { Check, CircleDollarSign, Package, Plus, Trash2, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { MOVEO_ACCESSORIES } from "../lib/accessories";
+import { useEffect, useState } from "react";
+import { api } from "../api/client";
+import { accessoryImageUrl } from "../lib/accessoryImageUrl";
+import { accessoryLabel } from "../lib/labels";
 import { useI18n } from "../i18n/LanguageContext";
 import { CurrencyInput } from "./CurrencyInput";
 import { formatVnd } from "../lib/format";
-import type { QuoteExtras } from "../types";
+import type { AccessoryCatalogItem, QuoteExtras } from "../types";
 
 export function QuoteAdjustments({
   extras,
@@ -55,18 +58,52 @@ export function QuotePricePanel({
     <section className="rounded-2xl border border-ink/8 bg-white p-4 shadow-card">
       <PanelHeader icon={CircleDollarSign} title={t("adjustablePrices")} />
 
-      <div className="mt-4 grid grid-cols-1 gap-3">
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <MoneyField label={t("listPrice")} value={extras.listPrice} onChange={(value) => setField("listPrice", value)} />
         <MoneyField label={t("discount")} value={extras.discountAmount} onChange={(value) => setField("discountAmount", value)} />
+        {extras.relationshipDiscount ? (
+          <p className="col-span-2 rounded-xl bg-forest/8 px-3 py-2.5 text-xs text-forest">
+            {t("customer.relationshipDiscountApplied", {
+              percent: extras.relationshipDiscount.discountPercent,
+              name: extras.relationshipDiscount.relatedCustomerName,
+              amount: formatVnd(extras.relationshipDiscount.discountAmount),
+              relationship: t(`customer.relationship.${extras.relationshipDiscount.relationshipType}`),
+            })}
+          </p>
+        ) : null}
         <MoneyField label={t("deposit")} value={extras.deposit} onChange={(value) => setField("deposit", value)} />
         <MoneyField
-          label={t("registrationServiceFee")}
+          label={t("adjustableFee.registrationTax")}
+          value={extras.registrationTax}
+          onChange={(value) => setField("registrationTax", value)}
+        />
+        <MoneyField
+          label={t("adjustableFee.licensePlate")}
+          value={extras.licensePlateFee}
+          onChange={(value) => setField("licensePlateFee", value)}
+        />
+        <MoneyField
+          label={t("adjustableFee.registration")}
           value={extras.registrationServiceFee}
           onChange={(value) => setField("registrationServiceFee", value)}
         />
-        <MoneyField label={t("micaPlateFee")} value={extras.micaPlateFee} onChange={(value) => setField("micaPlateFee", value)} />
-        <MoneyField label={t("inspectionFee")} value={extras.inspectionFee} onChange={(value) => setField("inspectionFee", value)} />
         <MoneyField
-          label={t("optionalInsuranceAmount")}
+          label={t("adjustableFee.inspection")}
+          value={extras.inspectionFee}
+          onChange={(value) => setField("inspectionFee", value)}
+        />
+        <MoneyField
+          label={t("adjustableFee.roadUse")}
+          value={extras.roadUseFee}
+          onChange={(value) => setField("roadUseFee", value)}
+        />
+        <MoneyField
+          label={t("adjustableFee.compulsoryInsurance")}
+          value={extras.compulsoryInsurance}
+          onChange={(value) => setField("compulsoryInsurance", value)}
+        />
+        <MoneyField
+          label={t("adjustableFee.bodyInsurance")}
           value={extras.optionalBodyInsurance}
           onChange={(value) => setField("optionalBodyInsurance", value)}
         />
@@ -76,6 +113,10 @@ export function QuotePricePanel({
   );
 }
 
+function legacyAccessoryImage(code: string): string {
+  return `/accessories/${code}.jpg`;
+}
+
 export function QuoteAccessoriesPanel({
   extras,
   onChange,
@@ -83,21 +124,31 @@ export function QuoteAccessoriesPanel({
   extras: QuoteExtras;
   onChange: (next: QuoteExtras) => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const [catalog, setCatalog] = useState<AccessoryCatalogItem[]>([]);
 
-  function isSelected(catalogId: string) {
-    return extras.accessories.some((item) => item.catalogId === catalogId);
+  useEffect(() => {
+    void api.getAccessories().then(setCatalog).catch(() => setCatalog([]));
+  }, []);
+
+  function isSelected(catalogCode: string) {
+    return extras.accessories.some((item) => item.catalogId === catalogCode);
   }
 
-  function toggleCatalogItem(catalogId: string) {
-    const catalog = MOVEO_ACCESSORIES.find((item) => item.id === catalogId);
-    if (!catalog) {
+  function catalogImage(item: AccessoryCatalogItem): string {
+    const stored = accessoryImageUrl(item.imageUrl);
+    return stored || legacyAccessoryImage(item.code);
+  }
+
+  function toggleCatalogItem(catalogCode: string) {
+    const catalogItem = catalog.find((item) => item.code === catalogCode);
+    if (!catalogItem) {
       return;
     }
-    if (isSelected(catalogId)) {
+    if (isSelected(catalogCode)) {
       onChange({
         ...extras,
-        accessories: extras.accessories.filter((item) => item.catalogId !== catalogId),
+        accessories: extras.accessories.filter((item) => item.catalogId !== catalogCode),
       });
       return;
     }
@@ -106,10 +157,10 @@ export function QuoteAccessoriesPanel({
       accessories: [
         ...extras.accessories,
         {
-          name: t(catalog.nameKey),
-          amount: catalog.amount,
-          catalogId: catalog.id,
-          imageUrl: catalog.imageUrl,
+          name: accessoryLabel(catalogItem, lang),
+          amount: catalogItem.amount,
+          catalogId: catalogItem.code,
+          imageUrl: catalogImage(catalogItem),
         },
       ],
     });
@@ -120,19 +171,20 @@ export function QuoteAccessoriesPanel({
       <PanelHeader icon={Package} title={t("accessoriesTitle")} />
 
       <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
-        {MOVEO_ACCESSORIES.map((item) => {
-          const selected = isSelected(item.id);
+        {catalog.map((item) => {
+          const selected = isSelected(item.code);
+          const label = accessoryLabel(item, lang);
           return (
             <button
-              key={item.id}
+              key={item.code}
               type="button"
-              onClick={() => toggleCatalogItem(item.id)}
+              onClick={() => toggleCatalogItem(item.code)}
               className={`overflow-hidden rounded-xl border text-left ${
                 selected ? "border-copper ring-1 ring-copper/30" : "border-ink/10 bg-white"
               }`}
             >
               <div className="relative">
-                <img src={item.imageUrl} alt={t(item.nameKey)} className="aspect-[16/10] w-full object-cover" />
+                <img src={catalogImage(item)} alt={label} className="aspect-[16/10] w-full object-cover" />
                 {selected && (
                   <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-copper text-white">
                     <Check className="h-3 w-3" />
@@ -140,7 +192,7 @@ export function QuoteAccessoriesPanel({
                 )}
               </div>
               <div className="px-1.5 py-1.5">
-                <p className="line-clamp-2 text-[11px] font-semibold leading-4">{t(item.nameKey)}</p>
+                <p className="line-clamp-2 text-[11px] font-semibold leading-4">{label}</p>
                 <p className="mt-0.5 text-[11px] text-copper">{formatVnd(item.amount)}</p>
               </div>
             </button>
@@ -222,7 +274,7 @@ function MoneyField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block text-sm">
+    <label className="block min-w-0 text-sm">
       <span className="font-medium text-ink/80">{label}</span>
       <CurrencyInput
         value={value}

@@ -1,7 +1,11 @@
 import { api } from "../api/client";
 import type {
+  AdminAccessory,
+  AdminBank,
+  AdminBankLoan,
   AdminBrand,
   AdminCategory,
+  AdminConsultingEmployee,
   AdminDealer,
   AdminFeeDefinition,
   AdminFeeRule,
@@ -16,7 +20,11 @@ export type AdminCatalogKey =
   | "fees"
   | "dealers"
   | "vehicles"
-  | "feeRules";
+  | "feeRules"
+  | "accessories"
+  | "banks"
+  | "consultingEmployees"
+  | "bankLoans";
 
 type AdminCatalogRow =
   | AdminBrand
@@ -25,7 +33,11 @@ type AdminCatalogRow =
   | AdminFeeDefinition
   | AdminDealer
   | AdminVehicle
-  | AdminFeeRule;
+  | AdminFeeRule
+  | AdminAccessory
+  | AdminBank
+  | AdminConsultingEmployee
+  | AdminBankLoan;
 
 const cache = new Map<AdminCatalogKey, AdminCatalogRow[]>();
 const inflight = new Map<AdminCatalogKey, Promise<AdminCatalogRow[]>>();
@@ -38,6 +50,10 @@ const fetchers: Record<AdminCatalogKey, () => Promise<AdminCatalogRow[]>> = {
   dealers: () => api.listAdminDealers(),
   vehicles: () => api.listAdminVehicles(),
   feeRules: () => api.listAdminFeeRules(),
+  accessories: () => api.listAdminAccessories(),
+  banks: () => api.listAdminBanks(),
+  consultingEmployees: () => api.listAdminConsultingEmployees(),
+  bankLoans: () => api.listAdminBankLoans(),
 };
 
 export async function getAdminCatalog<K extends AdminCatalogKey>(

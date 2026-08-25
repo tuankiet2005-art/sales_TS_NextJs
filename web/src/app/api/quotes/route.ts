@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
   const query = params.get("q") ?? undefined;
   const brandCode = params.get("brand") ?? undefined;
   const locationName = params.get("location") ?? undefined;
+  const customerId = params.get("customerId") ? Number(params.get("customerId")) : undefined;
   const page = params.get("page") ? Number(params.get("page")) : 1;
   const pageSize = params.get("pageSize") ? Number(params.get("pageSize")) : 10;
   return json(
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
       query,
       brandCode,
       locationName,
+      customerId,
       page,
       pageSize,
     }),

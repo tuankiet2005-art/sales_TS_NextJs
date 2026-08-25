@@ -2,7 +2,7 @@ import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "../db/client";
 import { quoteHistory } from "../db/schema";
-import type { CostBreakdown, Paginated, QuoteHistory } from "@/types";
+import type { CostBreakdown, Paginated, QuoteBankLoan, QuoteHistory } from "@/types";
 import { resolveQuoteCalculation } from "./catalog-service";
 import { collapseRecentDuplicateQuotes, shouldReuseRecentQuote } from "./quote-history-rules";
 
@@ -11,6 +11,7 @@ export type QuoteSaveRequest = {
   locationId: number;
   categoryId?: number;
   includeOptionalInsurance?: boolean;
+  customerId?: number;
   customerName?: string;
   customerAddress?: string;
   color?: string;
@@ -20,10 +21,16 @@ export type QuoteSaveRequest = {
   forgoneOfferIds?: string[];
   discountAmount?: number;
   deposit?: number;
+  bankLoan?: QuoteBankLoan;
+  listPrice?: number;
   optionalBodyInsurance?: number;
+  registrationTax?: number;
+  licensePlateFee?: number;
   registrationServiceFee?: number;
   micaPlateFee?: number;
   inspectionFee?: number;
+  roadUseFee?: number;
+  compulsoryInsurance?: number;
   accessories?: { name: string; amount: number }[];
   breakdown?: CostBreakdown;
 };
@@ -32,12 +39,14 @@ export type QuoteSearchParams = {
   query?: string;
   brandCode?: string;
   locationName?: string;
+  customerId?: number;
   page?: number;
   pageSize?: number;
 };
 
 const quoteListColumns = {
   id: quoteHistory.id,
+  customerId: quoteHistory.customerId,
   customerName: quoteHistory.customerName,
   customerAddress: quoteHistory.customerAddress,
   vehicleId: quoteHistory.vehicleId,
@@ -60,6 +69,7 @@ const quoteListColumns = {
 
 type QuoteListRow = {
   id: number;
+  customerId: number | null;
   customerName: string;
   customerAddress: string | null;
   vehicleId: number | null;
@@ -87,6 +97,7 @@ function mapQuote(row: typeof quoteHistory.$inferSelect): QuoteHistory {
 function mapQuoteListRow(row: QuoteListRow | typeof quoteHistory.$inferSelect): QuoteHistory {
   return {
     id: row.id,
+    customerId: row.customerId ?? undefined,
     customerName: row.customerName,
     customerAddress: row.customerAddress ?? undefined,
     vehicleId: row.vehicleId ?? 0,
@@ -127,6 +138,9 @@ function quoteSearchWhere(params: QuoteSearchParams): SQL | undefined {
   }
   if (params.locationName) {
     filters.push(eq(quoteHistory.locationName, params.locationName));
+  }
+  if (params.customerId) {
+    filters.push(eq(quoteHistory.customerId, params.customerId));
   }
   return filters.length ? and(...filters) : undefined;
 }
@@ -186,6 +200,7 @@ export async function getQuote(id: number) {
 }
 
 export async function saveQuote(input: {
+  customerId?: number;
   customerName: string;
   customerAddress?: string;
   vehicleId?: number;
@@ -209,6 +224,7 @@ export async function saveQuote(input: {
   const rows = await db
     .insert(quoteHistory)
     .values({
+      customerId: input.customerId,
       customerName: input.customerName,
       customerAddress: input.customerAddress,
       vehicleId: input.vehicleId,
@@ -248,6 +264,7 @@ export async function persistCalculatedQuote(body: QuoteSaveRequest, calc: CostB
     return recent;
   }
   return saveQuote({
+    customerId: body.customerId,
     customerName,
     customerAddress: body.customerAddress,
     vehicleId: calc.vehicleId,

@@ -4,15 +4,14 @@ import type { Lang } from "../i18n/translations";
 import { formatQuoteAmount } from "../lib/format";
 import { translateQuoteLabel } from "../lib/quoteLabels";
 import { colorHex, colorPhoto, paintLabelClass } from "../lib/vehicleColor";
-import type { AccessoryItem, CostBreakdown, VehicleDetail } from "../types";
+import type { AccessoryItem, CostBreakdown, QuoteBankLoan, VehicleDetail } from "../types";
+import { computeQuoteLoanMetrics } from "../lib/quoteBankLoan";
 
 const DEALER_NAME_LINES = ["MITSUBISHI MOVEO NEW CITY", "THÀNH PHỐ MỚI BÌNH DƯƠNG"];
 const DEALER_ADDRESS_LINES = ["1C, Đường Hùng Vương, Phường Hòa Phú", "TP. Thủ Dầu Một, Tỉnh Bình Dương"];
 const QUOTE_VALIDITY = "Hiệu lực báo giá áp dụng trong tháng";
 const BANK_NOTE =
   "Quý khách đặt cọc và ký hợp đồng chúng tôi sẽ tiến hành thẩm định và làm hồ sơ ngân hàng, trường hợp ngân hàng không đồng ý cho vay, chúng tôi sẽ hoàn lại 100% tiền cọc";
-const LOAN_YEARS = 5;
-const LOAN_ANNUAL_RATE = 0.078;
 
 function feeAmount(result: CostBreakdown, code: string): number {
   const fee = result.fees.find((item) => item.code === code);
@@ -63,6 +62,7 @@ export function QuoteSheet({
   color,
   selectedAccessories = [],
   language = "vi",
+  bankLoan,
 }: {
   vehicle: VehicleDetail;
   result: CostBreakdown;
@@ -71,6 +71,7 @@ export function QuoteSheet({
   color: string;
   selectedAccessories?: AccessoryItem[];
   language?: Lang;
+  bankLoan?: QuoteBankLoan;
 }) {
   const tr = (text: string) => translateQuoteLabel(text, language);
   const listPrice = Number(result.listPrice) || 0;
@@ -94,13 +95,21 @@ export function QuoteSheet({
   const onRoadTotal = Number(result.estimatedOnRoadTotal);
   const deposit = Number(result.deposit ?? vehicle.defaultDeposit) || 0;
   const cashSecond = Math.max(onRoadTotal - deposit, 0);
-  const loanAmount = Math.max(salePrice - deposit, 0);
-  const months = LOAN_YEARS * 12;
-  const monthlyRate = LOAN_ANNUAL_RATE / 12;
-  const monthlyPrincipal = months ? loanAmount / months : 0;
-  const monthlyInterest = loanAmount * monthlyRate;
-  const monthlyPayment = monthlyPrincipal + monthlyInterest;
-  const bankSecond = Math.max(onRoadTotal - deposit - loanAmount, 0);
+  const loan = computeQuoteLoanMetrics(result, vehicle, bankLoan);
+  const {
+    loanAmount,
+    bankSecond,
+    loanTermYears,
+    months,
+    monthlyInterestRate,
+    monthlyRateDecimal,
+    annualRatePercent,
+    monthlyPrincipal,
+    monthlyInterest,
+    monthlyPayment,
+  } = loan;
+  const consultantName = bankLoan?.consultingEmployeeName?.trim() ?? "";
+  const consultantPhone = bankLoan?.consultingEmployeePhone?.trim() ?? "";
   const chosenColor = color || vehicle.defaultColor || "";
   const gifts = giftPairs(vehicle.gifts);
   const feeRows = [
@@ -161,7 +170,9 @@ export function QuoteSheet({
               <span className="font-semibold">{tr("Địa chỉ:")} </span>
               {customerAddress}
               <span className="ml-8 font-semibold">{tr("TVBH:")}</span>
-              <span className="mx-8 font-semibold">- {tr("SĐT:")}</span>
+              {consultantName ? ` ${consultantName}` : " "}
+              <span className="mx-2 font-semibold">- {tr("SĐT:")}</span>
+              {consultantPhone}
             </Td>
           </tr>
           <tr>
@@ -352,7 +363,7 @@ export function QuoteSheet({
             <Td />
             <Td>{tr("Thời gian vay:")}</Td>
             <Td>
-              {LOAN_YEARS}
+              {loanTermYears}
               {tr(" Năm")}
             </Td>
             <Td className="text-right">{months}</Td>
@@ -361,8 +372,8 @@ export function QuoteSheet({
           <tr>
             <Td />
             <Td>{tr("Tiền gốc tháng:")}</Td>
-            <Td>{(LOAN_ANNUAL_RATE * 100).toFixed(1)}%</Td>
-            <Td className="text-right">{monthlyRate.toFixed(4)}</Td>
+            <Td>{annualRatePercent.toFixed(1)}%</Td>
+            <Td className="text-right">{monthlyRateDecimal.toFixed(4)}</Td>
             <Td className="text-right">{money(monthlyInterest)}</Td>
           </tr>
           <tr>

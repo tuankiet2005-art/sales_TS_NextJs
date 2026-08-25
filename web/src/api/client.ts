@@ -1,6 +1,10 @@
 import type {
+  AdminAccessory,
+  AdminBank,
+  AdminBankLoan,
   AdminBrand,
   AdminCategory,
+  AdminConsultingEmployee,
   AdminDealer,
   AdminDealerPolicy,
   AdminFeeDefinition,
@@ -9,10 +13,16 @@ import type {
   AdminLocation,
   AdminPlateRegions,
   AdminVehicle,
+  Bank,
   Brand,
   CatalogSnapshot,
   Category,
+  ConsultingEmployee,
   CostBreakdown,
+  Customer,
+  CustomerDetail,
+  CustomerRelationshipInput,
+  StructuredAddress,
   DealerPolicy,
   ImportResult,
   Location,
@@ -22,9 +32,14 @@ import type {
   QuoteHistory,
   UsageType,
   VehicleDetail,
+  VehicleModelDetail,
+  VehicleModelSummary,
   VehicleSummary,
+  AccessoryCatalogItem,
 } from "../types";
+import type { RelationshipDiscountOffer } from "../lib/customerRelationshipDiscount";
 import { extrasPayload } from "../lib/quoteExtras";
+import { modelToSlug } from "../lib/modelSlug";
 import { clearAdminToken, getAdminToken, isPublicApiPath } from "../lib/adminAuth";
 
 const API_BASE = "";
@@ -154,6 +169,46 @@ export const api = {
   getVehicle(id: number) {
     return request<VehicleDetail>(`/api/vehicles/${id}`);
   },
+  searchModelsPage(
+    options: {
+      keyword?: string;
+      brandCode?: string;
+      categoryId?: number;
+      model?: string;
+      vehicleType?: string;
+      page?: number;
+      pageSize?: number;
+    },
+    init?: RequestInit,
+  ) {
+    const params = new URLSearchParams();
+    if (options.keyword?.trim()) {
+      params.set("keyword", options.keyword.trim());
+    }
+    if (options.brandCode) {
+      params.set("brand", options.brandCode);
+    }
+    if (options.categoryId) {
+      params.set("categoryId", String(options.categoryId));
+    }
+    if (options.model) {
+      params.set("model", options.model);
+    }
+    if (options.vehicleType) {
+      params.set("type", options.vehicleType);
+    }
+    params.set("page", String(options.page ?? 1));
+    params.set("pageSize", String(options.pageSize ?? 12));
+    return request<Paginated<VehicleModelSummary> & { filterOptions: { models: string[]; vehicleTypes: string[] } }>(
+      `/api/vehicles/models/search?${params.toString()}`,
+      init,
+    );
+  },
+  getModelDetail(brandCode: string, model: string) {
+    return request<VehicleModelDetail>(
+      `/api/vehicles/models/${encodeURIComponent(brandCode)}/${modelToSlug(model)}`,
+    );
+  },
   getCategories() {
     return request<Category[]>("/api/vehicle-categories");
   },
@@ -219,6 +274,7 @@ export const api = {
     locationId: number;
     categoryId?: number;
     includeOptionalInsurance: boolean;
+    customerId?: number;
     customerName: string;
     customerAddress?: string;
     color?: string;
@@ -257,6 +313,7 @@ export const api = {
     query?: string;
     brandCode?: string;
     locationName?: string;
+    customerId?: number;
     page?: number;
     pageSize?: number;
   }) {
@@ -269,6 +326,9 @@ export const api = {
     }
     if (options?.locationName) {
       params.set("location", options.locationName);
+    }
+    if (options?.customerId) {
+      params.set("customerId", String(options.customerId));
     }
     params.set("page", String(options?.page ?? 1));
     params.set("pageSize", String(options?.pageSize ?? 10));
@@ -285,6 +345,7 @@ export const api = {
     locationId: number;
     categoryId?: number;
     includeOptionalInsurance: boolean;
+    customerId?: number;
     customerName: string;
     customerAddress?: string;
     color?: string;
@@ -303,6 +364,69 @@ export const api = {
         ...(payload.extras ? extrasPayload(payload.extras) : {}),
       }),
     });
+  },
+  listCustomers(options?: { query?: string; page?: number; pageSize?: number; includeInactive?: boolean }) {
+    const params = new URLSearchParams();
+    if (options?.query?.trim()) {
+      params.set("q", options.query.trim());
+    }
+    if (options?.includeInactive) {
+      params.set("includeInactive", "1");
+    }
+    params.set("page", String(options?.page ?? 1));
+    params.set("pageSize", String(options?.pageSize ?? 20));
+    return request<Paginated<Customer>>(`/api/customers?${params.toString()}`);
+  },
+  getCustomer(id: number) {
+    return request<CustomerDetail>(`/api/customers/${id}`);
+  },
+  createCustomer(payload: {
+    fullName: string;
+    phone?: string;
+    permanentAddress?: StructuredAddress;
+    temporaryAddress?: StructuredAddress;
+    notes?: string;
+    relationships?: CustomerRelationshipInput[];
+  }) {
+    return request<CustomerDetail>("/api/customers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  updateCustomer(
+    id: number,
+    payload: {
+      fullName: string;
+      phone?: string;
+      permanentAddress?: StructuredAddress;
+      temporaryAddress?: StructuredAddress;
+      notes?: string;
+      relationships?: CustomerRelationshipInput[];
+    },
+  ) {
+    return request<CustomerDetail>(`/api/customers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteCustomer(id: number) {
+    return request<void>(`/api/customers/${id}`, { method: "DELETE" });
+  },
+  reactivateCustomer(id: number) {
+    return request<CustomerDetail>(`/api/customers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ reactivate: true }),
+    });
+  },
+  listCustomerOptions(excludeId?: number) {
+    const suffix = excludeId ? `?exclude=${excludeId}` : "";
+    return request<Customer[]>(`/api/customers/options${suffix}`);
+  },
+  getCustomerRelationshipDiscount(customerId: number, listPrice: number) {
+    const params = new URLSearchParams({ listPrice: String(listPrice) });
+    return request<{ offer: RelationshipDiscountOffer | null }>(
+      `/api/customers/${customerId}/relationship-discount?${params.toString()}`,
+    );
   },
   exportCatalog() {
     return request<CatalogSnapshot>("/api/admin/catalog");
@@ -357,6 +481,83 @@ export const api = {
   deleteAdminDealer(id: number) {
     return request<void>(`/api/admin/dealers/${id}`, { method: "DELETE" });
   },
+  listAdminBanks() {
+    return request<AdminBank[]>("/api/admin/banks");
+  },
+  saveAdminBank(item: AdminBank) {
+    return item.id
+      ? request<AdminBank>(`/api/admin/banks/${item.id}`, { method: "PUT", body: JSON.stringify(item) })
+      : request<AdminBank>("/api/admin/banks", { method: "POST", body: JSON.stringify(item) });
+  },
+  deleteAdminBank(id: number) {
+    return request<void>(`/api/admin/banks/${id}`, { method: "DELETE" });
+  },
+  listAdminConsultingEmployees() {
+    return request<AdminConsultingEmployee[]>("/api/admin/consulting-employees");
+  },
+  saveAdminConsultingEmployee(item: AdminConsultingEmployee) {
+    return item.id
+      ? request<AdminConsultingEmployee>(`/api/admin/consulting-employees/${item.id}`, {
+          method: "PUT",
+          body: JSON.stringify(item),
+        })
+      : request<AdminConsultingEmployee>("/api/admin/consulting-employees", {
+          method: "POST",
+          body: JSON.stringify(item),
+        });
+  },
+  deleteAdminConsultingEmployee(id: number) {
+    return request<void>(`/api/admin/consulting-employees/${id}`, { method: "DELETE" });
+  },
+  listAdminBankLoans() {
+    return request<AdminBankLoan[]>("/api/admin/bank-loans");
+  },
+  getAdminBankLoan(id: number) {
+    return request<AdminBankLoan>(`/api/admin/bank-loans/${id}`);
+  },
+  saveAdminBankLoan(item: AdminBankLoan) {
+    return item.id
+      ? request<AdminBankLoan>(`/api/admin/bank-loans/${item.id}`, { method: "PUT", body: JSON.stringify(item) })
+      : request<AdminBankLoan>("/api/admin/bank-loans", { method: "POST", body: JSON.stringify(item) });
+  },
+  deleteAdminBankLoan(id: number) {
+    return request<void>(`/api/admin/bank-loans/${id}`, { method: "DELETE" });
+  },
+  getBanks() {
+    return request<Bank[]>("/api/banks", { cache: "no-store" });
+  },
+  getConsultingEmployees() {
+    return request<ConsultingEmployee[]>("/api/consulting-employees", { cache: "no-store" });
+  },
+  getAccessories() {
+    return request<AccessoryCatalogItem[]>("/api/accessories", { cache: "no-store" });
+  },
+  listAdminAccessories() {
+    return request<AdminAccessory[]>("/api/admin/accessories");
+  },
+  saveAdminAccessory(item: AdminAccessory) {
+    return item.id
+      ? request<AdminAccessory>(`/api/admin/accessories/${item.id}`, { method: "PUT", body: JSON.stringify(item) })
+      : request<AdminAccessory>("/api/admin/accessories", { method: "POST", body: JSON.stringify(item) });
+  },
+  deleteAdminAccessory(id: number) {
+    return request<void>(`/api/admin/accessories/${id}`, { method: "DELETE" });
+  },
+  uploadAccessoryImage(input: { accessoryId: number; file: File }) {
+    const form = new FormData();
+    form.append("accessoryId", String(input.accessoryId));
+    form.append("file", input.file);
+    return request<{ id: number; url: string }>("/api/admin/accessory-images", {
+      method: "POST",
+      body: form,
+    });
+  },
+  deleteAdminAccessoryImage(id: number) {
+    return request<void>(`/api/admin/accessory-images/${id}`, { method: "DELETE" });
+  },
+  getBankLoan(id: number) {
+    return request<AdminBankLoan>(`/api/bank-loans/${id}`);
+  },
   listAdminFeeDefinitions() {
     return request<AdminFeeDefinition[]>("/api/admin/fee-definitions");
   },
@@ -393,6 +594,9 @@ export const api = {
       method: "POST",
       body: form,
     });
+  },
+  deleteAdminVehicleImage(id: number) {
+    return request<void>(`/api/admin/vehicle-images/${id}`, { method: "DELETE" });
   },
   deleteAdminVehicle(id: number) {
     return request<void>(`/api/admin/vehicles/${id}`, { method: "DELETE" });

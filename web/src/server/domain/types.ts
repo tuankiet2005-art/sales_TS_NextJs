@@ -69,9 +69,13 @@ export type CalculateOnRoadInput = {
   salePrice?: number | null;
   deposit?: number | null;
   optionalBodyInsurance?: number | null;
+  registrationTax?: number | null;
+  licensePlateFee?: number | null;
   registrationServiceFee?: number | null;
   micaPlateFee?: number | null;
   inspectionFee?: number | null;
+  roadUseFee?: number | null;
+  compulsoryInsurance?: number | null;
   accessories?: AccessoryItem[] | null;
   usageType?: string | null;
   selectedOfferIds?: string[] | null;

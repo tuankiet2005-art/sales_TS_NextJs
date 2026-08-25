@@ -108,7 +108,7 @@ export async function runVehicleCatalogImport(
         throw new Error(`Missing seed data for trim ${row.trimName}`);
       }
 
-      const colorPhotos: Record<string, string> = {};
+      const colorPhotos: Record<string, string[]> = {};
       const savedVehicle = await upsertVehicle({
         ...seed,
         availableColors: row.availableColors,
@@ -125,11 +125,14 @@ export async function runVehicleCatalogImport(
           colorName: image.colorName,
           buffer,
         });
-        colorPhotos[image.colorName] = String(savedImage.id);
+        if (!colorPhotos[image.colorName]) {
+          colorPhotos[image.colorName] = [];
+        }
+        colorPhotos[image.colorName].push(String(savedImage.id));
       }
 
       const heroColor = row.defaultColor;
-      const heroImageId = colorPhotos[heroColor] ?? Object.values(colorPhotos)[0];
+      const heroImageId = colorPhotos[heroColor]?.[0] ?? Object.values(colorPhotos).flat()[0];
 
       await upsertVehicle({
         ...seed,

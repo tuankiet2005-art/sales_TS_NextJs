@@ -1,4 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 
 import { getDb } from "../db/client";
@@ -22,12 +23,30 @@ export async function convertFileToWebp(file: Buffer): Promise<Buffer> {
   return convertBufferToWebp(file);
 }
 
+function colorImageSlot(colorName: string): string {
+  return `${colorName}::${randomUUID()}`;
+}
+
 export async function saveVehicleImage(input: SaveVehicleImageInput) {
   const webp = await convertBufferToWebp(input.buffer);
   const db = getDb();
-  const colorName = input.kind === "color" ? input.colorName?.trim() : undefined;
-  if (input.kind === "color" && !colorName) {
+  const baseColor = input.kind === "color" ? input.colorName?.trim() : undefined;
+  if (input.kind === "color" && !baseColor) {
     throw new Error("Color name is required for color images");
+  }
+
+  if (input.kind === "color") {
+    const rows = await db
+      .insert(vehicleImages)
+      .values({
+        vehicleId: input.vehicleId,
+        kind: input.kind,
+        colorName: colorImageSlot(baseColor!),
+        mimeType: "image/webp",
+        data: webp.toString("base64"),
+      })
+      .returning();
+    return rows[0];
   }
 
   const existing = await db
@@ -37,9 +56,7 @@ export async function saveVehicleImage(input: SaveVehicleImageInput) {
       and(
         eq(vehicleImages.vehicleId, input.vehicleId),
         eq(vehicleImages.kind, input.kind),
-        input.kind === "color" && colorName
-          ? eq(vehicleImages.colorName, colorName)
-          : isNull(vehicleImages.colorName),
+        isNull(vehicleImages.colorName),
       ),
     )
     .limit(1);
@@ -47,7 +64,7 @@ export async function saveVehicleImage(input: SaveVehicleImageInput) {
   const values = {
     vehicleId: input.vehicleId,
     kind: input.kind,
-    colorName: colorName ?? null,
+    colorName: null,
     mimeType: "image/webp",
     data: webp.toString("base64"),
   };
