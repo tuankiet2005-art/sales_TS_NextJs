@@ -187,3 +187,79 @@ button:disabled {
     font-size: 16px;
   }
 }
+
+/* Match form controls to site chrome — native number spinners stay system-gray. */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Pack fields horizontally instead of half-empty 2-col rows */
+.form-fields-row {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.form-fields-row > * {
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .form-fields-row--auto {
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  }
+
+  .form-fields-row--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-fields-row--bank-loan-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .form-fields-row--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .form-fields-row--bank-loan-metrics {
+    grid-template-columns:
+      minmax(12rem, 15rem)
+      minmax(10.5rem, 13rem)
+      minmax(13rem, 18rem)
+      minmax(14rem, 1fr);
+  }
+}
+
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not(.sr-only):not([class*="border-0"]),
+  select,
+  textarea {
+    outline: none;
+    transition:
+      border-color var(--duration-motion-fast) var(--ease-motion),
+      box-shadow var(--duration-motion-fast) var(--ease-motion);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not(.sr-only):not([class*="border-0"]):focus,
+  select:focus,
+  textarea:focus {
+    border-color: color-mix(in srgb, var(--color-copper) 55%, var(--color-ink));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-copper) 35%, transparent);
+  }
+}
+
+/* Native select chevron — keep text and arrow off the right border */
+select {
+  padding-inline-end: 2.5rem;
+  background-position: right 0.75rem center;
+}

@@ -18,6 +18,21 @@ export function districtLabel(
   return named || district.name || district.nameEn || "";
 }
 
+export function accessoryLabel(
+  accessory: { name: string; nameEn?: string; nameZh?: string; nameJa?: string },
+  lang: Lang
+): string {
+  const named =
+    lang === "en"
+      ? accessory.nameEn
+      : lang === "zh"
+        ? accessory.nameZh
+        : lang === "ja"
+          ? accessory.nameJa
+          : accessory.name;
+  return named || accessory.name || accessory.nameEn || "";
+}
+
 export function codedOption(value: string | undefined | null, t: (key: string) => string): string {
   if (!value) {
     return "—";

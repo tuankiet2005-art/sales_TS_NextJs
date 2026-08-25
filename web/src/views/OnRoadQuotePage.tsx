@@ -4,21 +4,41 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "../api/client";
-import { AddressCombobox } from "../components/AddressCombobox";
+import { CustomerPicker } from "../components/CustomerPicker";
+import { customerFieldsFromCustomer } from "../lib/customerAddress";
 import { Header } from "../components/Header";
 import { PageLoadingScreen } from "../components/LoadingState";
 import { QuoteAccessoriesPanel, QuotePricePanel } from "../components/QuoteAdjustments";
+import { QuoteBankLoanPanel } from "../components/QuoteBankLoanPanel";
 import { QuoteSheet } from "../components/QuoteSheet";
 import { useI18n } from "../i18n/LanguageContext";
 import { languages, type Lang } from "../i18n/translations";
+import { quoteDiscountWithRelationship } from "../lib/customerRelationshipDiscount";
 import { downloadQuotePdf } from "../lib/exportQuotePdf";
-import { composeCustomerAddress, matchDistrictFromAddress } from "../lib/customerAddress";
+import {
+  composeStructuredAddress,
+  resolveDeliveryAddress,
+  resolveQuoteFeeLocation,
+  type CustomerAddressKind,
+  type CustomerFieldValues,
+  type StructuredAddress,
+} from "../lib/customerAddress";
 import { loadLocationCache, saveLocationCache } from "../lib/catalogReferenceCache";
 import { motionInteractive, motionPress } from "../lib/motion";
+import { DEFAULT_QUOTE_BANK_LOAN, pickDefaultConsultingEmployee, resolveQuoteBankLoan } from "../lib/quoteBankLoan";
 import { extrasFromQuote, extrasFromVehicle, extrasStorageKey, loadExtras, saveExtras } from "../lib/quoteExtras";
-import { loadVehicleCache } from "../lib/vehicleCache";
+import { modelToSlug } from "../lib/modelSlug";
+import { loadVehicleCache, saveVehicleCache } from "../lib/vehicleCache";
 import { defaultPolicyChoices, loadPolicyChoices } from "../lib/quotePolicy";
-import type { CostBreakdown as CostBreakdownType, Location, LocationDistrict, QuoteExtras, VehicleDetail } from "../types";
+import type {
+  Bank,
+  ConsultingEmployee,
+  CostBreakdown as CostBreakdownType,
+  Location,
+  LocationDistrict,
+  QuoteExtras,
+  VehicleDetail,
+} from "../types";
 
 export function OnRoadQuotePage() {
   const params = useParams() ?? {};
@@ -36,13 +56,29 @@ export function OnRoadQuotePage() {
   const locationId = Number(searchParams?.get("locationId"));
   const initialDistrictId = searchParams?.get("districtId") ? Number(searchParams.get("districtId")) : undefined;
   const initialAddress = searchParams?.get("address") ?? "";
+  const initialStreet = searchParams?.get("street") ?? "";
+  const initialPhone = searchParams?.get("phone") ?? "";
+  const initialDeliveryKind = searchParams?.get("deliveryKind") as CustomerAddressKind | null;
+  const initialCustomerId = searchParams?.get("customerId") ? Number(searchParams.get("customerId")) : undefined;
   const categoryId = searchParams?.get("categoryId") ? Number(searchParams.get("categoryId")) : undefined;
   const includeOptional = searchParams?.get("optional") === "1";
-  const [customerName, setCustomerName] = useState(searchParams?.get("name") ?? "");
+  const [customerFields, setCustomerFields] = useState<CustomerFieldValues>(() =>
+    buildCustomerFieldsFromParams({
+      locationId,
+      districtId: initialDistrictId,
+      street: initialStreet,
+      address: initialAddress,
+      phone: initialPhone,
+      deliveryKind: initialDeliveryKind,
+      customerId: initialCustomerId,
+      name: searchParams?.get("name") ?? "",
+      permanent: readAddressParams(searchParams, "permanent"),
+      temporary: readAddressParams(searchParams, "temporary"),
+    }),
+  );
   const [locations, setLocations] = useState<Location[]>(() => loadLocationCache() ?? []);
-  const [quoteLocationId, setQuoteLocationId] = useState(locationId);
-  const [districtId, setDistrictId] = useState<number | undefined>(initialDistrictId);
   const [districts, setDistricts] = useState<LocationDistrict[]>([]);
+  const [deliveryDistricts, setDeliveryDistricts] = useState<LocationDistrict[]>([]);
   const color = searchParams?.get("color") ?? "";
   const usageType = searchParams?.get("usage") === "commercial" ? "COMMERCIAL" : "PRIVATE";
   const policyChoices = id
@@ -52,13 +88,27 @@ export function OnRoadQuotePage() {
   const [vehicle, setVehicle] = useState<VehicleDetail | null>(null);
   const [result, setResult] = useState<CostBreakdownType | null>(null);
   const [extras, setExtras] = useState<QuoteExtras>({ accessories: [] });
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [consultingEmployees, setConsultingEmployees] = useState<ConsultingEmployee[]>([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [exporting, setExporting] = useState<"xlsx" | "pdf" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const detailsHref = `/brand/${brandCode}/vehicles/${id}`;
+  const detailsHref = vehicle
+    ? `/brand/${brandCode}/models/${modelToSlug(vehicle.model)}?vehicleId=${id}`
+    : `/brand/${brandCode}/vehicles/${id}`;
+
+  useEffect(() => {
+    if (!initialCustomerId) {
+      return;
+    }
+    api
+      .getCustomer(initialCustomerId)
+      .then((customer) => setCustomerFields(customerFieldsFromCustomer(customer)))
+      .catch(() => undefined);
+  }, [initialCustomerId]);
 
   useEffect(() => {
     api.getLocations().then((rows) => {
@@ -66,6 +116,61 @@ export function OnRoadQuotePage() {
       saveLocationCache(rows);
     });
   }, []);
+
+  useEffect(() => {
+    api
+      .getBanks()
+      .then(setBanks)
+      .catch((error) => {
+        console.error("[quote] Failed to load banks:", error);
+        setBanks([]);
+      });
+    api
+      .getConsultingEmployees()
+      .then(setConsultingEmployees)
+      .catch((error) => {
+        console.error("[quote] Failed to load consulting employees:", error);
+        setConsultingEmployees([]);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (banks.length === 0 && consultingEmployees.length === 0) {
+      return;
+    }
+    setExtras((prev) => {
+      const current = resolveQuoteBankLoan(prev.bankLoan);
+      const bank = banks.find((item) => item.id === current.bankId) ?? banks[0];
+      const employee =
+        consultingEmployees.find((item) => item.id === current.consultingEmployeeId) ??
+        pickDefaultConsultingEmployee(consultingEmployees);
+      const nextBankLoan = {
+        ...current,
+        bankId: bank?.id,
+        bankName: bank?.name,
+        consultingEmployeeId: employee?.id,
+        consultingEmployeeName: employee?.name,
+        consultingEmployeePhone: employee?.phone,
+      };
+      if (
+        prev.bankLoan?.bankId === nextBankLoan.bankId &&
+        prev.bankLoan?.bankName === nextBankLoan.bankName &&
+        prev.bankLoan?.consultingEmployeeId === nextBankLoan.consultingEmployeeId &&
+        prev.bankLoan?.consultingEmployeeName === nextBankLoan.consultingEmployeeName &&
+        prev.bankLoan?.consultingEmployeePhone === nextBankLoan.consultingEmployeePhone
+      ) {
+        return prev;
+      }
+      return { ...prev, bankLoan: nextBankLoan };
+    });
+  }, [banks, consultingEmployees]);
+
+  const feeLocation = resolveQuoteFeeLocation(customerFields, {
+    locationId: locationId || undefined,
+    districtId: initialDistrictId,
+  });
+  const quoteLocationId = feeLocation.locationId ?? locationId;
+  const deliveryAddress = resolveDeliveryAddress(customerFields);
 
   useEffect(() => {
     if (!quoteLocationId) {
@@ -91,22 +196,86 @@ export function OnRoadQuotePage() {
   }, [quoteLocationId]);
 
   useEffect(() => {
-    if (initialDistrictId || !initialAddress || !quoteLocationId || districts.length === 0) {
+    if (!deliveryAddress.locationId) {
+      setDeliveryDistricts([]);
       return;
     }
-    const location = locations.find((item) => item.id === quoteLocationId);
-    const matched = matchDistrictFromAddress(initialAddress, districts, location, lang);
-    if (matched) {
-      setDistrictId(matched.id);
-    }
-  }, [districts, initialAddress, initialDistrictId, locations, quoteLocationId, lang]);
+    let cancelled = false;
+    api
+      .getLocationDistricts(deliveryAddress.locationId)
+      .then((rows) => {
+        if (!cancelled) {
+          setDeliveryDistricts(rows);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDeliveryDistricts([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [deliveryAddress.locationId]);
 
   const customerAddress = useMemo(() => {
-    const location = locations.find((item) => item.id === quoteLocationId);
-    const district = districts.find((item) => item.id === districtId);
-    const composed = composeCustomerAddress(district, location, lang);
+    const composed = composeStructuredAddress(deliveryAddress, locations, deliveryDistricts, lang);
     return composed || initialAddress;
-  }, [districtId, districts, initialAddress, lang, locations, quoteLocationId]);
+  }, [deliveryAddress, deliveryDistricts, initialAddress, lang, locations]);
+
+  const customerName = customerFields.fullName;
+
+  useEffect(() => {
+    const effectiveListPrice = extras.listPrice ?? vehicle?.listPrice;
+    if (!customerFields.customerId || !effectiveListPrice) {
+      setExtras((prev) => {
+        if (!prev.relationshipDiscount) {
+          return prev;
+        }
+        const base = prev.basePolicyDiscountAmount ?? prev.discountAmount ?? 0;
+        const { relationshipDiscount, ...rest } = prev;
+        return { ...rest, discountAmount: base };
+      });
+      return;
+    }
+
+    let cancelled = false;
+    api
+      .getCustomerRelationshipDiscount(customerFields.customerId, effectiveListPrice)
+      .then(({ offer }) => {
+        if (cancelled) {
+          return;
+        }
+        setExtras((prev) => {
+          const base = prev.basePolicyDiscountAmount ?? prev.discountAmount ?? 0;
+          if (!offer) {
+            if (!prev.relationshipDiscount) {
+              return prev;
+            }
+            const { relationshipDiscount, ...rest } = prev;
+            return { ...rest, discountAmount: base };
+          }
+          const nextDiscount = quoteDiscountWithRelationship(base, offer);
+          if (
+            prev.relationshipDiscount?.relatedCustomerId === offer.relatedCustomerId &&
+            prev.relationshipDiscount?.discountAmount === offer.discountAmount &&
+            prev.discountAmount === nextDiscount
+          ) {
+            return prev;
+          }
+          return {
+            ...prev,
+            relationshipDiscount: offer,
+            discountAmount: nextDiscount,
+          };
+        });
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customerFields.customerId, vehicle?.listPrice, extras.listPrice]);
 
   useEffect(() => {
     if (!id || !locationId) {
@@ -116,7 +285,6 @@ export function OnRoadQuotePage() {
     }
 
     let cancelled = false;
-    setLoading(true);
     setError(null);
 
     const cachedVehicle = loadVehicleCache(id);
@@ -125,9 +293,18 @@ export function OnRoadQuotePage() {
         ? loadExtras(id, { accessories: [] })
         : undefined;
 
-    const loadPromise = cachedVehicle
-      ? api
-          .calculateOnRoadCost(
+    if (cachedVehicle) {
+      setVehicle(cachedVehicle);
+      setExtras(loadExtras(id, extrasFromVehicle(cachedVehicle)));
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    async function fetchQuoteData() {
+      try {
+        if (cachedVehicle) {
+          const breakdown = await api.calculateOnRoadCost(
             id,
             locationId,
             includeOptional,
@@ -136,9 +313,16 @@ export function OnRoadQuotePage() {
             policyChoices.usageType,
             policyChoices.selectedOfferIds,
             policyChoices.forgoneOfferIds,
-          )
-          .then((breakdown) => ({ vehicle: cachedVehicle, breakdown }))
-      : api.loadQuotePage(
+          );
+          if (cancelled) {
+            return;
+          }
+          setExtras(loadExtras(id, { ...extrasFromQuote(cachedVehicle, breakdown), bankLoan: DEFAULT_QUOTE_BANK_LOAN }));
+          setResult(breakdown);
+          return;
+        }
+
+        const loaded = await api.loadQuotePage(
           id,
           locationId,
           includeOptional,
@@ -148,31 +332,54 @@ export function OnRoadQuotePage() {
           policyChoices.selectedOfferIds,
           policyChoices.forgoneOfferIds,
         );
-
-    loadPromise
-      .then(({ vehicle: nextVehicle, breakdown }) => {
         if (cancelled) {
           return;
         }
-        setVehicle(nextVehicle);
-        setExtras(loadExtras(id, extrasFromQuote(nextVehicle, breakdown)));
-        setResult(breakdown);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) {
-          setError(err.message);
+        setVehicle(loaded.vehicle);
+        setExtras(loadExtras(id, { ...extrasFromQuote(loaded.vehicle, loaded.breakdown), bankLoan: DEFAULT_QUOTE_BANK_LOAN }));
+        setResult(loaded.breakdown);
+      } catch (firstError) {
+        if (cancelled) {
+          return;
         }
-      })
-      .finally(() => {
+        if (cachedVehicle) {
+          try {
+            const loaded = await api.loadQuotePage(
+              id,
+              locationId,
+              includeOptional,
+              categoryId,
+              extrasForCalc,
+              policyChoices.usageType,
+              policyChoices.selectedOfferIds,
+              policyChoices.forgoneOfferIds,
+            );
+            if (cancelled) {
+              return;
+            }
+            setVehicle(loaded.vehicle);
+            saveVehicleCache(id, loaded.vehicle);
+            setExtras(loadExtras(id, { ...extrasFromQuote(loaded.vehicle, loaded.breakdown), bankLoan: DEFAULT_QUOTE_BANK_LOAN }));
+            setResult(loaded.breakdown);
+            return;
+          } catch {
+            // Keep cached vehicle + adjustable panel visible with session/vehicle extras.
+          }
+        }
+        setError(firstError instanceof Error ? firstError.message : t("apiError"));
+      } finally {
         if (!cancelled) {
           setLoading(false);
         }
-      });
+      }
+    }
+
+    void fetchQuoteData();
 
     return () => {
       cancelled = true;
     };
-  }, [id, brandCode, locationId, categoryId, includeOptional, t]);
+  }, [id, brandCode, locationId, categoryId, includeOptional, policyChoices.usageType, policyChoices.selectedOfferIds, policyChoices.forgoneOfferIds, t]);
 
   async function exportQuote() {
     if (!id || !quoteLocationId) {
@@ -231,6 +438,7 @@ export function OnRoadQuotePage() {
       locationId: quoteLocationId,
       categoryId,
       includeOptionalInsurance: includeOptional,
+      customerId: customerFields.customerId,
       customerName: name,
       customerAddress: customerAddress.trim(),
       color,
@@ -268,7 +476,7 @@ export function OnRoadQuotePage() {
     }
   }
 
-  if (loading) {
+  if (loading && !vehicle) {
     return <PageLoadingScreen message={t("calculating")} />;
   }
 
@@ -307,9 +515,25 @@ export function OnRoadQuotePage() {
           </div>
         )}
 
+        {vehicle && (
+          <div className="mb-5 print:hidden">
+            <QuoteBankLoanPanel
+              value={resolveQuoteBankLoan(extras.bankLoan)}
+              banks={banks}
+              employees={consultingEmployees}
+              onChange={(bankLoan) => {
+                const next = { ...extras, bankLoan };
+                setExtras(next);
+                if (id) {
+                  saveExtras(id, next);
+                }
+              }}
+            />
+          </div>
+        )}
+
         {vehicle && result && (
           <div
-            key={result.salePrice}
             className="-mx-4 overflow-x-auto px-4 motion-scale-in sm:-mx-6 sm:px-6 print:mx-0 print:overflow-visible print:px-0"
           >
             <QuoteSheet
@@ -320,36 +544,19 @@ export function OnRoadQuotePage() {
               color={color}
               selectedAccessories={extras.accessories}
               language={exportLang}
+              bankLoan={resolveQuoteBankLoan(extras.bankLoan)}
             />
           </div>
         )}
 
         {result && (
-          <section className="mt-5 space-y-3 rounded-2xl border border-ink/8 bg-white p-3 shadow-card print:hidden sm:p-4">
-            <div className="grid gap-3">
-              <label className="block text-[11px] font-medium text-ink/75">
-                {t("customerName")}
-                <input
-                  value={customerName}
-                  onChange={(event) => setCustomerName(event.target.value)}
-                  className="mt-1 h-11 w-full rounded-md border border-ink/10 bg-paper px-2 text-base sm:h-8 sm:text-sm"
-                />
-              </label>
-              <div className="block text-[11px] font-medium text-ink/75">
-                {t("customerAddress")}
-                <AddressCombobox
-                  compact
-                  locations={locations}
-                  locationId={quoteLocationId}
-                  districtId={districtId}
-                  onLocationChange={(nextLocationId) => {
-                    setQuoteLocationId(nextLocationId);
-                    setDistrictId(undefined);
-                  }}
-                  onDistrictChange={setDistrictId}
-                />
-              </div>
-            </div>
+          <section className="mt-5 space-y-4 rounded-2xl border border-ink/8 bg-white p-3 shadow-card print:hidden sm:p-4">
+            <CustomerPicker
+              compact
+              locations={locations}
+              value={customerFields}
+              onChange={setCustomerFields}
+            />
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <label className="inline-flex items-center gap-2 text-sm text-ink/70">
                 <Languages className="h-4 w-4 shrink-0 text-copper" />
@@ -392,4 +599,51 @@ export function OnRoadQuotePage() {
       </main>
     </div>
   );
+}
+
+function readAddressParams(
+  searchParams: ReturnType<typeof useSearchParams> | null,
+  prefix: "permanent" | "temporary",
+): StructuredAddress {
+  const streetKey = prefix === "permanent" ? "permanentStreet" : "temporaryStreet";
+  const locationKey = prefix === "permanent" ? "permanentLocationId" : "temporaryLocationId";
+  const districtKey = prefix === "permanent" ? "permanentDistrictId" : "temporaryDistrictId";
+  return {
+    streetLine: searchParams?.get(streetKey) ?? "",
+    locationId: searchParams?.get(locationKey) ? Number(searchParams.get(locationKey)) : undefined,
+    districtId: searchParams?.get(districtKey) ? Number(searchParams.get(districtKey)) : undefined,
+  };
+}
+
+function buildCustomerFieldsFromParams(input: {
+  locationId: number;
+  districtId?: number;
+  street: string;
+  address: string;
+  phone: string;
+  deliveryKind: CustomerAddressKind | null;
+  customerId?: number;
+  name: string;
+  permanent: StructuredAddress;
+  temporary: StructuredAddress;
+}): CustomerFieldValues {
+  const permanent = { ...input.permanent };
+  const temporary = { ...input.temporary };
+  if (!permanent.streetLine && !permanent.locationId && input.street) {
+    permanent.streetLine = input.street;
+    permanent.locationId = input.locationId || undefined;
+    permanent.districtId = input.districtId;
+  }
+  const deliveryAddressKind =
+    input.deliveryKind === "TEMPORARY" || input.deliveryKind === "PERMANENT"
+      ? input.deliveryKind
+      : undefined;
+  return {
+    customerId: input.customerId,
+    fullName: input.name,
+    phone: input.phone,
+    permanentAddress: permanent,
+    temporaryAddress: temporary,
+    deliveryAddressKind,
+  };
 }

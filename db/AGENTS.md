@@ -18,6 +18,14 @@ Operator SQL that creates and seeds the Neon (and optional local Postgres) schem
 - Day-to-day catalog and policy changes use `/admin` after operator login; `app_settings`, `vehicles.color_photos`, and `quote_history` are created automatically if missing. Do not drop `quote_history` when re-running this SQL.
 - Bulk vehicle refresh from registration photos: `npm run import:catalog` in `web/` (reads `HÌNH ĐĂNG KÝ XE` by default, converts JPEGs to WebP, stores blobs in `vehicle_images`, replaces all `vehicles` rows with folder-backed trims and VN seed prices from this SQL)
 - Quote address districts (`location_districts`, 696 former Quận/Huyện): after schema change run `npm run seed:location-districts` in `web/` (or paste `db/add-location-districts.sql` + `db/location-districts-seed.sql` in Neon)
+- Bank loan tables (`banks`, `consulting_employees`, `bank_loans`): paste `db/add-bank-loans.sql` in Neon on existing databases; fresh installs get them from the end of `neon-init.sql`
+- Accessory catalog (`accessories`, `accessory_images`): paste `db/add-accessories.sql` on existing Neon databases; fresh installs include them at the end of `neon-init.sql`
+- Customer CRM (`customers`, `customer_relationships`, `quote_history.customer_id`): paste `db/add-customers.sql` on existing Neon databases; fresh installs include them after `quote_history` in `neon-init.sql`
+- Customer soft delete (`customers.is_active`): paste `db/add-customer-is-active.sql` on existing Neon databases after customer tables exist; fresh installs include the column in `neon-init.sql`
+- Customer permanent/temporary address columns (`permanent_*`, `temporary_*` on `customers`): paste `db/add-customer-addresses.sql` on existing Neon databases after `add-customers.sql`; fresh installs include them in `neon-init.sql`. Or from `web/`: `npm run migrate:customer-addresses`
+- Vehicle gallery slideshow (`vehicles.color_photos` as color → image-id arrays): paste `db/add-vehicle-gallery.sql` on existing Neon databases if documenting the JSON shape; fresh installs use array values in `neon-init.sql` import output
+- Vehicle model-year identity (`vehicles_brand_model_name_year_uidx`): paste `db/add-vehicle-model-year-unique.sql` on existing Neon databases after customer/vehicle tables exist; fresh installs include the index in `neon-init.sql`
+- Consulting employee default flag: paste `db/add-consulting-employee-default.sql` on existing Neon databases after bank-loan tables exist
 - Do not re-run this SQL just to add a vehicle
 - Thuế trước bạ percents are not in this SQL — edit `/admin` Registration tax (defaults in `fee-policy.yml`)
 - Phí bấm biển số is not in this SQL — edit `/admin` License plate fees (defaults in `license-plate-regions.yml`)

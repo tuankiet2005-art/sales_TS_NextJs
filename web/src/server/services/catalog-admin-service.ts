@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 
 import type {
   AdminBrand,
@@ -11,6 +11,7 @@ import type {
   CatalogSnapshot,
   ImportResult,
 } from "@/types";
+import { normalizeColorPhotos } from "@/lib/colorPhotos";
 import { getDb } from "../db/client";
 import { invalidateCatalogCache } from "./catalog-service";
 import {
@@ -180,7 +181,7 @@ export async function exportAll(): Promise<CatalogSnapshot> {
       inspectionFee: vehicle.inspectionFee != null ? Number(vehicle.inspectionFee) : null,
       defaultColor: vehicle.defaultColor ?? undefined,
       availableColors: vehicle.availableColors ?? undefined,
-      colorPhotos: vehicle.colorPhotos ? JSON.parse(vehicle.colorPhotos) : undefined,
+      colorPhotos: vehicle.colorPhotos ? normalizeColorPhotos(JSON.parse(vehicle.colorPhotos)) : undefined,
       deliveryNote: vehicle.deliveryNote ?? undefined,
       warrantyNote: vehicle.warrantyNote ?? undefined,
       gifts: vehicle.gifts ?? undefined,
@@ -397,11 +398,30 @@ export async function upsertVehicle(record: AdminVehicle) {
   if (!brandId || !categoryId) {
     throw new Error("Unknown brand or category");
   }
+  const model = record.model.trim();
+  const name = record.name.trim();
+  const duplicateFilters = [
+    eq(vehicles.brandId, brandId),
+    eq(vehicles.model, model),
+    eq(vehicles.name, name),
+    record.year != null ? eq(vehicles.modelYear, record.year) : sql`${vehicles.modelYear} is null`,
+  ];
+  if (record.id) {
+    duplicateFilters.push(ne(vehicles.id, record.id));
+  }
+  const duplicates = await db
+    .select({ id: vehicles.id })
+    .from(vehicles)
+    .where(and(...duplicateFilters))
+    .limit(1);
+  if (duplicates.length > 0) {
+    throw new Error("A vehicle with this brand, model, trim, and year already exists");
+  }
   const values = {
     brandId,
     categoryId,
-    model: record.model.trim(),
-    name: record.name.trim(),
+    model,
+    name: name,
     seats: record.seats ?? null,
     vehicleType: record.vehicleType ?? null,
     modelYear: record.year ?? null,
@@ -419,7 +439,7 @@ export async function upsertVehicle(record: AdminVehicle) {
     inspectionFee: record.inspectionFee != null ? String(record.inspectionFee) : null,
     defaultColor: record.defaultColor ?? null,
     availableColors: record.availableColors ?? null,
-    colorPhotos: record.colorPhotos ? JSON.stringify(record.colorPhotos) : null,
+    colorPhotos: record.colorPhotos ? JSON.stringify(normalizeColorPhotos(record.colorPhotos)) : null,
     deliveryNote: record.deliveryNote ?? null,
     warrantyNote: record.warrantyNote ?? null,
     gifts: record.gifts ?? null,
@@ -430,15 +450,18 @@ export async function upsertVehicle(record: AdminVehicle) {
   };
   if (record.id) {
     const rows = await db.update(vehicles).set(values).where(eq(vehicles.id, record.id)).returning();
+    invalidateCatalogCache();
     return rows[0];
   }
   const rows = await db.insert(vehicles).values(values).returning();
+  invalidateCatalogCache();
   return rows[0];
 }
 
 export async function deleteVehicle(id: number) {
   const db = getDb();
   await db.delete(vehicles).where(eq(vehicles.id, id));
+  invalidateCatalogCache();
 }
 
 export async function listAdminFeeRules() {

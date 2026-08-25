@@ -7,11 +7,11 @@ import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
 import { VehicleCardSkeleton } from "../components/LoadingState";
 import { Pagination, catalogPageSize } from "../components/Pagination";
-import { VehicleCard } from "../components/VehicleCard";
+import { ModelCard } from "../components/ModelCard";
 import { useI18n } from "../i18n/LanguageContext";
 import { loadCategoryCache, saveCategoryCache } from "../lib/catalogReferenceCache";
 import { motionInteractive, motionStagger } from "../lib/motion";
-import type { Brand, Category, VehicleSummary } from "../types";
+import type { Brand, Category, VehicleModelSummary } from "../types";
 
 const PAGE_SIZE = catalogPageSize();
 
@@ -35,8 +35,8 @@ export function HomePage() {
   const page = Math.max(1, Number(searchParams?.get("page") ?? 1) || 1);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [categories, setCategories] = useState<Category[]>(() => loadCategoryCache() ?? []);
-  const [vehicles, setVehicles] = useState<VehicleSummary[]>([]);
-  const [vehicleTotal, setVehicleTotal] = useState(0);
+  const [models, setModels] = useState<VehicleModelSummary[]>([]);
+  const [modelTotal, setModelTotal] = useState(0);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [vehicleTypeOptions, setVehicleTypeOptions] = useState<string[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
@@ -89,7 +89,7 @@ export function HomePage() {
     setVehiclesLoading(true);
     setError(null);
     api
-      .searchVehiclesPage(
+      .searchModelsPage(
         {
           keyword: debouncedKeyword,
           brandCode,
@@ -102,8 +102,8 @@ export function HomePage() {
         { signal: controller.signal },
       )
       .then((result) => {
-        setVehicles(result.items);
-        setVehicleTotal(result.total);
+        setModels(result.items);
+        setModelTotal(result.total);
         setModelOptions(result.filterOptions.models);
         setVehicleTypeOptions(result.filterOptions.vehicleTypes);
       })
@@ -254,7 +254,7 @@ export function HomePage() {
               {selectedCategory ? t(`category.${selectedCategory.code}`) : t("availableVehicles")}
             </h2>
             <p className="mt-1 text-sm text-ink/55">
-              {vehiclesLoading ? t("loadingCatalog") : t("modelsCount", { n: vehicleTotal })}
+              {vehiclesLoading ? t("loadingCatalog") : t("modelsCount", { n: modelTotal })}
             </p>
           </div>
 
@@ -265,7 +265,7 @@ export function HomePage() {
             </div>
           )}
 
-          {!vehiclesLoading && !error && vehicles.length === 0 && (
+          {!vehiclesLoading && !error && models.length === 0 && (
             <p className="rounded-2xl bg-white px-5 py-10 text-center text-ink/60">
               {brand && !brand.ready ? t("emptyBrand") : t("emptySearch")}
             </p>
@@ -275,13 +275,13 @@ export function HomePage() {
             {vehiclesLoading ? (
               <VehicleCardSkeleton count={PAGE_SIZE} />
             ) : (
-              vehicles.map((vehicle, index) => (
-                <VehicleCard key={vehicle.id} vehicle={vehicle} brandCode={brandCode} index={index} />
+              models.map((model, index) => (
+                <ModelCard key={`${model.brandCode}-${model.model}`} model={model} brandCode={brandCode} index={index} />
               ))
             )}
           </div>
 
-          {!vehiclesLoading ? <Pagination page={page} total={vehicleTotal} onPageChange={selectPage} /> : null}
+          {!vehiclesLoading ? <Pagination page={page} total={modelTotal} onPageChange={selectPage} /> : null}
         </section>
 
         <section id="how-it-works" className="border-t border-ink/10 bg-white/70">

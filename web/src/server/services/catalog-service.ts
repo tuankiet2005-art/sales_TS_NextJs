@@ -1,4 +1,5 @@
 import {
+  countActiveModels,
   countActiveVehicles,
   findActiveVehicleById,
   findBrandByCode,
@@ -7,25 +8,40 @@ import {
   listActiveFeeDefinitions,
   listActiveFeeRules,
   listActiveVehicleFilterOptions,
+  listActiveVariantsForBrandModel,
   listBrands,
   listCategories,
   listDistrictsByLocationId,
   listLocations,
+  searchActiveModelSummaries,
   searchActiveVehicles,
 } from "../db/repositories/catalog";
 import {
+  buildVehicleModelContext,
   mapBrand,
   mapCategory,
   mapCostBreakdown,
   mapLocation,
   mapLocationDistrict,
   mapVehicleDetail,
+  mapVehicleModelDetail,
+  mapVehicleModelSummary,
   mapVehicleSummaryWithPolicy,
 } from "../mappers";
 import { getDealerPolicy, loadPolicySnapshot } from "../config/policy-store";
 import { calculateOnRoadCost } from "../domain/on-road-cost";
 import type { CalculateOnRoadInput } from "../domain/types";
-import type { Brand, Category, CostBreakdown, Location, LocationDistrict, Paginated, VehicleSummary } from "@/types";
+import type {
+  Brand,
+  Category,
+  CostBreakdown,
+  Location,
+  LocationDistrict,
+  Paginated,
+  VehicleModelDetail,
+  VehicleModelSummary,
+  VehicleSummary,
+} from "@/types";
 
 type CatalogListCache = {
   brands: Brand[] | null;
@@ -57,13 +73,18 @@ export type CalculateOnRoadBody = {
   locationId: number;
   categoryId?: number | null;
   includeOptionalInsurance?: boolean;
+  listPrice?: number | null;
   discountAmount?: number | null;
   salePrice?: number | null;
   deposit?: number | null;
   optionalBodyInsurance?: number | null;
+  registrationTax?: number | null;
+  licensePlateFee?: number | null;
   registrationServiceFee?: number | null;
   micaPlateFee?: number | null;
   inspectionFee?: number | null;
+  roadUseFee?: number | null;
+  compulsoryInsurance?: number | null;
   accessories?: { name: string; amount: number }[] | null;
   usageType?: string | null;
   selectedOfferIds?: string[] | null;
@@ -167,6 +188,55 @@ export async function searchVehicles(params: {
   return rows.map((row) => mapVehicleSummaryWithPolicy(row, policy));
 }
 
+export async function searchModelsPage(params: {
+  keyword?: string;
+  brandCode?: string;
+  categoryId?: number;
+  model?: string;
+  vehicleType?: string;
+  page: number;
+  pageSize: number;
+}): Promise<Paginated<VehicleModelSummary> & { filterOptions: { models: string[]; vehicleTypes: string[] } }> {
+  const page = Math.max(1, params.page);
+  const pageSize = Math.max(1, Math.min(params.pageSize, 50));
+  const offset = (page - 1) * pageSize;
+  const searchParams = {
+    keyword: params.keyword,
+    brandCode: params.brandCode,
+    categoryId: params.categoryId,
+    model: params.model,
+    vehicleType: params.vehicleType,
+    limit: pageSize,
+    offset,
+  };
+  const filterScope = {
+    brandCode: params.brandCode,
+    categoryId: params.categoryId,
+  };
+  const [rows, total, policy, filterOptions] = await Promise.all([
+    searchActiveModelSummaries(searchParams),
+    countActiveModels(searchParams),
+    getDealerPolicy(),
+    listActiveVehicleFilterOptions(filterScope.brandCode, filterScope.categoryId),
+  ]);
+  return {
+    items: rows.map((row) => mapVehicleModelSummary(row, policy, row.trimCount)),
+    total,
+    page,
+    pageSize,
+    filterOptions,
+  };
+}
+
+export async function getModelDetail(brandCode: string, model: string): Promise<VehicleModelDetail | null> {
+  const [rows, policy] = await Promise.all([listActiveVariantsForBrandModel(brandCode, model), getDealerPolicy()]);
+  if (rows.length === 0) {
+    return null;
+  }
+  const variants = rows.map((row) => mapVehicleDetail(row, policy));
+  return mapVehicleModelDetail(model, rows[0]!.brand, variants);
+}
+
 export async function searchVehiclesPage(params: {
   keyword?: string;
   brandCode?: string;
@@ -216,7 +286,13 @@ export async function getVehicle(id: number) {
   if (!row) {
     return null;
   }
-  return mapVehicleDetail(row, policy);
+  const detail = mapVehicleDetail(row, policy);
+  const variantRows = await listActiveVariantsForBrandModel(row.brand.code, row.vehicle.model);
+  const variants = variantRows.map((variantRow) => mapVehicleSummaryWithPolicy(variantRow, policy));
+  return {
+    ...detail,
+    modelContext: buildVehicleModelContext(row.vehicle.model, detail, variants),
+  };
 }
 
 export async function getDealerPolicyResponse() {
@@ -270,7 +346,7 @@ export async function calculateOnRoad(
   const input: CalculateOnRoadInput = {
     vehicle: {
       id: vehicleRow.vehicle.id,
-      listPrice: vehicleRow.vehicle.listPrice,
+      listPrice: body.listPrice ?? vehicleRow.vehicle.listPrice,
       taxBasePrice: vehicleRow.vehicle.taxBasePrice,
       engineCc: vehicleRow.vehicle.engineCc,
       defaultDeposit: vehicleRow.vehicle.defaultDeposit,
@@ -295,9 +371,13 @@ export async function calculateOnRoad(
     salePrice: body.salePrice,
     deposit: body.deposit,
     optionalBodyInsurance: body.optionalBodyInsurance,
+    registrationTax: body.registrationTax,
+    licensePlateFee: body.licensePlateFee,
     registrationServiceFee: body.registrationServiceFee,
     micaPlateFee: body.micaPlateFee,
     inspectionFee: body.inspectionFee,
+    roadUseFee: body.roadUseFee,
+    compulsoryInsurance: body.compulsoryInsurance,
     accessories: body.accessories,
     usageType: body.usageType,
     selectedOfferIds: body.selectedOfferIds,

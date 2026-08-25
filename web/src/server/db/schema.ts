@@ -114,7 +114,14 @@ export const vehicles = pgTable("vehicles", {
   imageUrl: varchar("image_url", { length: 1000 }),
   specifications: text("specifications"),
   active: boolean("active").notNull().default(true),
-});
+}, (table) => [
+  uniqueIndex("vehicles_brand_model_name_year_uidx").on(
+    table.brandId,
+    table.model,
+    table.name,
+    table.modelYear,
+  ),
+]);
 
 export const vehicleImages = pgTable(
   "vehicle_images",
@@ -161,13 +168,74 @@ export const feeRules = pgTable("fee_rules", {
   active: boolean("active").notNull().default(true),
 });
 
+export const accessories = pgTable("accessories", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  nameEn: varchar("name_en", { length: 160 }),
+  nameZh: varchar("name_zh", { length: 160 }),
+  nameJa: varchar("name_ja", { length: 160 }),
+  amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+  imageUrl: varchar("image_url", { length: 1000 }),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const accessoryImages = pgTable(
+  "accessory_images",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+    accessoryId: bigint("accessory_id", { mode: "number" })
+      .notNull()
+      .references(() => accessories.id, { onDelete: "cascade" }),
+    mimeType: varchar("mime_type", { length: 64 }).notNull().default("image/webp"),
+    data: text("data").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("accessory_images_accessory_uidx").on(table.accessoryId)],
+);
+
 export const appSettings = pgTable("app_settings", {
   settingKey: varchar("setting_key", { length: 80 }).primaryKey(),
   payload: text("payload").notNull(),
 });
 
+export const banks = pgTable("banks", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const consultingEmployees = pgTable("consulting_employees", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  phone: varchar("phone", { length: 40 }),
+  active: boolean("active").notNull().default(true),
+  isDefault: boolean("is_default").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const bankLoans = pgTable("bank_loans", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+  bankId: bigint("bank_id", { mode: "number" })
+    .notNull()
+    .references(() => banks.id),
+  monthlyInterestRate: numeric("monthly_interest_rate", { precision: 8, scale: 4 }).notNull(),
+  loanTermYears: integer("loan_term_years").notNull(),
+  fixedRatePeriodYears: integer("fixed_rate_period_years").notNull().default(0),
+  consultingEmployeeId: bigint("consulting_employee_id", { mode: "number" })
+    .notNull()
+    .references(() => consultingEmployees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const quoteHistory = pgTable("quote_history", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+  customerId: bigint("customer_id", { mode: "number" }),
   customerName: varchar("customer_name", { length: 200 }).notNull(),
   customerAddress: varchar("customer_address", { length: 400 }),
   vehicleId: bigint("vehicle_id", { mode: "number" }),
@@ -189,9 +257,53 @@ export const quoteHistory = pgTable("quote_history", {
   createdAt: timestamp("created_at").notNull(),
 });
 
+export const customers = pgTable("customers", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+  fullName: varchar("full_name", { length: 200 }).notNull(),
+  phone: varchar("phone", { length: 40 }),
+  streetLine: varchar("street_line", { length: 240 }),
+  locationId: bigint("location_id", { mode: "number" }).references(() => locations.id),
+  districtId: bigint("district_id", { mode: "number" }).references(() => locationDistricts.id),
+  permanentStreetLine: varchar("permanent_street_line", { length: 240 }),
+  permanentLocationId: bigint("permanent_location_id", { mode: "number" }).references(() => locations.id),
+  permanentDistrictId: bigint("permanent_district_id", { mode: "number" }).references(() => locationDistricts.id),
+  temporaryStreetLine: varchar("temporary_street_line", { length: 240 }),
+  temporaryLocationId: bigint("temporary_location_id", { mode: "number" }).references(() => locations.id),
+  temporaryDistrictId: bigint("temporary_district_id", { mode: "number" }).references(() => locationDistricts.id),
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const customerRelationships = pgTable(
+  "customer_relationships",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
+    customerId: bigint("customer_id", { mode: "number" })
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    relatedCustomerId: bigint("related_customer_id", { mode: "number" })
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    relationshipType: varchar("relationship_type", { length: 32 }).notNull(),
+    note: varchar("note", { length: 240 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("customer_relationships_unique").on(
+      table.customerId,
+      table.relatedCustomerId,
+      table.relationshipType,
+    ),
+  ],
+);
+
 export type Brand = typeof brands.$inferSelect;
 export type Vehicle = typeof vehicles.$inferSelect;
 export type VehicleImage = typeof vehicleImages.$inferSelect;
+export type Accessory = typeof accessories.$inferSelect;
+export type AccessoryImage = typeof accessoryImages.$inferSelect;
 export type Location = typeof locations.$inferSelect;
 export type LocationDistrict = typeof locationDistricts.$inferSelect;
 export type AppSetting = typeof appSettings.$inferSelect;

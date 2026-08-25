@@ -51,6 +51,10 @@ const PUBLIC_API_PREFIXES = [
   "/api/catalog",
   "/api/vehicles",
   "/api/vehicle-images",
+  "/api/accessories",
+  "/api/accessory-images",
+  "/api/banks",
+  "/api/consulting-employees",
 ] as const;
 
 export function isPublicApiPath(path: string): boolean {

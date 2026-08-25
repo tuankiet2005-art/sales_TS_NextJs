@@ -29,6 +29,16 @@ export type QuoteSheetFillInput = {
   accessoriesTotal: number;
   estimatedOnRoadTotal: number;
   deposit: number;
+  bankLoan?: {
+    bankId?: number;
+    bankName?: string;
+    monthlyInterestRate?: number;
+    loanTermYears?: number;
+    fixedRatePeriodYears?: number;
+    consultingEmployeeId?: number;
+    consultingEmployeeName?: string;
+    consultingEmployeePhone?: string;
+  };
   accessories?: { name: string; amount: number }[];
 };
 
@@ -114,7 +124,16 @@ function fillQuote(sheet: ExcelJS.Worksheet, input: QuoteSheetFillInput) {
 
   const color = input.color?.trim() || "";
   const extras = input.accessoriesTotal || 0;
-  const secondPayment = Math.max(input.estimatedOnRoadTotal - input.deposit, 0);
+  const cashSecond = Math.max(input.estimatedOnRoadTotal - input.deposit, 0);
+  const loanAmount = Math.max(input.salePrice - input.deposit, 0);
+  const loanTermYears = input.bankLoan?.loanTermYears ?? 5;
+  const monthlyInterestRate = input.bankLoan?.monthlyInterestRate ?? 0.65;
+  const months = loanTermYears * 12;
+  const monthlyRateDecimal = monthlyInterestRate / 100;
+  const monthlyPrincipal = months ? loanAmount / months : 0;
+  const monthlyInterest = loanAmount * monthlyRateDecimal;
+  const monthlyPayment = monthlyPrincipal + monthlyInterest;
+  const bankSecond = Math.max(input.estimatedOnRoadTotal - input.deposit - loanAmount, 0);
   const accessoryNames =
     !input.accessories?.length
       ? "Phụ kiện trang bị thêm (Nếu có)"
@@ -125,7 +144,14 @@ function fillQuote(sheet: ExcelJS.Worksheet, input: QuoteSheetFillInput) {
   const today = formatDate(new Date());
 
   writeAfterLabel(sheet, "Khách hàng:", `Khách hàng: ${input.customerName?.trim() || "Khách hàng"}`);
-  writeAfterLabel(sheet, "Địa chỉ:", padAddress(input.customerAddress));
+  writeAfterLabel(
+    sheet,
+    "Địa chỉ:",
+    padAddress(input.customerAddress, {
+      name: input.bankLoan?.consultingEmployeeName,
+      phone: input.bankLoan?.consultingEmployeePhone,
+    }),
+  );
   writeBesideLabel(sheet, "Loại xe:", input.vehicleName);
   writeAfterLabel(sheet, "Đời xe:", `Đời xe: ${input.modelYear ?? ""}`);
   writeAfterLabel(sheet, "Ngày:", `Ngày: ${today}`);
@@ -152,7 +178,10 @@ function fillQuote(sheet: ExcelJS.Worksheet, input: QuoteSheetFillInput) {
   writeBesideLabel(sheet, "TỔNG CP PHÁT SINH", extras);
   writeBesideLabel(sheet, "Chi Phí Phát sinh thêm (Nếu có)", extras);
   writeBesideLabel(sheet, "Tiền cọc:", input.deposit);
-  writeBesideLabel(sheet, "THANH TOÁN LẦN 2", secondPayment);
+  writeBesideLabelAll(sheet, "THANH TOÁN LẦN 2", [cashSecond, bankSecond]);
+  writeBesideLabelAll(sheet, "Số tiền vay", [loanAmount]);
+  writeBesideLabel(sheet, "Thời gian vay:", `${loanTermYears} Năm`);
+  writeBesideLabel(sheet, "Thanh toán tháng", monthlyPayment);
 }
 
 function translateSheet(sheet: ExcelJS.Worksheet, language: Lang) {
@@ -178,14 +207,28 @@ function writeAfterLabel(sheet: ExcelJS.Worksheet, prefix: string, fullValue: st
 }
 
 function writeBesideLabel(sheet: ExcelJS.Worksheet, label: string, value: string | number) {
-  const found = findLabelCell(sheet, (text) => text === label || text.startsWith(label));
-  if (!found) {
-    return;
-  }
-  const row = Number(found.row);
-  const col = Number(found.col);
-  const target = sheet.getCell(row, mergeEndCol(sheet, row, col) + 1);
-  writeValue(target, value);
+  writeBesideLabelAll(sheet, label, [value]);
+}
+
+function writeBesideLabelAll(sheet: ExcelJS.Worksheet, label: string, values: (string | number)[]) {
+  const matches: ExcelJS.Cell[] = [];
+  sheet.eachRow((row) => {
+    row.eachCell((cell) => {
+      const text = readCellText(cell);
+      if (text && (text === label || text.startsWith(label))) {
+        matches.push(cell);
+      }
+    });
+  });
+  matches.forEach((found, index) => {
+    if (index >= values.length) {
+      return;
+    }
+    const row = Number(found.row);
+    const col = Number(found.col);
+    const target = sheet.getCell(row, mergeEndCol(sheet, row, col) + 1);
+    writeValue(target, values[index]);
+  });
 }
 
 function mergeEndCol(sheet: ExcelJS.Worksheet, row: number, col: number): number {
@@ -247,9 +290,11 @@ function readCellText(cell: ExcelJS.Cell): string | null {
   return null;
 }
 
-function padAddress(address?: string) {
+function padAddress(address?: string, consultant?: { name?: string; phone?: string }) {
   const value = address?.trim() ?? "";
-  return `Địa chỉ: ${value}                                                                                          TVBH:        - SĐT: `;
+  const tvbh = consultant?.name?.trim() ?? "";
+  const phone = consultant?.phone?.trim() ?? "";
+  return `Địa chỉ: ${value}                                                                                          TVBH: ${tvbh}        - SĐT: ${phone} `;
 }
 
 function formatDate(date: Date) {

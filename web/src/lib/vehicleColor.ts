@@ -1,4 +1,5 @@
-import { vehicleImageUrl } from "./vehicleImageUrl";
+import type { ColorPhotoMap } from "./colorPhotos";
+import { firstResolvedColorPhoto } from "./colorPhotos";
 
 export const VEHICLE_COLORS: Record<string, string> = {
   Trắng: "#f4f4f4",
@@ -25,16 +26,13 @@ export const VEHICLE_COLOR_PHOTOS: Record<string, string> = {
   Đỏ: "/colors/do.png",
 };
 
-export function colorPhoto(name?: string, photos?: Record<string, string> | null): string {
+export function colorPhoto(name?: string, photos?: ColorPhotoMap | null): string {
   if (!name) {
     return "/colors/bac.png";
   }
-  const fromVehicle = photos?.[name]?.trim();
+  const fromVehicle = firstResolvedColorPhoto(photos, name);
   if (fromVehicle) {
-    const resolved = vehicleImageUrl(fromVehicle);
-    if (resolved) {
-      return resolved;
-    }
+    return fromVehicle;
   }
   return VEHICLE_COLOR_PHOTOS[name] ?? "/colors/bac.png";
 }

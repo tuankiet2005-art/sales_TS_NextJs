@@ -67,6 +67,9 @@ export function Header() {
         <NavItem href="/" stacked={stacked} onClick={() => setMenuOpen(false)}>
           {t("changeBrand")}
         </NavItem>
+        <NavItem href="/customers" stacked={stacked} onClick={() => setMenuOpen(false)}>
+          {t("customer.nav")}
+        </NavItem>
         <NavItem href="/quotes" stacked={stacked} onClick={() => setMenuOpen(false)}>
           {t("quoteHistory.nav")}
         </NavItem>

@@ -1,6 +1,6 @@
 "use client";
-import { Loader2, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Loader2, Search, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "../api/client";
 import { Header } from "../components/Header";
@@ -26,14 +26,41 @@ export function QuoteHistoryPage() {
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [brandFilter, setBrandFilter] = useState(searchParams?.get("brand") ?? "");
   const [locationFilter, setLocationFilter] = useState(searchParams?.get("location") ?? "");
+  const customerId = Number(searchParams?.get("customerId") ?? 0) || undefined;
+  const openQuoteId = Number(searchParams?.get("open") ?? 0) || undefined;
   const page = Math.max(1, Number(searchParams?.get("page") ?? 1) || 1);
   const [rows, setRows] = useState<QuoteHistory[]>([]);
   const [total, setTotal] = useState(0);
+  const [customerFilterName, setCustomerFilterName] = useState<string | null>(null);
   const [brandOptions, setBrandOptions] = useState<{ value: string; label: string }[]>([]);
   const [locationOptions, setLocationOptions] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [openingQuoteId, setOpeningQuoteId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const autoOpenedRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!customerId) {
+      setCustomerFilterName(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getCustomer(customerId)
+      .then((customer) => {
+        if (!cancelled) {
+          setCustomerFilterName(customer.fullName);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCustomerFilterName(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query), 300);
@@ -66,6 +93,7 @@ export function QuoteHistoryPage() {
         query: debouncedQuery,
         brandCode: brandFilter || undefined,
         locationName: locationFilter || undefined,
+        customerId,
         page,
         pageSize: PAGE_SIZE,
       })
@@ -88,7 +116,19 @@ export function QuoteHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, brandFilter, locationFilter, page]);
+  }, [debouncedQuery, brandFilter, locationFilter, customerId, page]);
+
+  useEffect(() => {
+    if (!openQuoteId || loading || rows.length === 0 || autoOpenedRef.current === openQuoteId) {
+      return;
+    }
+    const target = rows.find((row) => row.id === openQuoteId);
+    if (!target) {
+      return;
+    }
+    autoOpenedRef.current = openQuoteId;
+    void openQuote(target);
+  }, [openQuoteId, loading, rows]);
 
   function pushQuery(next: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
@@ -117,6 +157,10 @@ export function QuoteHistoryPage() {
     pushQuery({ page: nextPage <= 1 ? undefined : String(nextPage) });
   }
 
+  function clearCustomerFilter() {
+    pushQuery({ customerId: undefined, open: undefined, page: undefined });
+  }
+
   async function openQuote(row: QuoteHistory) {
     if (!row.vehicleId || !row.brandCode || !row.locationId || openingQuoteId !== null) {
       return;
@@ -143,6 +187,9 @@ export function QuoteHistoryPage() {
       if (full.includeOptional) {
         params.set("optional", "1");
       }
+      if (full.customerId) {
+        params.set("customerId", String(full.customerId));
+      }
       if (full.customerName) {
         params.set("name", full.customerName);
       }
@@ -165,6 +212,24 @@ export function QuoteHistoryPage() {
       <main className="mx-auto max-w-page px-4 py-6 sm:px-6">
         <p className="text-xs uppercase tracking-[0.18em] text-copper">{t("quoteHistory.nav")}</p>
         <h1 className="mt-1 font-display text-2xl sm:text-3xl">{t("quoteHistory.title")}</h1>
+
+        {customerId && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-copper/20 bg-copper/5 px-4 py-3 text-sm">
+            <p className="text-ink">
+              {t("quoteHistory.customerFilter", {
+                name: customerFilterName ?? `#${customerId}`,
+              })}
+            </p>
+            <button
+              type="button"
+              onClick={clearCustomerFilter}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 py-1.5 text-xs font-semibold text-ink hover:border-copper hover:text-copper"
+            >
+              <X className="h-3.5 w-3.5" />
+              {t("quoteHistory.clearCustomerFilter")}
+            </button>
+          </div>
+        )}
 
         <label className="relative mt-5 block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
@@ -282,7 +347,7 @@ export function QuoteHistoryPage() {
                           onClick={() => openQuote(row)}
                           onDoubleClick={(event) => event.stopPropagation()}
                           disabled={openingQuoteId !== null}
-                          className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-copper disabled:opacity-60"
+                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-ink/10 bg-white px-2.5 text-xs font-semibold text-ink hover:border-copper hover:text-copper disabled:opacity-60"
                         >
                           {openingQuoteId === row.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -342,7 +407,7 @@ function QuoteHistoryMobileCard({
         type="button"
         onClick={onOpen}
         disabled={opening}
-        className={`mt-3 inline-flex min-h-11 cursor-pointer items-center gap-1.5 text-sm font-semibold text-copper disabled:opacity-60 ${motionInteractive}`}
+        className={`mt-3 inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold text-ink hover:border-copper hover:text-copper disabled:opacity-60 ${motionInteractive}`}
       >
         {opening ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
         {opening ? t("quoteHistory.opening") : t("quoteHistory.open")}
@@ -354,10 +419,16 @@ function QuoteHistoryMobileCard({
 interface StoredQuotePayload {
   discountAmount?: number;
   deposit?: number;
+  bankLoan?: import("../types").QuoteBankLoan;
+  listPrice?: number;
   optionalBodyInsurance?: number;
+  registrationTax?: number;
+  licensePlateFee?: number;
   registrationServiceFee?: number;
   micaPlateFee?: number;
   inspectionFee?: number;
+  roadUseFee?: number;
+  compulsoryInsurance?: number;
   accessories?: QuoteExtras["accessories"];
   selectedOfferIds?: string[];
   forgoneOfferIds?: string[];
@@ -370,10 +441,16 @@ function extrasFromPayload(payload?: string): QuoteExtras {
   return {
     discountAmount: numberOrUndefined(source.discountAmount),
     deposit: numberOrUndefined(source.deposit),
+    bankLoan: source.bankLoan,
+    listPrice: numberOrUndefined(source.listPrice),
     optionalBodyInsurance: numberOrUndefined(source.optionalBodyInsurance),
+    registrationTax: numberOrUndefined(source.registrationTax),
+    licensePlateFee: numberOrUndefined(source.licensePlateFee),
     registrationServiceFee: numberOrUndefined(source.registrationServiceFee),
     micaPlateFee: numberOrUndefined(source.micaPlateFee),
     inspectionFee: numberOrUndefined(source.inspectionFee),
+    roadUseFee: numberOrUndefined(source.roadUseFee),
+    compulsoryInsurance: numberOrUndefined(source.compulsoryInsurance),
     accessories: Array.isArray(source.accessories) ? source.accessories : [],
   };
 }

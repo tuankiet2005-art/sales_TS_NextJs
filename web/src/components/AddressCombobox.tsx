@@ -7,23 +7,26 @@ import { useI18n } from "../i18n/LanguageContext";
 import { districtLabel, locationLabel } from "../lib/labels";
 import type { Location, LocationDistrict } from "../types";
 
-const selectClass =
-  "h-12 w-full min-w-0 appearance-none rounded-full border border-ink/10 bg-white px-4 pr-10 text-sm text-ink outline-none ring-copper/30 focus:ring-2 disabled:bg-mist/50 disabled:text-ink/45";
-
 export function AddressCombobox({
   locations,
   locationId,
   districtId,
+  streetLine,
   onLocationChange,
   onDistrictChange,
+  onStreetChange,
   compact = false,
+  variant = "pill",
 }: {
   locations: Location[];
   locationId?: number;
   districtId?: number;
+  streetLine: string;
   onLocationChange: (id: number) => void;
   onDistrictChange: (id: number) => void;
+  onStreetChange: (value: string) => void;
   compact?: boolean;
+  variant?: "pill" | "form";
 }) {
   const { t, lang } = useI18n();
   const [districts, setDistricts] = useState<LocationDistrict[]>([]);
@@ -65,15 +68,33 @@ export function AddressCombobox({
 
   const districtDisabled = !locationId || loadingDistricts;
 
-  const heightClass = compact ? "h-11 sm:h-8" : "h-12";
+  const heightClass = compact ? "h-11 sm:h-10" : "h-12";
+  const formFieldClass =
+    "w-full min-w-0 rounded-xl border border-ink/10 bg-white px-3 text-sm text-ink outline-none ring-copper/30 placeholder:text-ink/40 focus:ring-2 disabled:bg-mist/50 disabled:text-ink/45";
+  const pillFieldClass =
+    "w-full min-w-0 rounded-full border border-ink/10 bg-white px-4 text-sm text-ink outline-none ring-copper/30 focus:ring-2 disabled:bg-mist/50 disabled:text-ink/45";
+  const baseFieldClass = variant === "form" ? formFieldClass : pillFieldClass;
+  const selectFieldClass = `${baseFieldClass} appearance-none pr-10 ${heightClass} ${compact ? "text-base sm:text-sm" : ""}`;
+  const streetFieldClass = `${baseFieldClass} ${heightClass} ${compact ? "text-base sm:text-sm" : ""}`;
 
   return (
-    <div className={`grid grid-cols-1 gap-2 sm:grid-cols-2 ${compact ? "" : "mt-1"}`}>
+    <div className={`grid grid-cols-1 gap-2.5 sm:grid-cols-2 ${compact ? "mt-2" : "mt-2.5"}`}>
+      <label className="relative block sm:col-span-2">
+        <input
+          type="text"
+          value={streetLine}
+          onChange={(event) => onStreetChange(event.target.value)}
+          placeholder={t("streetAddress")}
+          aria-label={t("streetAddress")}
+          autoComplete="street-address"
+          className={streetFieldClass}
+        />
+      </label>
       <label className="relative block">
         <select
           value={locationId ?? ""}
           onChange={(event) => onLocationChange(Number(event.target.value))}
-          className={`${selectClass} ${heightClass} ${compact ? "text-base sm:text-sm" : ""}`}
+          className={selectFieldClass}
           aria-label={t("provinceCity")}
         >
           <option value="" disabled>{t("provinceCity")}</option>
@@ -90,7 +111,7 @@ export function AddressCombobox({
           value={districtId ?? ""}
           onChange={(event) => onDistrictChange(Number(event.target.value))}
           disabled={districtDisabled}
-          className={`${selectClass} ${heightClass} ${compact ? "text-base sm:text-sm" : ""}`}
+          className={selectFieldClass}
           aria-label={t("districtCounty")}
           aria-busy={loadingDistricts}
         >

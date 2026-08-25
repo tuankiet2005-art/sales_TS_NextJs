@@ -113,6 +113,165 @@ export async function countActiveVehicles(params: ActiveVehicleSearchParams) {
   return rows[0]?.count ?? 0;
 }
 
+export type ActiveModelSummaryRow = {
+  brandId: number;
+  brandCode: string;
+  brandName: string;
+  model: string;
+  yearMin: number | null;
+  yearMax: number | null;
+  minListPrice: string;
+  trimCount: number;
+  repVehicleId: number;
+  repImageUrl: string | null;
+  category: typeof vehicleCategories.$inferSelect;
+};
+
+function activeModelSearchSql(params: ActiveVehicleSearchParams, limit?: number, offset?: number) {
+  const where = activeVehicleSearchWhere(params);
+  const limitSql = limit != null ? sql`LIMIT ${limit}` : sql``;
+  const offsetSql = offset != null ? sql`OFFSET ${offset}` : sql``;
+  return sql`
+    WITH filtered AS (
+      SELECT
+        ${vehicles.id} AS vehicle_id,
+        ${vehicles.brandId} AS brand_id,
+        ${vehicles.model} AS model,
+        ${vehicles.modelYear} AS model_year,
+        ${vehicles.listPrice} AS list_price,
+        ${vehicles.imageUrl} AS image_url,
+        ${brands.code} AS brand_code,
+        ${brands.name} AS brand_name,
+        ${vehicleCategories.id} AS category_id,
+        ${vehicleCategories.code} AS category_code,
+        ${vehicleCategories.name} AS category_name,
+        ${vehicleCategories.description} AS category_description,
+        ${vehicleCategories.typicalSeats} AS category_typical_seats,
+        ${vehicleCategories.requiresInspection} AS category_requires_inspection,
+        ${vehicleCategories.requiresRoadUseFee} AS category_requires_road_use_fee,
+        ${vehicleCategories.requiresCompulsoryInsurance} AS category_requires_compulsory_insurance,
+        ${vehicleCategories.sortOrder} AS category_sort_order
+      FROM ${vehicles}
+      INNER JOIN ${brands} ON ${eq(vehicles.brandId, brands.id)}
+      INNER JOIN ${vehicleCategories} ON ${eq(vehicles.categoryId, vehicleCategories.id)}
+      WHERE ${where}
+    ),
+    grouped AS (
+      SELECT
+        brand_id,
+        model,
+        min(model_year) AS year_min,
+        max(model_year) AS year_max,
+        min(list_price) AS min_list_price,
+        count(*)::int AS trim_count
+      FROM filtered
+      GROUP BY brand_id, model
+    ),
+    reps AS (
+      SELECT DISTINCT ON (brand_id, model)
+        filtered.*
+      FROM filtered
+      ORDER BY brand_id, model, model_year DESC NULLS LAST, list_price ASC, vehicle_id ASC
+    )
+    SELECT
+      reps.brand_id AS "brandId",
+      reps.brand_code AS "brandCode",
+      reps.brand_name AS "brandName",
+      reps.model AS model,
+      grouped.year_min AS "yearMin",
+      grouped.year_max AS "yearMax",
+      grouped.min_list_price::text AS "minListPrice",
+      grouped.trim_count AS "trimCount",
+      reps.vehicle_id AS "repVehicleId",
+      reps.image_url AS "repImageUrl",
+      reps.category_id AS "categoryId",
+      reps.category_code AS "categoryCode",
+      reps.category_name AS "categoryName",
+      reps.category_description AS "categoryDescription",
+      reps.category_typical_seats AS "categoryTypicalSeats",
+      reps.category_requires_inspection AS "categoryRequiresInspection",
+      reps.category_requires_road_use_fee AS "categoryRequiresRoadUseFee",
+      reps.category_requires_compulsory_insurance AS "categoryRequiresCompulsoryInsurance",
+      reps.category_sort_order AS "categorySortOrder"
+    FROM grouped
+    INNER JOIN reps ON grouped.brand_id = reps.brand_id AND grouped.model = reps.model
+    ORDER BY reps.model
+    ${limitSql}
+    ${offsetSql}
+  `;
+}
+
+function mapModelSummaryRow(row: Record<string, unknown>): ActiveModelSummaryRow {
+  return {
+    brandId: Number(row.brandId),
+    brandCode: String(row.brandCode),
+    brandName: String(row.brandName),
+    model: String(row.model),
+    yearMin: row.yearMin != null ? Number(row.yearMin) : null,
+    yearMax: row.yearMax != null ? Number(row.yearMax) : null,
+    minListPrice: String(row.minListPrice),
+    trimCount: Number(row.trimCount ?? 1),
+    repVehicleId: Number(row.repVehicleId),
+    repImageUrl: row.repImageUrl != null ? String(row.repImageUrl) : null,
+    category: {
+      id: Number(row.categoryId),
+      code: String(row.categoryCode),
+      name: String(row.categoryName),
+      description: row.categoryDescription != null ? String(row.categoryDescription) : null,
+      typicalSeats: row.categoryTypicalSeats != null ? Number(row.categoryTypicalSeats) : null,
+      requiresInspection: Boolean(row.categoryRequiresInspection),
+      requiresRoadUseFee: Boolean(row.categoryRequiresRoadUseFee),
+      requiresCompulsoryInsurance: Boolean(row.categoryRequiresCompulsoryInsurance),
+      sortOrder: Number(row.categorySortOrder ?? 0),
+    },
+  };
+}
+
+export async function searchActiveModelSummaries(params: ActiveVehicleSearchParams) {
+  const db = getDb();
+  const rows = await db.execute(activeModelSearchSql(params, params.limit, params.offset));
+  return rows.rows.map((row) => mapModelSummaryRow(row as Record<string, unknown>));
+}
+
+export async function countActiveModels(params: ActiveVehicleSearchParams) {
+  const db = getDb();
+  const where = activeVehicleSearchWhere(params);
+  const result = await db.execute(sql`
+    SELECT count(*)::int AS count
+    FROM (
+      SELECT ${vehicles.brandId}, ${vehicles.model}
+      FROM ${vehicles}
+      INNER JOIN ${brands} ON ${eq(vehicles.brandId, brands.id)}
+      INNER JOIN ${vehicleCategories} ON ${eq(vehicles.categoryId, vehicleCategories.id)}
+      WHERE ${where}
+      GROUP BY ${vehicles.brandId}, ${vehicles.model}
+    ) AS model_groups
+  `);
+  const row = result.rows[0] as { count?: number } | undefined;
+  return row?.count ?? 0;
+}
+
+export async function listActiveVariantsForBrandModel(brandCode: string, model: string) {
+  const db = getDb();
+  return db
+    .select({
+      vehicle: vehicles,
+      brand: brands,
+      category: vehicleCategories,
+    })
+    .from(vehicles)
+    .innerJoin(brands, eq(vehicles.brandId, brands.id))
+    .innerJoin(vehicleCategories, eq(vehicles.categoryId, vehicleCategories.id))
+    .where(
+      and(
+        eq(vehicles.active, true),
+        sql`lower(${brands.code}) = lower(${brandCode})`,
+        eq(vehicles.model, model),
+      ),
+    )
+    .orderBy(sql`${vehicles.modelYear} DESC NULLS LAST`, vehicles.name);
+}
+
 export async function listActiveVehicleFilterOptions(brandCode?: string, categoryId?: number) {
   const db = getDb();
   const params: ActiveVehicleSearchParams = {

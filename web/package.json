@@ -13,7 +13,8 @@
     "apply:favicon": "tsx scripts/apply-favicon.ts",
     "sync:favicon": "tsx scripts/sync-favicon.ts",
     "generate:district-seed": "node scripts/generate-district-seed.mjs",
-    "seed:location-districts": "node scripts/seed-location-districts.mjs"
+    "seed:location-districts": "node scripts/seed-location-districts.mjs",
+    "migrate:customer-addresses": "node scripts/apply-customer-addresses.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
