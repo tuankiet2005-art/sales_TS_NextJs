@@ -64,16 +64,49 @@ function findVehicleInDetail(detail: VehicleModelDetail, vehicleId: number): Veh
   return null;
 }
 
+function getUniqueTrims(detail: VehicleModelDetail): VehicleDetail[] {
+  const byName = new Map<string, VehicleDetail>();
+  for (const year of detail.years) {
+    for (const trim of detail.trimsByYear[String(year)] ?? []) {
+      const existing = byName.get(trim.name);
+      if (!existing || trim.year > existing.year) {
+        byName.set(trim.name, trim);
+      }
+    }
+  }
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function getYearsForTrim(detail: VehicleModelDetail, trimName: string): number[] {
+  return detail.years.filter((year) =>
+    detail.trimsByYear[String(year)]?.some((item) => item.name === trimName),
+  );
+}
+
+function findVehicleByTrimAndYear(
+  detail: VehicleModelDetail,
+  trimName: string,
+  year: number,
+): VehicleDetail | null {
+  return detail.trimsByYear[String(year)]?.find((item) => item.name === trimName) ?? null;
+}
+
 function defaultSelection(detail: VehicleModelDetail, preferredVehicleId?: number) {
   if (preferredVehicleId) {
     const match = findVehicleInDetail(detail, preferredVehicleId);
     if (match) {
-      return { year: match.year, vehicle: match };
+      return { trimName: match.name, year: match.year, vehicle: match };
     }
   }
-  const year = detail.defaultYear;
-  const vehicle = detail.trimsByYear[String(year)]?.[0] ?? null;
-  return { year, vehicle };
+  const trims = getUniqueTrims(detail);
+  const firstTrim = trims[0];
+  if (!firstTrim) {
+    return { trimName: "", year: 0, vehicle: null };
+  }
+  const yearsForTrim = getYearsForTrim(detail, firstTrim.name);
+  const year = yearsForTrim[0] ?? detail.defaultYear;
+  const vehicle = findVehicleByTrimAndYear(detail, firstTrim.name, year);
+  return { trimName: firstTrim.name, year, vehicle };
 }
 
 export function ModelPage() {
@@ -87,6 +120,7 @@ export function ModelPage() {
   const { t, lang } = useI18n();
 
   const [modelDetail, setModelDetail] = useState<VehicleModelDetail | null>(null);
+  const [selectedTrimName, setSelectedTrimName] = useState("");
   const [selectedYear, setSelectedYear] = useState<number>(0);
   const [vehicle, setVehicle] = useState<VehicleDetail | null>(null);
   const [categories, setCategories] = useState<Category[]>(() => loadCategoryCache() ?? []);
@@ -104,13 +138,16 @@ export function ModelPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const trimsForYear = useMemo(
-    () => modelDetail?.trimsByYear[String(selectedYear)] ?? [],
-    [modelDetail, selectedYear],
+  const trimsForModel = useMemo(() => (modelDetail ? getUniqueTrims(modelDetail) : []), [modelDetail]);
+
+  const yearsForTrim = useMemo(
+    () => (modelDetail && selectedTrimName ? getYearsForTrim(modelDetail, selectedTrimName) : []),
+    [modelDetail, selectedTrimName],
   );
 
   function applyVehicle(nextVehicle: VehicleDetail) {
     setVehicle(nextVehicle);
+    setSelectedTrimName(nextVehicle.name);
     setSelectedYear(nextVehicle.year);
     setCategoryId(nextVehicle.category.id);
     setColor(nextVehicle.defaultColor ?? "");
@@ -138,9 +175,9 @@ export function ModelPage() {
         const initial = defaultSelection(detail, preferredVehicleId);
         if (initial.vehicle) {
           applyVehicle(initial.vehicle);
-          setSelectedYear(initial.year);
         } else {
-          setSelectedYear(detail.defaultYear);
+          setSelectedTrimName(initial.trimName);
+          setSelectedYear(initial.year);
         }
         const hanoi = nextLocations.find((item) => item.code === "HN");
         const defaultLocationId = hanoi?.id ?? nextLocations[0]?.id;
@@ -162,26 +199,31 @@ export function ModelPage() {
       .finally(() => setLoading(false));
   }, [brandCode, modelName, preferredVehicleId]);
 
-  function selectYear(year: number) {
+  function selectTrim(trimName: string) {
     if (!modelDetail) {
       return;
     }
+    setSelectedTrimName(trimName);
+    const years = getYearsForTrim(modelDetail, trimName);
+    const year = years.includes(selectedYear) ? selectedYear : years[0];
+    if (!year) {
+      return;
+    }
     setSelectedYear(year);
-    const trims = modelDetail.trimsByYear[String(year)] ?? [];
-    const sameName = vehicle ? trims.find((item) => item.name === vehicle.name) : undefined;
-    const nextVehicle = sameName ?? trims[0];
+    const nextVehicle = findVehicleByTrimAndYear(modelDetail, trimName, year);
     if (nextVehicle) {
       applyVehicle(nextVehicle);
     }
   }
 
-  function selectTrim(vehicleId: number) {
-    if (!modelDetail) {
+  function selectYear(year: number) {
+    if (!modelDetail || !selectedTrimName) {
       return;
     }
-    const match = findVehicleInDetail(modelDetail, vehicleId);
-    if (match) {
-      applyVehicle(match);
+    setSelectedYear(year);
+    const nextVehicle = findVehicleByTrimAndYear(modelDetail, selectedTrimName, year);
+    if (nextVehicle) {
+      applyVehicle(nextVehicle);
     }
   }
 
@@ -295,12 +337,12 @@ export function ModelPage() {
 
           <div className="mt-4">
             <ModelConfigBar
-              years={modelDetail.years}
+              trims={trimsForModel}
+              selectedTrimName={selectedTrimName}
+              onTrimChange={selectTrim}
+              years={yearsForTrim}
               selectedYear={selectedYear}
               onYearChange={selectYear}
-              trims={trimsForYear}
-              selectedVehicleId={vehicleId}
-              onTrimChange={selectTrim}
             />
           </div>
 

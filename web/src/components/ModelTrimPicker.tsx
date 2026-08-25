@@ -11,8 +11,8 @@ export function ModelTrimPicker({
   compact = false,
 }: {
   trims: VehicleDetail[];
-  value: number;
-  onChange: (vehicleId: number) => void;
+  value: string;
+  onChange: (trimName: string) => void;
   compact?: boolean;
 }) {
   const { t } = useI18n();
@@ -45,9 +45,9 @@ export function ModelTrimPicker({
           <button
             key={trim.id}
             type="button"
-            onClick={() => onChange(trim.id)}
+            onClick={() => onChange(trim.name)}
             className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap ${motionInteractive} ${
-              value === trim.id ? "bg-copper text-paper" : "bg-paper text-ink ring-1 ring-ink/10"
+              value === trim.name ? "bg-copper text-paper" : "bg-paper text-ink ring-1 ring-ink/10"
             }`}
           >
             {trim.name}
