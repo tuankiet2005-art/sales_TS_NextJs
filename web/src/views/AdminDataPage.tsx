@@ -1992,7 +1992,7 @@ function OfferLangFields({
         </span>
       </label>
       {(["en", "zh", "ja"] as Lang[]).map((code) => (
-        <label key={`desc-${code}`} className="block text-xs font-medium text-ink/70">
+        <label key={`desc-${code}`} className="block text-xs font-medium text-ink/70 col-span-full">
           {t(`admin.field.offerDesc_${code}`)}
           <textarea
             value={offer.description?.[code] ?? ""}
