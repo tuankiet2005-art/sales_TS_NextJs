@@ -7,7 +7,7 @@ Route-level screens for brand pick, catalog search, vehicle confirm, and on-road
 ## Ownership
 
 - `BrandPortal.tsx` — `/`; each ready brand box is a full-card link (photo included)
-- `HomePage.tsx` — `/brand/:brandCode`; category/model/type filters live in URL query (`?category=&model=&type=&page=`); one paginated **model-line** fetch per filter change; aborts stale requests
+- `HomePage.tsx` — `/brand/:brandCode`; compact viewport-fitted catalog on `lg+` (search/filters toolbar + flex grid shows all models without scrolling); category/model/type filters live in URL query (`?category=&model=&type=&page=`); one paginated **model-line** fetch per filter change; aborts stale requests
 - `ModelPage.tsx` — `/brand/:brandCode/models/:modelSlug`; hero (model + price) → compact trim/year bar (pick trim first, then years for that trim) → image + specs left, sticky confirm form right
 - `VehiclePage.tsx` — legacy `/brand/:brandCode/vehicles/:vehicleId` redirects to `ModelPage` with trim pre-selected
 - `OnRoadQuotePage.tsx` — load extras, single `POST /api/quote-load` for vehicle + breakdown, equal left Price / right Accessories, sheet, Excel + PDF export
