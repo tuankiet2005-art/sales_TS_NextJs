@@ -14,11 +14,11 @@ import {
   listSourceImages,
   parseImageRecord,
   readSourceImageBuffer,
+  resolveVehicleImageSourceDir,
 } from "./vehicle-import";
 import { seedByTrimName } from "./vehicle-seed-data";
 
-const DEFAULT_SOURCE =
-  "/home/kayd/Downloads/HÌNH ĐĂNG KÝ XE";
+const DEFAULT_SOURCE = path.join(process.env.HOME ?? "/home/kayd", "Downloads", "HÌNH ĐĂNG KÝ XE");
 
 function loadEnvFile(filePath: string) {
   return fs.readFile(filePath, "utf8").then((content) => {
@@ -85,7 +85,7 @@ export async function ensureVehicleImagesTable() {
 export async function runVehicleCatalogImport(
   options: RunImportOptions = {},
 ): Promise<ImportSummary> {
-  const sourceDir = path.resolve(options.sourceDir ?? DEFAULT_SOURCE);
+  const sourceDir = await resolveVehicleImageSourceDir(options.sourceDir ?? DEFAULT_SOURCE);
   const dryRun = options.dryRun ?? false;
 
   const sources = await listSourceImages(sourceDir);

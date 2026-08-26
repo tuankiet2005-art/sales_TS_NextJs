@@ -81,9 +81,12 @@ export function OnRoadQuotePage() {
   const [deliveryDistricts, setDeliveryDistricts] = useState<LocationDistrict[]>([]);
   const color = searchParams?.get("color") ?? "";
   const usageType = searchParams?.get("usage") === "commercial" ? "COMMERCIAL" : "PRIVATE";
-  const policyChoices = id
-    ? loadPolicyChoices(id, { ...defaultPolicyChoices(), usageType })
-    : defaultPolicyChoices();
+  const policyChoices = useMemo(
+    () => (id ? loadPolicyChoices(id, { ...defaultPolicyChoices(), usageType }) : defaultPolicyChoices()),
+    [id, usageType],
+  );
+  const selectedOfferIdsKey = policyChoices.selectedOfferIds.join("\0");
+  const forgoneOfferIdsKey = policyChoices.forgoneOfferIds.join("\0");
 
   const [vehicle, setVehicle] = useState<VehicleDetail | null>(null);
   const [result, setResult] = useState<CostBreakdownType | null>(null);
@@ -379,7 +382,7 @@ export function OnRoadQuotePage() {
     return () => {
       cancelled = true;
     };
-  }, [id, brandCode, locationId, categoryId, includeOptional, policyChoices.usageType, policyChoices.selectedOfferIds, policyChoices.forgoneOfferIds, t]);
+  }, [id, brandCode, locationId, categoryId, includeOptional, policyChoices.usageType, selectedOfferIdsKey, forgoneOfferIdsKey, t]);
 
   async function exportQuote() {
     if (!id || !quoteLocationId) {

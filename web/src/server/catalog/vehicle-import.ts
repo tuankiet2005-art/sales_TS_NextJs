@@ -7,6 +7,90 @@ import {
 } from "./vehicle-seed-data";
 
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const REGISTRATION_FOLDER_LABEL = "hinh dang ky xe";
+
+export function normalizeFolderLabel(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[đĐ]/g, "d")
+    .toLocaleLowerCase("vi-VN")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function directoryExists(dir: string): Promise<boolean> {
+  try {
+    const stat = await fs.stat(dir);
+    return stat.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function countParseableSourceImages(rootDir: string): Promise<number> {
+  const images = await listSourceImages(rootDir);
+  let count = 0;
+  for (const sourcePath of images) {
+    try {
+      parseImageRecord(sourcePath, rootDir);
+      count += 1;
+    } catch {
+      // Ignore files outside Model/Version layout.
+    }
+  }
+  return count;
+}
+
+/** Resolve registration-photo root, tolerating NFC/NFD folder name differences on disk. */
+export async function resolveVehicleImageSourceDir(requested?: string): Promise<string> {
+  const candidates = new Set<string>();
+
+  if (requested?.trim()) {
+    candidates.add(path.resolve(requested.trim()));
+  }
+
+  const downloads = path.join(process.env.HOME ?? "/home/kayd", "Downloads");
+  if (await directoryExists(downloads)) {
+    const entries = await fs.readdir(downloads, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      if (normalizeFolderLabel(entry.name) !== REGISTRATION_FOLDER_LABEL) {
+        continue;
+      }
+      const outer = path.join(downloads, entry.name);
+      const nested = await fs.readdir(outer, { withFileTypes: true });
+      for (const child of nested) {
+        if (child.isDirectory()) {
+          candidates.add(path.join(outer, child.name));
+        }
+      }
+      candidates.add(outer);
+    }
+  }
+
+  let bestDir: string | null = null;
+  let bestCount = 0;
+  for (const candidate of candidates) {
+    if (!(await directoryExists(candidate))) {
+      continue;
+    }
+    const count = await countParseableSourceImages(candidate);
+    if (count > bestCount) {
+      bestCount = count;
+      bestDir = candidate;
+    }
+  }
+
+  if (bestDir) {
+    return bestDir;
+  }
+
+  const hint = requested?.trim() || "the registration-photo folder under Downloads";
+  throw new Error(`No vehicle images found in ${hint}`);
+}
 
 /** Filename prefixes used in registration photos (longest match first per trim). */
 const FILENAME_PREFIXES: Record<string, Record<string, string[]>> = {

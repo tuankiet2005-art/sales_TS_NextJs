@@ -1,9 +1,11 @@
 "use client";
+import { motion } from "motion/react";
 import Link from "next/link";
 import { useI18n } from "../i18n/LanguageContext";
 import { formatVnd } from "../lib/format";
 import { modelToSlug } from "../lib/modelSlug";
-import { motionCard, motionStagger } from "../lib/motion";
+import { motionCard } from "../lib/motion";
+import { fadeUp } from "../lib/motionVariants";
 import type { VehicleModelSummary } from "../types";
 
 function yearRangeLabel(
@@ -38,79 +40,84 @@ export function ModelCard({
   const yearLabel = yearRangeLabel(t, model.yearMin, model.yearMax);
 
   return (
-    <Link
-      href={`/brand/${brandCode}/models/${modelToSlug(model.model)}`}
-      className={`group overflow-hidden border border-ink/8 bg-white shadow-card ${motionCard} motion-enter ${
-        compact
-          ? "flex h-full min-h-0 flex-col rounded-2xl"
-          : "rounded-3xl"
-      }`}
-      style={motionStagger(index)}
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate="visible"
+      transition={{ duration: 0.42, delay: Math.min(index * 0.055, 0.44), ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4 }}
     >
-      <div
-        className={`relative overflow-hidden bg-mist ${
-          compact ? "min-h-0 flex-1" : "aspect-[16/10]"
+      <Link
+        href={`/brand/${brandCode}/models/${modelToSlug(model.model)}`}
+        className={`group overflow-hidden border border-ink/8 bg-white/95 shadow-card backdrop-blur-sm ${motionCard} ${
+          compact ? "flex h-full min-h-0 flex-col rounded-2xl" : "rounded-3xl"
         }`}
       >
-        <img
-          src={model.imageUrl}
-          alt={model.model}
-          loading="lazy"
-          decoding="async"
-          className={`h-full w-full object-cover transition duration-500 ease-motion group-hover:scale-105 ${
-            compact ? "min-h-[5.5rem]" : ""
-          }`}
-        />
-        <span
-          className={`absolute left-2 top-2 rounded-full bg-paper/90 font-semibold text-forest ${
-            compact ? "px-2 py-0.5 text-[10px]" : "left-3 top-3 px-3 py-1 text-xs"
+        <div
+          className={`relative overflow-hidden bg-mist ${
+            compact ? "min-h-0 flex-1" : "aspect-[16/10]"
           }`}
         >
-          {t(`category.${model.category.code}`)}
-        </span>
-        {yearLabel ? (
+          <img
+            src={model.imageUrl}
+            alt={model.model}
+            loading="lazy"
+            decoding="async"
+            className={`h-full w-full object-cover transition duration-500 ease-motion group-hover:scale-105 ${
+              compact ? "min-h-[5.5rem]" : ""
+            }`}
+          />
           <span
-            className={`absolute right-2 top-2 rounded-full bg-ink/80 font-semibold text-paper ${
-              compact ? "px-2 py-0.5 text-[10px]" : "right-3 top-3 px-3 py-1 text-xs"
+            className={`absolute left-2 top-2 rounded-full bg-paper/90 font-semibold text-forest ${
+              compact ? "px-2 py-0.5 text-[10px]" : "left-3 top-3 px-3 py-1 text-xs"
             }`}
           >
-            {yearLabel}
+            {t(`category.${model.category.code}`)}
           </span>
-        ) : null}
-      </div>
-      <div className={compact ? "shrink-0 space-y-0.5 p-2.5 sm:p-3" : "space-y-2 p-4 sm:p-5"}>
-        <p
-          className={`uppercase tracking-[0.18em] text-ink/45 ${
-            compact ? "text-[10px]" : "text-xs"
-          }`}
-        >
-          {model.brand}
-        </p>
-        <h3
-          className={`font-display leading-tight text-ink ${
-            compact ? "text-base sm:text-lg" : "text-lg sm:text-xl"
-          }`}
-        >
-          {model.model}
-        </h3>
-        <div className={`flex items-end justify-between ${compact ? "pt-1" : "pt-2"}`}>
-          <div>
-            <p className={compact ? "text-[10px] text-ink/50" : "text-xs text-ink/50"}>
-              {t("fromPrice")}
-            </p>
-            <p
-              className={`font-semibold text-copper ${
-                compact ? "text-sm sm:text-base" : "text-lg"
+          {yearLabel ? (
+            <span
+              className={`absolute right-2 top-2 rounded-full bg-ink/80 font-semibold text-paper ${
+                compact ? "px-2 py-0.5 text-[10px]" : "right-3 top-3 px-3 py-1 text-xs"
               }`}
             >
-              {formatVnd(model.minSalePrice ?? model.minListPrice)}
+              {yearLabel}
+            </span>
+          ) : null}
+        </div>
+        <div className={compact ? "shrink-0 space-y-0.5 p-2.5 sm:p-3" : "space-y-2 p-4 sm:p-5"}>
+          <p
+            className={`uppercase tracking-[0.18em] text-ink/45 ${
+              compact ? "text-[10px]" : "text-xs"
+            }`}
+          >
+            {model.brand}
+          </p>
+          <h3
+            className={`font-display leading-tight text-ink ${
+              compact ? "text-base sm:text-lg" : "text-lg sm:text-xl"
+            }`}
+          >
+            {model.model}
+          </h3>
+          <div className={`flex items-end justify-between ${compact ? "pt-1" : "pt-2"}`}>
+            <div>
+              <p className={compact ? "text-[10px] text-ink/50" : "text-xs text-ink/50"}>
+                {t("fromPrice")}
+              </p>
+              <p
+                className={`font-semibold text-copper ${
+                  compact ? "text-sm sm:text-base" : "text-lg"
+                }`}
+              >
+                {formatVnd(model.minSalePrice ?? model.minListPrice)}
+              </p>
+            </div>
+            <p className={compact ? "text-[11px] text-ink/50" : "text-sm text-ink/50"}>
+              {t("trimCount", { n: model.trimCount })}
             </p>
           </div>
-          <p className={compact ? "text-[11px] text-ink/50" : "text-sm text-ink/50"}>
-            {t("trimCount", { n: model.trimCount })}
-          </p>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </motion.div>
   );
 }

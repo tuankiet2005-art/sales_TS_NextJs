@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { AdminAuthProvider, useAdminAuth } from "@/auth/AdminAuthContext";
 import { sessionGateView } from "@/auth/sessionGate";
 import { LoadingBlock } from "@/components/LoadingState";
@@ -13,9 +14,13 @@ function Gate({ children }: { children: React.ReactNode }) {
   const view = sessionGateView(ready, signedIn);
   if (view === "pending") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-paper motion-fade-in">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex min-h-screen items-center justify-center bg-paper/60 backdrop-blur-sm"
+      >
         <LoadingBlock message={t("loadingApp")} size="lg" />
-      </div>
+      </motion.div>
     );
   }
   if (view === "login") {

@@ -54,7 +54,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - Money display uses `lib/format.ts`: `formatVnd` for UI (₫ symbol), `formatQuoteAmount` for the dealer quote sheet beside "ĐVT: VNĐ"; editable money fields use `CurrencyInput`
 - Auth: HMAC bearer tokens with roles — `admin` (catalog + quotes) or `sales` (quotes only). Login via `POST /api/auth/login`. Operator APIs (`/api/quotes/**`, `/api/calculate-on-road-cost`, `/api/quote-load`, `/api/export-quote`) require a valid token; `/api/admin/**` requires the `admin` role. Catalog reference GETs stay public for cache parity
 - Layout is mobile-first: phones stack, tablets use two columns where the contract needs them, desktop keeps the wide catalog
-- UI motion is CSS-first (`globals.css` + `lib/motion.ts` + `PageMotion`); no animation library; keep transitions smooth and respect `prefers-reduced-motion`
+- UI motion uses [Motion](https://motion.dev/) (`motion` package) with shared variants in `lib/motionVariants.ts`, `MotionProvider` + `ShaderGradientBackdrop` in root layout, and `FadeIn`/`StaggerChildren` helpers; CSS tokens in `globals.css` and `lib/motion.ts` remain for lightweight cases; honor `prefers-reduced-motion`
 - Quote page: Price left and Accessories right are equal columns from `md` up; they stack on phones. The Excel quote sheet stays desktop-width and scrolls sideways on small screens
 - Header: compact bar + hamburger below `lg`; language switcher stays on the bar
 - Do not add the full shadcn component kit unless asked

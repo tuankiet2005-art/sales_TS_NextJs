@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -100,6 +101,10 @@ export async function deleteVehicleImagesForVehicle(vehicleId: number) {
 
 export function decodeVehicleImageData(encoded: string): Buffer {
   return Buffer.from(encoded, "base64");
+}
+
+export function vehicleImageDataTag(encoded: string): string {
+  return createHash("sha256").update(encoded).digest("hex").slice(0, 12);
 }
 
 export async function findHeroImageId(vehicleId: number): Promise<number | null> {

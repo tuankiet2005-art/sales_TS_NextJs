@@ -1,9 +1,10 @@
 "use client";
 import type { ReactNode } from "react";
+import { QuoteColorGrid } from "./QuoteColorGrid";
 import type { Lang } from "../i18n/translations";
 import { formatQuoteAmount } from "../lib/format";
 import { translateQuoteLabel } from "../lib/quoteLabels";
-import { colorHex, colorPhoto, paintLabelClass } from "../lib/vehicleColor";
+import { colorHex } from "../lib/vehicleColor";
 import type { AccessoryItem, CostBreakdown, QuoteBankLoan, VehicleDetail } from "../types";
 import { computeQuoteLoanMetrics } from "../lib/quoteBankLoan";
 
@@ -330,7 +331,7 @@ export function QuoteSheet({
             </Td>
           </tr>
           <tr>
-            <Th colSpan={2} className="bg-[#e60012] text-center text-white">
+            <Th colSpan={2} className="bg-[#c5e0b4] text-center font-bold text-[#1f1f1f]">
               {tr("CÁC MÀU XE")}
             </Th>
             <Td />
@@ -339,26 +340,8 @@ export function QuoteSheet({
             </Th>
           </tr>
           <tr>
-            <Td colSpan={2} rowSpan={4} className="align-top bg-white">
-              <div className="grid grid-cols-2 gap-2 p-1">
-                {colors(vehicle).map((name) => (
-                  <div
-                    key={name}
-                    className={`rounded border px-1 py-1 ${
-                      name === chosenColor ? "border-[#1f1f1f] bg-[#f7f7f7]" : "border-[#d4d4d4] bg-white"
-                    }`}
-                  >
-                    <img
-                      src={colorPhoto(name, vehicle.colorPhotos)}
-                      alt={name}
-                      className="mx-auto h-12 w-auto object-contain"
-                    />
-                    <p className={`mt-0.5 text-center text-[11px] ${paintLabelClass(name, name === chosenColor)}`}>
-                      {name}
-                    </p>
-                  </div>
-                ))}
-              </div>
+            <Td colSpan={2} rowSpan={4} className="h-px align-top bg-white p-0">
+              <QuoteColorGrid colorNames={colors(vehicle)} colorPhotos={vehicle.colorPhotos} />
             </Td>
             <Td />
             <Td>{tr("Thời gian vay:")}</Td>

@@ -1,7 +1,9 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { modalBackdrop, modalPanel } from "@/lib/motionVariants";
 
 export function CenteredModal({
   open = true,
@@ -35,24 +37,37 @@ export function CenteredModal({
     };
   }, [open]);
 
-  if (!open || !mounted) {
+  if (!mounted) {
     return null;
   }
 
   return createPortal(
-    <div
-      className={`fixed inset-0 z-[60] overflow-y-auto ${backdropClassName}`}
-      onClick={onClose}
-    >
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div
-          className={`my-auto w-full max-h-[92dvh] ${scrollPanel ? "overflow-y-auto" : "overflow-hidden"} ${panelClassName}`}
-          onClick={(event) => event.stopPropagation()}
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          key="centered-modal"
+          className={`fixed inset-0 z-[60] overflow-y-auto ${backdropClassName}`}
+          onClick={onClose}
+          initial={modalBackdrop.initial}
+          animate={modalBackdrop.animate}
+          exit={modalBackdrop.exit}
+          transition={modalBackdrop.transition}
         >
-          {children}
-        </div>
-      </div>
-    </div>,
+          <div className="flex min-h-full items-center justify-center p-4">
+            <motion.div
+              className={`my-auto w-full max-h-[92dvh] ${scrollPanel ? "overflow-y-auto" : "overflow-hidden"} ${panelClassName}`}
+              onClick={(event) => event.stopPropagation()}
+              initial={modalPanel.initial}
+              animate={modalPanel.animate}
+              exit={modalPanel.exit}
+              transition={modalPanel.transition}
+            >
+              {children}
+            </motion.div>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
     document.body,
   );
 }

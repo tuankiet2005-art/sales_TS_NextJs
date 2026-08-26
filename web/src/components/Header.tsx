@@ -1,12 +1,14 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAdminAuth } from "../auth/AdminAuthContext";
 import { useI18n } from "../i18n/LanguageContext";
 import { motionInteractive } from "../lib/motion";
+import { slideDown } from "../lib/motionVariants";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
 function NavItem({
@@ -24,21 +26,23 @@ function NavItem({
   const active = pathname === href || (href !== "/" && pathname.startsWith(href));
   const frame = active ? "border-copper text-copper" : "border-transparent";
   return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={
-        stacked
-          ? `flex min-h-11 items-center rounded-xl border px-3 py-2 text-base font-semibold ${motionInteractive} ${frame} ${
-              active ? "bg-mist" : "text-ink/80 hover:border-ink/10 hover:bg-mist/70 hover:text-ink"
-            }`
-          : `rounded-lg border px-3 py-1.5 ${motionInteractive} ${frame} ${
-              active ? "bg-copper/5" : "text-ink/70 hover:border-ink/10 hover:text-ink"
-            }`
-      }
-    >
-      {children}
-    </Link>
+    <motion.div layout="position">
+      <Link
+        href={href}
+        onClick={onClick}
+        className={
+          stacked
+            ? `flex min-h-11 items-center rounded-xl border px-3 py-2 text-base font-semibold ${motionInteractive} ${frame} ${
+                active ? "bg-mist" : "text-ink/80 hover:border-ink/10 hover:bg-mist/70 hover:text-ink"
+              }`
+            : `rounded-lg border px-3 py-1.5 ${motionInteractive} ${frame} ${
+                active ? "bg-copper/5" : "text-ink/70 hover:border-ink/10 hover:text-ink"
+              }`
+        }
+      >
+        {children}
+      </Link>
+    </motion.div>
   );
 }
 
@@ -97,7 +101,12 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-ink/10 bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur motion-fade-in">
+    <motion.header
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="sticky top-0 z-50 border-b border-ink/10 bg-paper/80 pt-[env(safe-area-inset-top)] backdrop-blur-md"
+    >
       <div className="mx-auto flex max-w-page items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:py-5">
         {signedIn ? (
           <Link
@@ -130,11 +139,22 @@ export function Header() {
           )}
         </div>
       </div>
-      {signedIn && menuOpen && (
-        <nav id="site-menu" className="border-t border-ink/10 bg-paper px-4 py-3 lg:hidden motion-slide-down">
-          <div className="mx-auto flex max-w-page flex-col gap-1">{navLinks(true)}</div>
-        </nav>
-      )}
-    </header>
+      <AnimatePresence>
+        {signedIn && menuOpen ? (
+          <motion.nav
+            id="site-menu"
+            key="site-menu"
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            variants={slideDown}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden border-t border-ink/10 bg-paper/95 backdrop-blur-md lg:hidden"
+          >
+            <div className="mx-auto flex max-w-page flex-col gap-1 px-4 py-3">{navLinks(true)}</div>
+          </motion.nav>
+        ) : null}
+      </AnimatePresence>
+    </motion.header>
   );
 }

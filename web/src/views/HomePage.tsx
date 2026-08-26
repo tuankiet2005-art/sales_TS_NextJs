@@ -1,8 +1,10 @@
 "use client";
 import { Search } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "../api/client";
+import { FadeIn } from "../components/FadeIn";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
 import { VehicleCardSkeleton } from "../components/LoadingState";
@@ -14,6 +16,35 @@ import { motionInteractive, motionStagger } from "../lib/motion";
 import type { Brand, Category, VehicleModelSummary } from "../types";
 
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
+
+function FilterPill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative rounded-full px-3 py-1.5 text-xs sm:text-sm ${motionInteractive} ${
+        active ? "text-paper" : "bg-white text-ink/70 ring-1 ring-ink/10"
+      }`}
+    >
+      {active ? (
+        <motion.span
+          layoutId="catalog-category-pill"
+          className="absolute inset-0 rounded-full bg-ink"
+          transition={{ type: "spring", stiffness: 420, damping: 32 }}
+        />
+      ) : null}
+      <span className="relative z-10">{children}</span>
+    </button>
+  );
+}
 
 function vehicleTypeLabel(t: (key: string) => string, vehicleType: string) {
   const key = `admin.opt.${vehicleType}`;
@@ -187,7 +218,8 @@ export function HomePage() {
       <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
         <Header />
         <main className="mx-auto flex w-full max-w-page flex-1 flex-col min-h-0 px-4 pb-4 sm:px-6 lg:pb-3">
-          <section className="shrink-0 pt-4 motion-enter sm:pt-5 lg:pt-4">
+          <section className="shrink-0 pt-4 sm:pt-5 lg:pt-4">
+          <FadeIn>
           <div className="flex flex-wrap items-end justify-between gap-3 gap-y-2">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-copper sm:text-xs">
@@ -231,30 +263,20 @@ export function HomePage() {
           </div>
 
           <div className="mt-2.5 flex flex-wrap gap-1.5 sm:gap-2">
-            <button
-              type="button"
-              onClick={() => selectCategory(undefined)}
-              className={`rounded-full px-3 py-1.5 text-xs sm:text-sm ${motionInteractive} ${
-                !categoryId ? "bg-ink text-paper" : "bg-white text-ink/70 ring-1 ring-ink/10"
-              }`}
-            >
+            <FilterPill active={!categoryId} onClick={() => selectCategory(undefined)}>
               {t("allTypes")}
-            </button>
+            </FilterPill>
             {categories.map((category) => (
-              <button
+              <FilterPill
                 key={category.id}
-                type="button"
+                active={categoryId === category.id}
                 onClick={() => selectCategory(category.id)}
-                className={`rounded-full px-3 py-1.5 text-xs sm:text-sm ${motionInteractive} ${
-                  categoryId === category.id
-                    ? "bg-ink text-paper"
-                    : "bg-white text-ink/70 ring-1 ring-ink/10"
-                }`}
               >
                 {t(`category.${category.code}`)}
-              </button>
+              </FilterPill>
             ))}
           </div>
+          </FadeIn>
         </section>
 
         <section className="mt-3 flex min-h-0 flex-1 flex-col sm:mt-4 lg:mt-3">

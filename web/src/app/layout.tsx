@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { AppShell } from "@/components/AppShell";
+import { MotionProvider } from "@/components/MotionProvider";
+import { ShaderGradientBackdrop } from "@/components/ShaderGradientBackdrop";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,7 +31,10 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full text-ink">
-        <AppShell>{children}</AppShell>
+        <MotionProvider>
+          <ShaderGradientBackdrop />
+          <AppShell>{children}</AppShell>
+        </MotionProvider>
       </body>
     </html>
   );

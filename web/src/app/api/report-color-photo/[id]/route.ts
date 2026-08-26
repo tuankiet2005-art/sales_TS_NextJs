@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 
-import { decodeVehicleImageData, findVehicleImageById, vehicleImageDataTag } from "@/server/services/vehicle-image-service";
+import { getReportColorPhotoBuffer } from "@/server/services/report-color-photo-service";
 
 export async function GET(
   _request: Request,
@@ -14,19 +14,16 @@ export async function GET(
     return NextResponse.json({ message: "Invalid image id" }, { status: 400 });
   }
 
-  const image = await findVehicleImageById(id);
-  if (!image) {
+  const body = await getReportColorPhotoBuffer(id);
+  if (!body) {
     return NextResponse.json({ message: "Image not found" }, { status: 404 });
   }
 
-  const body = decodeVehicleImageData(image.data);
-  const etag = `"${vehicleImageDataTag(image.data)}"`;
   return new NextResponse(new Uint8Array(body), {
     status: 200,
     headers: {
-      "Content-Type": image.mimeType,
-      ETag: etag,
-      "Cache-Control": "public, max-age=86400, must-revalidate",
+      "Content-Type": "image/webp",
+      "Cache-Control": "public, max-age=86400",
     },
   });
 }

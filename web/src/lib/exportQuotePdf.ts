@@ -1,4 +1,5 @@
 import { cssColorValueToRgb, cssContainsUnsupportedColor } from "./cssColor";
+import { waitForReportColorPhotos } from "./reportColorPhoto";
 
 async function waitForImages(element: HTMLElement): Promise<void> {
   const images = Array.from(element.querySelectorAll("img"));
@@ -65,6 +66,7 @@ export async function downloadQuotePdf(element: HTMLElement, filename: string): 
     import("jspdf"),
   ]);
   await waitForImages(element);
+  await waitForReportColorPhotos(element);
   const width = Math.ceil(element.getBoundingClientRect().width);
   const canvas = await html2canvas(element, {
     scale: 2,

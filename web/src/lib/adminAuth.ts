@@ -51,6 +51,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/catalog",
   "/api/vehicles",
   "/api/vehicle-images",
+  "/api/report-color-photo",
   "/api/accessories",
   "/api/accessory-images",
   "/api/banks",

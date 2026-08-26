@@ -4,6 +4,7 @@ import {
   extractColorFromFilename,
   groupImagesByTrim,
   normalizeColorToken,
+  normalizeFolderLabel,
   parseImageRecord,
   resolveTrimName,
 } from "./vehicle-import";
@@ -31,6 +32,12 @@ describe("vehicle-import color parsing", () => {
   it("normalizes single Vietnamese color tokens", () => {
     expect(normalizeColorToken("cam")).toBe("Cam");
     expect(normalizeColorToken("ĐỎ")).toBe("Đỏ");
+  });
+
+  it("matches NFC and NFD spellings of the registration folder name", () => {
+    const nfc = "HÌNH ĐĂNG KÝ XE";
+    const nfd = nfc.normalize("NFD");
+    expect(normalizeFolderLabel(nfc)).toBe(normalizeFolderLabel(nfd));
   });
 
   it("resolves folder version folders to catalog trim names", () => {

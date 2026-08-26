@@ -26,6 +26,28 @@ export const VEHICLE_COLOR_PHOTOS: Record<string, string> = {
   Đỏ: "/colors/do.png",
 };
 
+export const VEHICLE_COLOR_PAINT_CODES: Partial<Record<string, string>> = {
+  Bạc: "U25",
+  Nâu: "C17",
+  Đen: "X37",
+  Trắng: "W81",
+  Xám: "U17",
+  Đỏ: "R26",
+  Cam: "C06",
+  Vàng: "Y35",
+  Xanh: "G47",
+  "Trắng Đen": "W37",
+  "Vàng Đen": "Y37",
+  "Đỏ Đen": "R37",
+  "Xanh Đen": "G37",
+};
+
+export function colorReportLabel(name: string): string {
+  const upper = name.toLocaleUpperCase("vi-VN");
+  const code = VEHICLE_COLOR_PAINT_CODES[name];
+  return code ? `${upper} (${code})` : upper;
+}
+
 export function colorPhoto(name?: string, photos?: ColorPhotoMap | null): string {
   if (!name) {
     return "/colors/bac.png";
