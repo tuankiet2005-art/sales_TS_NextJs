@@ -957,8 +957,8 @@ export function AdminDataPage() {
         <p className="text-xs uppercase tracking-[0.18em] text-copper">{t("admin.kicker")}</p>
         <h1 className="mt-1 font-display text-2xl sm:text-3xl">{t("admin.title")}</h1>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,14rem)_1fr] lg:items-stretch">
-          <aside className="flex h-full flex-col rounded-2xl border border-ink/8 bg-white shadow-card p-3">
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,14rem)_1fr] lg:items-start">
+          <aside className="flex flex-col rounded-2xl border border-ink/8 bg-white shadow-card p-3">
             <nav className="flex-1" aria-label={t("admin.kicker")}>
               {SIDEBAR_GROUPS.map((group) => {
                 const expanded = expandedGroups[group.id];
@@ -1007,7 +1007,7 @@ export function AdminDataPage() {
             </nav>
           </aside>
 
-          <div className="flex h-full min-w-0 flex-col rounded-2xl border border-ink/8 bg-white shadow-card overflow-hidden">
+          <div className="min-w-0 rounded-2xl border border-ink/8 bg-white shadow-card overflow-hidden">
         {error && <p className="px-4 pt-3 text-sm text-red-700">{error}</p>}
         {notice && <p className="px-4 pt-3 text-sm text-forest">{notice}</p>}
 
@@ -1090,7 +1090,7 @@ export function AdminDataPage() {
 
         {isCatalog(tab) && (
           <>
-            <div className="flex flex-1 flex-col min-h-0 overflow-x-auto">
+            <div className="overflow-x-auto">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/8 px-4 py-3">
                 <p className="text-sm font-semibold">
                   {t(TABS.find((item) => item.id === tab)?.labelKey ?? "")} · {visibleRows.length}
@@ -1275,14 +1275,13 @@ export function AdminDataPage() {
                 </table>
               )}
               {!loading ? (
-                <div className="px-4 pb-4">
-                  <Pagination
-                    page={catalogPage}
-                    total={visibleRows.length}
-                    pageSize={DEFAULT_PAGE_SIZE}
-                    onPageChange={setCatalogPage}
-                  />
-                </div>
+                <Pagination
+                  compact
+                  page={catalogPage}
+                  total={visibleRows.length}
+                  pageSize={DEFAULT_PAGE_SIZE}
+                  onPageChange={setCatalogPage}
+                />
               ) : null}
             </div>
 

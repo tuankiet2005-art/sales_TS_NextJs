@@ -14,11 +14,13 @@ export function Pagination({
   page,
   total,
   pageSize = DEFAULT_PAGE_SIZE,
+  compact = false,
   onPageChange,
 }: {
   page: number;
   total: number;
   pageSize?: number;
+  compact?: boolean;
   onPageChange: (page: number) => void;
 }) {
   const { t } = useI18n();
@@ -32,7 +34,11 @@ export function Pagination({
 
   return (
     <nav
-      className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink/8 bg-white px-4 py-3 shadow-card"
+      className={
+        compact
+          ? "flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 bg-paper px-4 py-2.5"
+          : `mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink/8 bg-white px-4 py-3 shadow-card`
+      }
       aria-label={t("paginationLabel")}
     >
       <p className="text-sm text-ink/55">{t("paginationStatus", { page: safePage, totalPages })}</p>
