@@ -67,17 +67,23 @@ export function BrandCardSkeleton({ count = 2 }: { count?: number }) {
   );
 }
 
-export function VehicleCardSkeleton({ count = 6 }: { count?: number }) {
+export function VehicleCardSkeleton({ count = 6, compact = false }: { count?: number; compact?: boolean }) {
   return (
     <>
       {Array.from({ length: count }, (_, index) => (
         <div
           key={index}
-          className="overflow-hidden rounded-3xl border border-ink/8 bg-white shadow-card motion-fade-in"
+          className={`overflow-hidden border border-ink/8 bg-white shadow-card motion-fade-in ${
+            compact ? "flex h-full min-h-0 flex-col rounded-2xl" : "rounded-3xl"
+          }`}
           aria-hidden
         >
-          <div className="aspect-[16/10] animate-pulse bg-mist" />
-          <div className="space-y-3 p-4">
+          <div
+            className={`animate-pulse bg-mist ${
+              compact ? "min-h-[5.5rem] flex-1" : "aspect-[16/10]"
+            }`}
+          />
+          <div className={compact ? "space-y-2 p-2.5 sm:p-3" : "space-y-3 p-4"}>
             <div className="h-4 w-2/3 animate-pulse rounded bg-mist" />
             <div className="h-3 w-1/2 animate-pulse rounded bg-mist" />
             <div className="h-5 w-1/3 animate-pulse rounded bg-mist" />

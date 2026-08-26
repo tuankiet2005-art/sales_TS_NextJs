@@ -183,32 +183,58 @@ export function HomePage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <Header />
-      <main>
-        <section className="mx-auto max-w-page px-4 pb-8 pt-8 sm:px-6 sm:pt-12 motion-enter">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-copper sm:text-sm">
-            {brand?.name ?? t("heroKicker")} · {t("marketVietnam")}
-          </p>
-          <h1 className="mt-3 max-w-3xl text-balance font-display text-3xl leading-[1.1] text-ink sm:text-5xl lg:text-6xl lg:leading-[1.05]">
-            {t("heroTitle")}
-          </h1>
+    <>
+      <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
+        <Header />
+        <main className="mx-auto flex w-full max-w-page flex-1 flex-col min-h-0 px-4 pb-4 sm:px-6 lg:pb-3">
+          <section className="shrink-0 pt-4 motion-enter sm:pt-5 lg:pt-4">
+          <div className="flex flex-wrap items-end justify-between gap-3 gap-y-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-copper sm:text-xs">
+                {brand?.name ?? t("heroKicker")} · {t("marketVietnam")}
+              </p>
+              <h1 className="mt-1 font-display text-xl leading-tight text-ink sm:text-2xl lg:text-[1.65rem]">
+                {t("heroTitle")}
+              </h1>
+            </div>
+            <p className="text-xs text-ink/55 sm:text-sm">
+              {vehiclesLoading ? t("loadingCatalog") : t("modelsCount", { n: modelTotal })}
+            </p>
+          </div>
 
-          <label className="relative mt-8 block">
-            <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-ink/40" />
-            <input
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              placeholder={t("searchPlaceholder")}
-              className="h-14 w-full rounded-2xl border border-ink/10 bg-white pl-14 pr-5 text-base outline-none ring-copper/30 transition-shadow duration-300 ease-motion focus:ring-4"
-            />
-          </label>
+          <div className="mt-3 flex flex-col gap-3 lg:mt-3 lg:flex-row lg:items-end">
+            <label className="relative block min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
+              <input
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                className="h-10 w-full rounded-xl border border-ink/10 bg-white pl-10 pr-4 text-sm outline-none ring-copper/30 transition-shadow duration-300 ease-motion focus:ring-2 sm:h-11"
+              />
+            </label>
+            <div className="flex flex-wrap gap-2 lg:shrink-0">
+              <ListFilterSelect
+                label={t("filterModel")}
+                value={modelFilter}
+                onChange={selectModel}
+                options={modelSelectOptions}
+                allLabel={t("filterAll")}
+              />
+              <ListFilterSelect
+                label={t("filterBodyStyle")}
+                value={vehicleTypeFilter}
+                onChange={selectVehicleType}
+                options={vehicleTypeSelectOptions}
+                allLabel={t("filterAll")}
+              />
+            </div>
+          </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
+          <div className="mt-2.5 flex flex-wrap gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => selectCategory(undefined)}
-              className={`rounded-full px-4 py-2 text-sm ${motionInteractive} ${
+              className={`rounded-full px-3 py-1.5 text-xs sm:text-sm ${motionInteractive} ${
                 !categoryId ? "bg-ink text-paper" : "bg-white text-ink/70 ring-1 ring-ink/10"
               }`}
             >
@@ -219,7 +245,7 @@ export function HomePage() {
                 key={category.id}
                 type="button"
                 onClick={() => selectCategory(category.id)}
-                className={`rounded-full px-4 py-2 text-sm ${motionInteractive} ${
+                className={`rounded-full px-3 py-1.5 text-xs sm:text-sm ${motionInteractive} ${
                   categoryId === category.id
                     ? "bg-ink text-paper"
                     : "bg-white text-ink/70 ring-1 ring-ink/10"
@@ -229,37 +255,21 @@ export function HomePage() {
               </button>
             ))}
           </div>
-
-          <div className="mt-4 flex flex-wrap gap-3">
-            <ListFilterSelect
-              label={t("filterModel")}
-              value={modelFilter}
-              onChange={selectModel}
-              options={modelSelectOptions}
-              allLabel={t("filterAll")}
-            />
-            <ListFilterSelect
-              label={t("filterBodyStyle")}
-              value={vehicleTypeFilter}
-              onChange={selectVehicleType}
-              options={vehicleTypeSelectOptions}
-              allLabel={t("filterAll")}
-            />
-          </div>
         </section>
 
-        <section className="mx-auto max-w-page px-4 pb-16 sm:px-6">
-          <div className="mb-6">
-            <h2 className="font-display text-2xl text-ink sm:text-3xl">
-              {selectedCategory ? t(`category.${selectedCategory.code}`) : t("availableVehicles")}
+        <section className="mt-3 flex min-h-0 flex-1 flex-col sm:mt-4 lg:mt-3">
+          {selectedCategory ? (
+            <h2 className="mb-2 shrink-0 font-display text-lg text-ink sm:text-xl">
+              {t(`category.${selectedCategory.code}`)}
             </h2>
-            <p className="mt-1 text-sm text-ink/55">
-              {vehiclesLoading ? t("loadingCatalog") : t("modelsCount", { n: modelTotal })}
-            </p>
-          </div>
+          ) : (
+            <h2 className="mb-2 shrink-0 font-display text-lg text-ink sm:text-xl lg:hidden">
+              {t("availableVehicles")}
+            </h2>
+          )}
 
           {error && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div className="mb-3 shrink-0 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
               <p>{t("apiError")}</p>
               <p className="mt-1 text-xs text-red-700/80">{error}</p>
             </div>
@@ -271,35 +281,49 @@ export function HomePage() {
             </p>
           )}
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy={vehiclesLoading}>
+          <div
+            className="grid min-h-0 flex-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:auto-rows-fr lg:gap-3"
+            aria-busy={vehiclesLoading}
+          >
             {vehiclesLoading ? (
-              <VehicleCardSkeleton count={PAGE_SIZE} />
+              <VehicleCardSkeleton count={6} compact />
             ) : (
               models.map((model, index) => (
-                <ModelCard key={`${model.brandCode}-${model.model}`} model={model} brandCode={brandCode} index={index} />
+                <ModelCard
+                  key={`${model.brandCode}-${model.model}`}
+                  model={model}
+                  brandCode={brandCode}
+                  index={index}
+                  compact
+                />
               ))
             )}
           </div>
 
-          {!vehiclesLoading ? <Pagination page={page} total={modelTotal} onPageChange={selectPage} /> : null}
+          {!vehiclesLoading ? (
+            <div className="shrink-0">
+              <Pagination page={page} total={modelTotal} onPageChange={selectPage} />
+            </div>
+          ) : null}
         </section>
+        </main>
+      </div>
 
-        <section id="how-it-works" className="border-t border-ink/10 bg-white/70">
-          <div className="mx-auto grid max-w-page gap-6 px-4 py-10 sm:grid-cols-2 sm:px-6 sm:py-14 lg:grid-cols-4">
-            {[
-              ["01", "step1Title"],
-              ["02", "step2Title"],
-              ["03", "step3Title"],
-              ["04", "step4Title"],
-            ].map(([step, title], index) => (
-              <div key={step} className="motion-enter" style={motionStagger(index, 80)}>
-                <p className="text-xs font-semibold tracking-[0.2em] text-copper">{step}</p>
-                <h3 className="mt-2 font-display text-2xl">{t(title)}</h3>
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
-    </div>
+      <section id="how-it-works" className="border-t border-ink/10 bg-white/70">
+        <div className="mx-auto grid max-w-page gap-4 px-4 py-6 sm:grid-cols-2 sm:px-6 sm:py-8 lg:grid-cols-4">
+          {[
+            ["01", "step1Title"],
+            ["02", "step2Title"],
+            ["03", "step3Title"],
+            ["04", "step4Title"],
+          ].map(([step, title], index) => (
+            <div key={step} className="motion-enter" style={motionStagger(index, 80)}>
+              <p className="text-xs font-semibold tracking-[0.2em] text-copper">{step}</p>
+              <h3 className="mt-1 font-display text-lg sm:text-xl">{t(title)}</h3>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
