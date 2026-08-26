@@ -6,7 +6,7 @@ import { api } from "../api/client";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
 import { LoadingBlock, TableRowsSkeleton } from "../components/LoadingState";
-import { Pagination } from "../components/Pagination";
+import { DEFAULT_PAGE_SIZE, Pagination } from "../components/Pagination";
 import { useI18n } from "../i18n/LanguageContext";
 import type { Lang } from "../i18n/translations";
 import { formatVnd } from "../lib/format";
@@ -16,7 +16,7 @@ import { saveExtras } from "../lib/quoteExtras";
 import { savePolicyChoices } from "../lib/quotePolicy";
 import type { QuoteExtras, QuoteHistory } from "../types";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export function QuoteHistoryPage() {
   const { t, lang } = useI18n();
@@ -360,7 +360,7 @@ export function QuoteHistoryPage() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={page} total={total} onPageChange={selectPage} />
+            <Pagination page={page} total={total} pageSize={PAGE_SIZE} onPageChange={selectPage} />
           </>
         )}
       </main>

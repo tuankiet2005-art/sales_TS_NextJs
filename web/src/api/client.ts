@@ -147,7 +147,7 @@ export const api = {
       params.set("type", options.vehicleType);
     }
     params.set("page", String(options.page ?? 1));
-    params.set("pageSize", String(options.pageSize ?? 12));
+    params.set("pageSize", String(options.pageSize ?? 10));
     return request<Paginated<VehicleSummary> & { filterOptions: { models: string[]; vehicleTypes: string[] } }>(
       `/api/vehicles/search?${params.toString()}`,
       init,
@@ -198,7 +198,7 @@ export const api = {
       params.set("type", options.vehicleType);
     }
     params.set("page", String(options.page ?? 1));
-    params.set("pageSize", String(options.pageSize ?? 12));
+    params.set("pageSize", String(options.pageSize ?? 10));
     return request<Paginated<VehicleModelSummary> & { filterOptions: { models: string[]; vehicleTypes: string[] } }>(
       `/api/vehicles/models/search?${params.toString()}`,
       init,
@@ -374,7 +374,7 @@ export const api = {
       params.set("includeInactive", "1");
     }
     params.set("page", String(options?.page ?? 1));
-    params.set("pageSize", String(options?.pageSize ?? 20));
+    params.set("pageSize", String(options?.pageSize ?? 10));
     return request<Paginated<Customer>>(`/api/customers?${params.toString()}`);
   },
   getCustomer(id: number) {

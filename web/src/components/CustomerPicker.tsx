@@ -147,7 +147,7 @@ export function CustomerPicker({
     let cancelled = false;
     setLoading(true);
     api
-      .listCustomers({ query: query.trim() || undefined, pageSize: 12 })
+      .listCustomers({ query: query.trim() || undefined, pageSize: 10 })
       .then((result) => {
         if (!cancelled) {
           setCustomers(result.items);

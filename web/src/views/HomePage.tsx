@@ -6,14 +6,14 @@ import { api } from "../api/client";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
 import { VehicleCardSkeleton } from "../components/LoadingState";
-import { Pagination, catalogPageSize } from "../components/Pagination";
+import { DEFAULT_PAGE_SIZE, Pagination } from "../components/Pagination";
 import { ModelCard } from "../components/ModelCard";
 import { useI18n } from "../i18n/LanguageContext";
 import { loadCategoryCache, saveCategoryCache } from "../lib/catalogReferenceCache";
 import { motionInteractive, motionStagger } from "../lib/motion";
 import type { Brand, Category, VehicleModelSummary } from "../types";
 
-const PAGE_SIZE = catalogPageSize();
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 function vehicleTypeLabel(t: (key: string) => string, vehicleType: string) {
   const key = `admin.opt.${vehicleType}`;
@@ -302,7 +302,7 @@ export function HomePage() {
 
           {!vehiclesLoading ? (
             <div className="shrink-0">
-              <Pagination page={page} total={modelTotal} onPageChange={selectPage} />
+              <Pagination page={page} total={modelTotal} pageSize={PAGE_SIZE} onPageChange={selectPage} />
             </div>
           ) : null}
         </section>

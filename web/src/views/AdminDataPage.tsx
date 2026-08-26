@@ -12,6 +12,7 @@ import { BankLoanForm } from "../components/BankLoanForm";
 import { Header } from "../components/Header";
 import { ListFilterSelect } from "../components/ListFilterSelect";
 import { LoadingBlock, TableRowsSkeleton } from "../components/LoadingState";
+import { DEFAULT_PAGE_SIZE, Pagination } from "../components/Pagination";
 import { api, UnauthorizedError } from "../api/client";
 import { useAdminAuth } from "../auth/AdminAuthContext";
 import { useI18n } from "../i18n/LanguageContext";
@@ -249,6 +250,7 @@ export function AdminDataPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [catalogQuery, setCatalogQuery] = useState("");
   const [catalogFilters, setCatalogFilters] = useState<Record<string, string>>({});
+  const [catalogPage, setCatalogPage] = useState(1);
   const [pendingImages, setPendingImages] = useState<PendingImageUploads>(EMPTY_PENDING_IMAGES);
   const [processingImageKey, setProcessingImageKey] = useState<string | null>(null);
   const policyReady = useRef({ feePolicy: false, dealerPolicy: false, plateRegions: false });
@@ -361,7 +363,12 @@ export function AdminDataPage() {
     setPendingImages(EMPTY_PENDING_IMAGES);
     setCatalogQuery("");
     setCatalogFilters({});
+    setCatalogPage(1);
   }, [tab]);
+
+  useEffect(() => {
+    setCatalogPage(1);
+  }, [catalogQuery, catalogFilters]);
 
   useEffect(() => {
     const group = SIDEBAR_GROUPS.find((item) => item.tabs.includes(tab));
@@ -897,6 +904,11 @@ export function AdminDataPage() {
     });
   }, [rows, catalogQuery, catalogFilters, tab, lang]);
 
+  const paginatedRows = useMemo(() => {
+    const start = (catalogPage - 1) * DEFAULT_PAGE_SIZE;
+    return visibleRows.slice(start, start + DEFAULT_PAGE_SIZE);
+  }, [visibleRows, catalogPage]);
+
   const vehicleModelFilterOptions = useMemo(() => {
     if (tab !== "vehicles") {
       return [];
@@ -1205,7 +1217,7 @@ export function AdminDataPage() {
                         <th className="px-3 py-2 font-medium">{t("admin.actions")}</th>
                       </tr>
                     </thead>
-                    <TableRowsSkeleton rows={8} columns={COLUMNS[tab].length + 1} />
+                    <TableRowsSkeleton rows={DEFAULT_PAGE_SIZE} columns={COLUMNS[tab].length + 1} />
                   </table>
                   <div className="border-t border-ink/8 px-4 py-4">
                     <LoadingBlock message={t("loadingCatalog")} size="sm" />
@@ -1224,7 +1236,7 @@ export function AdminDataPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleRows.map((row) => (
+                    {paginatedRows.map((row) => (
                       <tr
                         key={String(row.id)}
                         className="list-data-row motion-interactive border-t border-ink/6"
@@ -1262,6 +1274,16 @@ export function AdminDataPage() {
                   </tbody>
                 </table>
               )}
+              {!loading ? (
+                <div className="px-4 pb-4">
+                  <Pagination
+                    page={catalogPage}
+                    total={visibleRows.length}
+                    pageSize={DEFAULT_PAGE_SIZE}
+                    onPageChange={setCatalogPage}
+                  />
+                </div>
+              ) : null}
             </div>
 
             {draft && (

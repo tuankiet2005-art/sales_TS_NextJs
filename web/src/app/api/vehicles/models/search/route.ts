@@ -14,7 +14,7 @@ function readSearchParams(request: NextRequest) {
     model: params.get("model") ?? undefined,
     vehicleType: params.get("type") ?? undefined,
     page: params.get("page") ? Number(params.get("page")) : 1,
-    pageSize: params.get("pageSize") ? Number(params.get("pageSize")) : 12,
+    pageSize: params.get("pageSize") ? Number(params.get("pageSize")) : 10,
   };
 }
 

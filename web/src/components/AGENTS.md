@@ -11,6 +11,7 @@ Shared chrome and quote widgets used by pages.
 - `ColorPhotoImage.tsx` — vehicle color thumbnail; shows spinner overlay while the selected color image loads from `/api/vehicle-images/{id}` or static `/colors/*`
 - `VehicleImageSlideshow.tsx` — per-color photo carousel on `VehiclePage` (prev/next, dots, counter); slides come from the selected color's `colorPhotos` list
 - `LoadingState.tsx` — shared spinner, page loading shell, and skeleton placeholders for catalog cards, brand cards, and admin/history tables; use for any async fetch or reload
+- `Pagination.tsx` — shared prev/next pager; `DEFAULT_PAGE_SIZE` is 10 rows for catalog, history, customers, and admin tables
 - `PageMotion.tsx` — route enter animation keyed by pathname; wraps signed-in pages from `AppShell`
 - `QuotePricePanel` / `QuoteAccessoriesPanel` in `QuoteAdjustments.tsx` — equal left/right editors; `PanelHeader` gives icon badge and title the same `h-8` height with centered text
 - `QuoteSheet.tsx` — visual replica of the dealer Excel quote; `#quote-sheet` is the PDF source (`lib/exportQuotePdf.ts` sanitizes Tailwind `oklch`/`lab` before html2canvas)

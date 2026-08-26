@@ -99,7 +99,7 @@ export async function searchCustomers(options: {
 }): Promise<Paginated<Customer>> {
   const db = getDb();
   const page = Math.max(1, options.page ?? 1);
-  const pageSize = Math.min(50, Math.max(1, options.pageSize ?? 20));
+  const pageSize = Math.min(50, Math.max(1, options.pageSize ?? 10));
   const where = customerListWhere(options);
   const base = db.select().from(customers);
   const rows = await (where ? base.where(where) : base)

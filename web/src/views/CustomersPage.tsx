@@ -8,13 +8,13 @@ import { CenteredModal } from "../components/CenteredModal";
 import { CustomerForm, customerFormFromDetail, emptyCustomerForm } from "../components/CustomerForm";
 import { Header } from "../components/Header";
 import { LoadingBlock, TableRowsSkeleton } from "../components/LoadingState";
-import { Pagination } from "../components/Pagination";
+import { DEFAULT_PAGE_SIZE, Pagination } from "../components/Pagination";
 import { useI18n } from "../i18n/LanguageContext";
 import { loadLocationCache, saveLocationCache } from "../lib/catalogReferenceCache";
 import { motionInteractive } from "../lib/motion";
 import type { Customer, CustomerDetail, Location } from "../types";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export function CustomersPage() {
   const { t } = useI18n();

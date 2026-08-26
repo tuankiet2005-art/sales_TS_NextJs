@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const query = params.get("q") ?? undefined;
   const page = params.get("page") ? Number(params.get("page")) : 1;
-  const pageSize = params.get("pageSize") ? Number(params.get("pageSize")) : 20;
+  const pageSize = params.get("pageSize") ? Number(params.get("pageSize")) : 10;
   const includeInactive = params.get("includeInactive") === "1";
   return json(await searchCustomers({ query, page, pageSize, includeInactive }));
 }
