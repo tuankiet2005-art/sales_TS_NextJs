@@ -101,9 +101,9 @@ describe("fillQuoteWorkbook", () => {
       }),
     );
     expect(view.images.length).toBeGreaterThan(0);
-    expect(view.width).toBeGreaterThan(1000);
-    expect(view.width).toBeLessThan(1200);
-    expect(Math.max(...view.cells.map((cell) => cell.r))).toBe(40);
+    expect(view.width).toBeGreaterThan(1300);
+    expect(view.width).toBeLessThan(1450);
+    expect(Math.max(...view.cells.map((cell) => cell.r))).toBe(36);
     expect(Math.max(...view.cells.map((cell) => cell.c))).toBe(7);
     const titles = view.cells.filter((cell) => cell.text.includes("BẢNG BÁO GIÁ"));
     expect(titles).toHaveLength(1);
@@ -118,7 +118,10 @@ describe("fillQuoteWorkbook", () => {
     expect(giftHeader?.style.borderBottom).toMatch(/solid/);
     const titleCell = view.cells.find((cell) => cell.text.includes("BẢNG BÁO GIÁ CHI TIẾT"));
     expect(titleCell?.style.borderRight).toMatch(/solid/);
-    const customerSignCell = view.cells.find((cell) => cell.r === 38 && cell.c === 4);
+    const feeRow = view.cells.find((cell) => cell.r === 12 && cell.c === 1 && cell.text.includes("Phí bấm biển"));
+    expect(feeRow).toBeDefined();
+    expect(view.rows[11]).toBeGreaterThan(10);
+    const customerSignCell = view.cells.find((cell) => cell.r === 35 && cell.c === 4);
     expect(customerSignCell?.style.borderRight).toMatch(/solid/);
   });
 });

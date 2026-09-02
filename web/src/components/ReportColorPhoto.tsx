@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { loadReportColorPhotoCutout } from "../lib/reportColorPhotoCutout";
 import { toReportColorPhotoSrc } from "../lib/reportColorPhoto";
 import { LoadingSpinner } from "./LoadingState";
 
@@ -8,10 +9,13 @@ export function ReportColorPhoto({
   src,
   alt,
   className = "",
+  quiet = false,
 }: {
   src: string;
   alt: string;
   className?: string;
+  /** Quote sheet: no spinner — blank until the cutout is ready. */
+  quiet?: boolean;
 }) {
   const reportSrc = useMemo(() => toReportColorPhotoSrc(src), [src]);
   const usesReportApi = reportSrc !== src;
@@ -34,37 +38,38 @@ export function ReportColorPhoto({
       return;
     }
 
+    let cancelled = false;
     setLoading(true);
     setReady(false);
     setDisplaySrc("");
-    let cancelled = false;
-    const image = new window.Image();
 
-    function finishWith(url: string, succeeded: boolean) {
-      if (cancelled) {
-        return;
-      }
-      setDisplaySrc(url);
-      setLoading(false);
-      setReady(succeeded);
-    }
-
-    image.onload = () => finishWith(reportSrc, true);
-    image.onerror = () => finishWith(src, false);
-    image.src = reportSrc;
-
-    if (image.complete && image.naturalWidth > 0) {
-      finishWith(reportSrc, true);
-    }
+    loadReportColorPhotoCutout(reportSrc, src)
+      .then((url) => {
+        if (cancelled) {
+          return;
+        }
+        setDisplaySrc(url);
+        setLoading(false);
+        setReady(true);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        setDisplaySrc(src);
+        setLoading(false);
+        setReady(false);
+      });
 
     return () => {
       cancelled = true;
-      image.onload = null;
-      image.onerror = null;
     };
   }, [reportSrc, src, usesReportApi]);
 
   if (!displaySrc) {
+    if (quiet) {
+      return <div className="h-full w-full bg-white" aria-busy={loading} />;
+    }
     return (
       <div className="relative flex h-full w-full items-center justify-center" aria-busy={loading}>
         <LoadingSpinner className="h-4 w-4" />
@@ -74,7 +79,7 @@ export function ReportColorPhoto({
 
   return (
     <div className="relative flex h-full min-h-[inherit] w-full items-center justify-center" aria-busy={loading}>
-      {loading ? (
+      {loading && !quiet ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90">
           <LoadingSpinner className="h-4 w-4" />
         </div>

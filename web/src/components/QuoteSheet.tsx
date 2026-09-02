@@ -49,65 +49,70 @@ export function QuoteSheet({
         className="relative box-border overflow-hidden bg-white text-[#1f1f1f]"
         style={{ width: view.width, height: view.height }}
       >
-      <table
-        className="box-border border-collapse"
-        style={{ width: view.width, height: view.height, tableLayout: "fixed" }}
-      >
-        <colgroup>
-          {view.columns.map((width, index) => (
-            <col key={index} style={{ width }} />
-          ))}
-        </colgroup>
-        <tbody>
-          {view.rows.map((height, rowIndex) => {
-            const r = rowIndex + 1;
-            return (
-              <tr key={r} style={{ height }}>
-                {view.columns.map((_, colIndex) => {
-                  const c = colIndex + 1;
-                  if (occupied.has(`${r}:${c}`)) {
-                    return null;
-                  }
-                  const cell = cellMap.get(`${r}:${c}`);
-                  return (
-                    <td
-                      key={c}
-                      colSpan={cell?.colspan}
-                      rowSpan={cell?.rowspan}
-                      style={tdStyle(cell?.style, cell?.text)}
-                    >
-                      {cell?.text}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {view.images.map((image, index) => (
-        <img
-          key={`img-${index}`}
-          src={image.src}
-          alt=""
-          className="pointer-events-none absolute object-contain"
-          style={{
-            left: image.left,
-            top: image.top,
-            width: image.width,
-            height: image.height,
-          }}
-        />
-      ))}
-      {view.colorGrid ? (
-        <div className="absolute overflow-hidden bg-white" style={view.colorGrid}>
-          <QuoteColorGrid
-            compact
-            colorNames={colors(vehicle)}
-            colorPhotos={vehicle.colorPhotos}
+        <table
+          className="box-border border-collapse"
+          style={{ width: view.width, height: view.height, tableLayout: "fixed" }}
+        >
+          <colgroup>
+            {view.columns.map((width, index) => (
+              <col key={index} style={{ width }} />
+            ))}
+          </colgroup>
+          <tbody>
+            {view.rows.map((height, rowIndex) => {
+              const r = rowIndex + 1;
+              return (
+                <tr key={r} style={{ height }}>
+                  {view.columns.map((_, colIndex) => {
+                    const c = colIndex + 1;
+                    if (occupied.has(`${r}:${c}`)) {
+                      return null;
+                    }
+                    const cell = cellMap.get(`${r}:${c}`);
+                    return (
+                      <td
+                        key={c}
+                        colSpan={cell?.colspan}
+                        rowSpan={cell?.rowspan}
+                        style={tdStyle(cell?.style, cell?.text)}
+                      >
+                        {cell?.text}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {view.images.map((image, index) => (
+          <img
+            key={`img-${index}`}
+            src={image.src}
+            alt=""
+            className="pointer-events-none absolute object-contain"
+            style={{
+              left: image.left,
+              top: image.top,
+              width: image.width,
+              height: image.height,
+            }}
           />
-        </div>
-      ) : null}
+        ))}
+        {view.colorGrid ? (
+          <div
+            className="absolute z-10 box-border overflow-hidden border-r border-[#1f1f1f] bg-white"
+            style={view.colorGrid}
+          >
+            <QuoteColorGrid
+              compact
+              frameless
+              photosOnly
+              colorNames={colors(vehicle)}
+              colorPhotos={vehicle.colorPhotos}
+            />
+          </div>
+        ) : null}
       </article>
     </QuoteSheetScaler>
   );

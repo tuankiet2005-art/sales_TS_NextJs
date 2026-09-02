@@ -24,11 +24,26 @@ function ColorGridCell({
   name,
   photoSrc,
   compact,
+  photosOnly,
 }: {
   name: string;
   photoSrc: string;
   compact?: boolean;
+  photosOnly?: boolean;
 }) {
+  if (photosOnly) {
+    return (
+      <div className={`flex h-full w-full items-center justify-center ${compact ? "min-h-0 p-1" : "p-2"}`}>
+        <ReportColorPhoto
+          src={photoSrc}
+          alt={name}
+          quiet
+          className="max-h-full max-w-full object-contain object-center"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={`flex h-full flex-col items-stretch justify-end ${compact ? "min-h-0 px-1 pb-1 pt-0.5" : "min-h-[9.25rem] px-1.5 pb-1.5 pt-1"}`}
@@ -41,7 +56,7 @@ function ColorGridCell({
         />
       </div>
       <p
-        className={`shrink-0 text-center font-black uppercase leading-tight tracking-wide text-[#1f1f1f] ${compact ? "mt-0.5 text-[9px]" : "mt-1 text-[12px]"}`}
+        className={`shrink-0 text-center font-black uppercase leading-tight tracking-wide text-[#1f1f1f] ${compact ? "mt-0.5 text-[12px]" : "mt-1 text-[12px]"}`}
       >
         {colorReportLabel(name)}
       </p>
@@ -53,20 +68,26 @@ export function QuoteColorGrid({
   colorNames,
   colorPhotos,
   compact = false,
+  frameless = false,
+  photosOnly = false,
 }: {
   colorNames: string[];
   colorPhotos?: ColorPhotoMap | null;
   compact?: boolean;
+  frameless?: boolean;
+  photosOnly?: boolean;
 }) {
   const slots = slotColors(colorNames);
+  const showInternalBorders = !photosOnly && !frameless;
 
   return (
     <div
-      className={`grid h-full grid-cols-2 grid-rows-2 border border-[#1f1f1f] bg-white ${compact ? "min-h-0" : "min-h-[18.5rem]"}`}
+      className={`grid h-full w-full grid-cols-2 grid-rows-2 bg-white ${frameless || photosOnly ? "" : "border border-[#1f1f1f]"} ${compact ? "min-h-0" : "min-h-[18.5rem]"}`}
     >
       {slots.map((name, index) => {
-        const cellBorder =
-          index === 0
+        const cellBorder = !showInternalBorders
+          ? ""
+          : index === 0
             ? "border-r border-b border-[#1f1f1f]"
             : index === 1
               ? "border-b border-[#1f1f1f]"
@@ -76,7 +97,12 @@ export function QuoteColorGrid({
         return (
           <div key={`${name || "empty"}-${index}`} className={`h-full min-h-0 ${cellBorder}`}>
             {name ? (
-              <ColorGridCell compact={compact} name={name} photoSrc={colorPhoto(name, colorPhotos)} />
+              <ColorGridCell
+                compact={compact}
+                photosOnly={photosOnly}
+                name={name}
+                photoSrc={colorPhoto(name, colorPhotos)}
+              />
             ) : null}
           </div>
         );

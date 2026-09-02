@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 
+import { isReportColorBackgroundRemovedOnServer } from "@/server/lib/reportColorBgRemoval";
 import { getReportColorPhotoBuffer } from "@/server/services/report-color-photo-service";
 
 export async function GET(
@@ -24,6 +25,7 @@ export async function GET(
     headers: {
       "Content-Type": "image/webp",
       "Cache-Control": "public, max-age=86400",
+      "X-Report-Bg-Removed": isReportColorBackgroundRemovedOnServer() ? "1" : "0",
     },
   });
 }

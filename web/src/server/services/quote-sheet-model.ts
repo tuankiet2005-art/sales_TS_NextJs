@@ -10,25 +10,25 @@ const EMU_PER_PX = 9525;
 const COLOR_HEADER = /các\s*màu\s*xe/i;
 /** Bordered dealer table only — no spacer rows above or stray columns outside. */
 const REPORT_FIRST_ROW = 3;
-const REPORT_LAST_ROW = 42;
 const REPORT_COL_COUNT = 7;
 
 type MergeBox = { top: number; left: number; bottom: number; right: number };
 
 export function worksheetToView(workbook: ExcelJS.Workbook, sheet: ExcelJS.Worksheet): QuoteSheetView {
+  const reportLastRow = resolveReportLastRow(sheet);
   const merges = parseMerges(sheet).filter(
     (merge) =>
-      merge.top <= REPORT_LAST_ROW &&
+      merge.top <= reportLastRow &&
       merge.bottom >= REPORT_FIRST_ROW &&
       merge.left <= REPORT_COL_COUNT &&
       merge.right >= 1,
   );
   const columns = Array.from({ length: REPORT_COL_COUNT }, (_, i) => colWidthPx(sheet.getColumn(i + 1).width));
-  const sheetRowHeights = Array.from({ length: REPORT_LAST_ROW }, (_, i) =>
+  const sheetRowHeights = Array.from({ length: reportLastRow }, (_, i) =>
     rowHeightPx(sheet.getRow(i + 1).height),
   );
   const clipTop = prefixSums(sheetRowHeights)[REPORT_FIRST_ROW - 1] ?? 0;
-  const rows = sheetRowHeights.slice(REPORT_FIRST_ROW - 1, REPORT_LAST_ROW);
+  const rows = sheetRowHeights.slice(REPORT_FIRST_ROW - 1, reportLastRow);
   const colStarts = prefixSums(columns);
   const sheetRowStarts = prefixSums(sheetRowHeights);
   const formulas = evaluateSheetFormulas(sheet);
@@ -48,7 +48,7 @@ export function worksheetToView(workbook: ExcelJS.Workbook, sheet: ExcelJS.Works
   }
 
   const cells: QuoteSheetView["cells"] = [];
-  for (let sheetR = REPORT_FIRST_ROW; sheetR <= REPORT_LAST_ROW; sheetR += 1) {
+  for (let sheetR = REPORT_FIRST_ROW; sheetR <= reportLastRow; sheetR += 1) {
     const r = sheetR - REPORT_FIRST_ROW + 1;
     for (let c = 1; c <= REPORT_COL_COUNT; c += 1) {
       if (covered.has(cellKey(r, c))) {
@@ -76,7 +76,8 @@ export function worksheetToView(workbook: ExcelJS.Workbook, sheet: ExcelJS.Works
   collapseEmptyGiftRows(cells, rows, REPORT_FIRST_ROW);
   const rowStarts = prefixSums(rows);
 
-  const colorGrid = findColorGridBox(sheet, merges, colStarts, rowStarts, columns, rows, REPORT_FIRST_ROW);
+  const colorHeaderRow = findColorHeaderRow(sheet);
+  const colorGrid = findColorGridBox(sheet, merges, colStarts, rowStarts, columns, rows, REPORT_FIRST_ROW, colorHeaderRow);
   const images = sheetImages(
     workbook,
     sheet,
@@ -86,6 +87,7 @@ export function worksheetToView(workbook: ExcelJS.Workbook, sheet: ExcelJS.Works
     clipTop,
     rowStarts[rowStarts.length - 1] ?? 0,
     colorGrid,
+    colorHeaderRow,
   );
 
   return {
@@ -134,16 +136,24 @@ function mergedCellStyle(
 }
 
 function collapseEmptyGiftRows(cells: QuoteSheetView["cells"], rows: number[], firstSheetRow: number) {
-  for (let sheetR = 13; sheetR <= 22; sheetR += 1) {
-    if (sheetR === 19) {
-      continue;
-    }
+  for (let sheetR = 13; sheetR <= 16; sheetR += 1) {
     const r = sheetR - firstSheetRow + 1;
     const hasGiftText = cells.some((cell) => cell.r === r && cell.c >= 4 && cell.text.trim().length > 0);
-    if (!hasGiftText) {
+    const hasFeeText = cells.some((cell) => cell.r === r && cell.c <= 3 && cell.text.trim().length > 0);
+    if (!hasGiftText && !hasFeeText) {
       rows[r - 1] = 2;
     }
   }
+}
+
+function resolveReportLastRow(sheet: ExcelJS.Worksheet) {
+  let lastRow = Math.max(sheet.rowCount, REPORT_FIRST_ROW);
+  for (const merge of parseMerges(sheet)) {
+    if (merge.left <= REPORT_COL_COUNT && merge.right >= 1) {
+      lastRow = Math.max(lastRow, merge.bottom);
+    }
+  }
+  return lastRow;
 }
 
 function cellKey(row: number, col: number) {
@@ -276,15 +286,7 @@ function themeColor(color?: { theme?: number; argb?: string }) {
   return Number(color.theme) === 1 ? "#1f1f1f" : undefined;
 }
 
-function findColorGridBox(
-  sheet: ExcelJS.Worksheet,
-  merges: MergeBox[],
-  colStarts: number[],
-  rowStarts: number[],
-  columns: number[],
-  rows: number[],
-  firstSheetRow: number,
-): QuoteSheetView["colorGrid"] {
+function findColorHeaderRow(sheet: ExcelJS.Worksheet): number | null {
   let headerRow: number | null = null;
   sheet.eachRow((row) => {
     row.eachCell((cell) => {
@@ -294,10 +296,22 @@ function findColorGridBox(
       }
     });
   });
-  if (headerRow == null) {
+  return headerRow;
+}
+
+function findColorGridBox(
+  sheet: ExcelJS.Worksheet,
+  merges: MergeBox[],
+  colStarts: number[],
+  rowStarts: number[],
+  columns: number[],
+  rows: number[],
+  firstSheetRow: number,
+  colorHeaderRow: number | null,
+): QuoteSheetView["colorGrid"] {
+  if (colorHeaderRow == null) {
     return null;
   }
-  const colorHeaderRow = headerRow;
   const body = merges.find((merge) => merge.top === colorHeaderRow + 1 && merge.left === 1 && merge.bottom > merge.top);
   if (!body) {
     return null;
@@ -308,7 +322,7 @@ function findColorGridBox(
     left: colStarts[body.left - 1] ?? 0,
     top: rowStarts[displayTop] ?? 0,
     width: sumRange(columns, body.left - 1, body.right),
-    height: sumRange(rows, displayTop, displayBottom),
+    height: sumRange(rows, displayTop, displayBottom + 1),
   };
 }
 
@@ -329,6 +343,7 @@ function sheetImages(
   clipTop: number,
   clipHeight: number,
   colorGrid: QuoteSheetView["colorGrid"],
+  colorHeaderRow: number | null,
 ): QuoteSheetView["images"] {
   const images: QuoteSheetView["images"] = [];
   for (const image of sheet.getImages()) {
@@ -347,6 +362,11 @@ function sheetImages(
       continue;
     }
     const nativeCol = image.range.tl.nativeCol ?? 0;
+    const nativeRow = image.range.tl.nativeRow ?? 0;
+    const sheetRow = nativeRow + 1;
+    if (colorHeaderRow != null && nativeCol <= 1 && sheetRow >= colorHeaderRow) {
+      continue;
+    }
     if (colorGrid && overlaps(box, colorGrid)) {
       continue;
     }

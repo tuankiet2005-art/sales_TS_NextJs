@@ -296,3 +296,266 @@ select {
   padding-inline-end: 2.5rem;
   background-position: right 0.75rem center;
 }
+
+.quote-sheet {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #1f1f1f;
+}
+
+.quote-sheet-table {
+  table-layout: fixed;
+}
+
+.quote-docx-sheet .qr-table,
+.quote-docx-preview .qr-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.quote-docx-sheet .qr-col-label,
+.quote-docx-preview .qr-col-label {
+  width: 14%;
+}
+
+.quote-docx-sheet .qr-col-value,
+.quote-docx-preview .qr-col-value {
+  width: 11%;
+}
+
+.quote-docx-sheet .qr-table td,
+.quote-docx-preview .qr-table td {
+  border: 1px solid #1f1f1f;
+  padding: 6px 10px;
+  vertical-align: middle;
+  line-height: 1.3;
+}
+
+.quote-docx-sheet .qr-gray,
+.quote-docx-preview .qr-gray {
+  background: #e7e6e6;
+}
+
+.quote-docx-sheet .qr-vehicle-row td,
+.quote-docx-preview .qr-vehicle-row td {
+  background: #f2f2f2;
+}
+
+.quote-docx-sheet .qr-logo-box,
+.quote-docx-preview .qr-logo-box {
+  border: 1px solid #1f1f1f;
+  padding: 6px;
+}
+
+.quote-docx-sheet .qr-gift-cell,
+.quote-docx-preview .qr-gift-cell {
+  padding: 0;
+  vertical-align: stretch;
+  height: 1px;
+}
+
+.quote-docx-sheet .qr-color-panel,
+.quote-docx-preview .qr-color-panel {
+  padding: 0;
+  vertical-align: stretch;
+  height: 1px;
+}
+
+.quote-docx-sheet .qr-color-panel-inner,
+.quote-docx-preview .qr-color-panel-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+}
+
+.quote-docx-sheet .qr-section-label,
+.quote-docx-preview .qr-section-label {
+  margin: 0;
+  padding: 4px 8px;
+  border-bottom: 1px solid #1f1f1f;
+}
+
+.quote-docx-sheet .qr-italic,
+.quote-docx-preview .qr-italic {
+  font-style: italic;
+}
+
+.quote-docx-sheet .qr-green,
+.quote-docx-preview .qr-green {
+  background: #c6e0b4;
+  font-weight: 700;
+  text-align: center;
+}
+
+.quote-docx-sheet .qr-yellow,
+.quote-docx-preview .qr-yellow {
+  background: #fff2cc;
+}
+
+.quote-docx-sheet .qr-red,
+.quote-docx-preview .qr-red {
+  color: #c00000;
+  font-weight: 700;
+}
+
+.quote-docx-sheet .qr-bold,
+.quote-docx-preview .qr-bold {
+  font-weight: 700;
+}
+
+.quote-docx-sheet .qr-center,
+.quote-docx-preview .qr-center {
+  text-align: center;
+}
+
+.quote-docx-sheet .qr-right,
+.quote-docx-preview .qr-right {
+  text-align: right;
+}
+
+.quote-docx-sheet .qr-title,
+.quote-docx-preview .qr-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.quote-docx-sheet .qr-logo,
+.quote-docx-preview .qr-logo {
+  width: 120px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.quote-docx-sheet .qr-gift-panel-inner,
+.quote-docx-preview .qr-gift-panel-inner {
+  height: 100%;
+  min-height: 100%;
+}
+
+.quote-docx-sheet .qr-gift-grid,
+.quote-docx-preview .qr-gift-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(var(--qr-gift-rows, 4), minmax(0, 1fr));
+  height: 100%;
+  min-height: 100%;
+}
+
+.quote-docx-sheet .qr-gift-grid > div,
+.quote-docx-preview .qr-gift-grid > div {
+  border-right: 1px solid #1f1f1f;
+  border-bottom: 1px solid #1f1f1f;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+}
+
+.quote-docx-sheet .qr-gift-grid > div:empty,
+.quote-docx-preview .qr-gift-grid > div:empty {
+  background: #fafafa;
+}
+
+.quote-docx-sheet .qr-gift-grid > div:nth-child(2n),
+.quote-docx-preview .qr-gift-grid > div:nth-child(2n) {
+  border-right: none;
+}
+
+.quote-docx-sheet .qr-color-header,
+.quote-docx-preview .qr-color-header {
+  margin: -4px -8px 6px;
+  padding: 4px;
+}
+
+.quote-docx-sheet .qr-color-grid,
+.quote-docx-preview .qr-color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.quote-docx-sheet .qr-color-cell,
+.quote-docx-preview .qr-color-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  border-right: 1px solid #1f1f1f;
+  border-bottom: 1px solid #1f1f1f;
+  padding: 8px;
+  min-height: 0;
+}
+
+.quote-docx-sheet .qr-color-cell:nth-child(2n),
+.quote-docx-preview .qr-color-cell:nth-child(2n) {
+  border-right: none;
+}
+
+.quote-docx-sheet .qr-color-cell:nth-child(n + 3),
+.quote-docx-preview .qr-color-cell:nth-child(n + 3) {
+  border-bottom: none;
+}
+
+.quote-docx-sheet .qr-color-photo,
+.quote-docx-preview .qr-color-photo {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+}
+
+.quote-docx-sheet .qr-color-img,
+.quote-docx-preview .qr-color-img {
+  max-height: 100%;
+  max-width: 96%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.quote-docx-sheet .qr-color-label,
+.quote-docx-preview .qr-color-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.quote-docx-sheet .qr-note,
+.quote-docx-preview .qr-note {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.quote-docx-sheet .qr-signature,
+.quote-docx-preview .qr-signature {
+  height: 56px;
+  vertical-align: top;
+}
+
+.quote-docx-preview table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.quote-docx-preview td,
+.quote-docx-preview th {
+  border: 1px solid #1f1f1f;
+  padding: 2px 8px;
+  vertical-align: middle;
+}
+
+.quote-docx-preview p {
+  margin: 0;
+}
+
+.quote-docx-preview img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}

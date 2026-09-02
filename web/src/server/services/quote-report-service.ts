@@ -1,9 +1,10 @@
-import { resolveQuoteCalculation } from "./catalog-service";
 import { loadQuoteTemplateWorkbook } from "./quote-report-path";
 import { fillQuoteWorkbook, resolveQuoteSheet, type QuoteSheetFillInput } from "./quote-sheet-fill";
 import { worksheetToView } from "./quote-sheet-model";
 import type { QuoteSaveRequest } from "./quote-history-service";
 import type { QuoteSheetView } from "@/lib/quoteSheetView";
+
+import { resolveQuoteCalculation } from "./catalog-service";
 
 export function quoteSheetFillInput(
   body: QuoteSaveRequest,
@@ -28,6 +29,8 @@ export function quoteSheetFillInput(
     gifts?: string | null;
     warrantyNote?: string | null;
     defaultColor?: string | null;
+    availableColors?: string | null;
+    colorPhotos?: string | null;
   },
 ): QuoteSheetFillInput {
   return {

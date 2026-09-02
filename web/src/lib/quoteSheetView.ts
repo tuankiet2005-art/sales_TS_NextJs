@@ -38,6 +38,12 @@ export type QuoteSheetBox = {
   height: number;
 };
 
+export type QuoteSheetColorGridSlot = QuoteSheetBox & {
+  /** Table row/col when parsed from Word; omitted for Excel overlay. */
+  r?: number;
+  c?: number;
+};
+
 export type QuoteSheetView = {
   width: number;
   height: number;
@@ -45,5 +51,5 @@ export type QuoteSheetView = {
   rows: number[];
   cells: QuoteSheetCellView[];
   images: QuoteSheetImageView[];
-  colorGrid: QuoteSheetBox | null;
+  colorGrid: QuoteSheetColorGridSlot | null;
 };

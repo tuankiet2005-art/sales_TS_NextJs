@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   if (!result) {
     return notFound("Vehicle", body.vehicleId);
   }
-  return new NextResponse(result.buffer, {
+  return new NextResponse(new Uint8Array(result.buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="${result.filename}"`,

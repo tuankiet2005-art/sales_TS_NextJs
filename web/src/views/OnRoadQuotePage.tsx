@@ -606,7 +606,7 @@ export function OnRoadQuotePage() {
         )}
 
         {vehicle && result && (
-          <div className="motion-scale-in print:mx-0 print:px-0">
+          <div className="motion-scale-in overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-card print:mx-0 print:border-0 print:px-0 print:shadow-none">
             <QuoteSheet view={reportView} vehicle={vehicle} />
           </div>
         )}
@@ -643,7 +643,7 @@ export function OnRoadQuotePage() {
                   className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md bg-ink px-4 text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60 sm:h-8"
                 >
                   <FileSpreadsheet className="h-4 w-4" />
-                  {exporting === "xlsx" ? t("exporting") : t("exportExcel")}
+                  {exporting === "xlsx" ? t("exporting") : t("exportQuote")}
                 </button>
                 <button
                   type="button"
