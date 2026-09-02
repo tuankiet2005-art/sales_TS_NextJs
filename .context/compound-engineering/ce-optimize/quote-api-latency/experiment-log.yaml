@@ -1,0 +1,78 @@
+spec: quote-api-latency
+run_id: "2026-08-20T22:52:00+07:00"
+started_at: "2026-08-20T22:52:00+07:00"
+completed_at: "2026-08-21T00:15:00+07:00"
+
+baseline:
+  timestamp: "2026-08-20T22:52:00+07:00"
+  gates:
+    tests_passed: 1
+    calc_valid: 1
+  diagnostics:
+    quote_load_latency_ms: 149
+    calc_latency_ms: 69
+    duplicate_vehicle_lookups: 2
+    quote_page_api_calls: 2
+    home_api_calls: 3
+
+experiments:
+  - iteration: 1
+    hypothesis: "Policy dedup + fee cache + combined quote-load endpoint + eliminate redundant vehicle fetches"
+    category: architecture
+    outcome: kept
+    gates:
+      tests_passed: 1
+      calc_valid: 1
+    diagnostics:
+      quote_load_latency_ms: 122
+      calc_latency_ms: 58
+      duplicate_vehicle_lookups: 1
+      quote_page_api_calls: 1
+    learnings:
+      - "loadPolicySnapshot in-flight guard removes triple policy DB reads on cold cache"
+      - "Fee definitions/rules in-process cache speeds repeat calculateOnRoad within a request"
+      - "loadQuotePageData fetches vehicle once; export/save reuse vehicleRow from calculateOnRoad"
+      - "Single /api/quote-load cuts client round trips from 2 to 1"
+
+  - iteration: 2
+    hypothesis: "Catalog bootstrap endpoint + vehicle session cache + breakdown reuse on export/save + cache headers + DB index"
+    category: architecture
+    outcome: kept
+    gates:
+      tests_passed: 1
+      calc_valid: 1
+      catalog_valid: 1
+    diagnostics:
+      quote_load_latency_ms: 60
+      catalog_bootstrap_latency_ms: 88
+      calc_latency_ms: 62
+      duplicate_vehicle_lookups: 1
+      quote_page_api_calls: 1
+      home_api_calls: 1
+    learnings:
+      - "GET /api/catalog replaces three home-page HTTP calls with one server round trip"
+      - "sessionStorage vehicle cache lets quote page call calculate-only after confirm"
+      - "resolveQuoteCalculation skips full recalc on export/save when breakdown matches vehicleId"
+      - "Parallel getDealerPolicy in loadQuotePageData removes post-calc policy wait"
+
+best:
+  iteration: 2
+  hypothesis: "Catalog bootstrap endpoint + vehicle session cache + breakdown reuse on export/save + cache headers + DB index"
+  gates:
+    tests_passed: 1
+    calc_valid: 1
+    catalog_valid: 1
+  diagnostics:
+    quote_load_latency_ms: 60
+    catalog_bootstrap_latency_ms: 88
+    calc_latency_ms: 62
+    duplicate_vehicle_lookups: 1
+    quote_page_api_calls: 1
+    home_api_calls: 1
+
+hypothesis_backlog:
+  - description: "Pass categoryId from HomePage to search API for server-side filter"
+    category: preprocessing
+    priority: medium
+    dep_status: approved
+    required_deps: []

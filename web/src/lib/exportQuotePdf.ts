@@ -60,15 +60,12 @@ function neutralizeModernCss(clonedDoc: Document, original: HTMLElement, clone: 
   clonedDoc.querySelectorAll("style, link[rel='stylesheet']").forEach((node) => node.remove());
 }
 
-export async function downloadQuotePdf(element: HTMLElement, filename: string): Promise<void> {
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-    import("html2canvas"),
-    import("jspdf"),
-  ]);
+async function captureQuoteSheet(element: HTMLElement) {
+  const { default: html2canvas } = await import("html2canvas");
   await waitForImages(element);
   await waitForReportColorPhotos(element);
-  const width = Math.ceil(element.getBoundingClientRect().width);
-  const canvas = await html2canvas(element, {
+  const width = Number(element.dataset.quoteWidth) || Math.ceil(element.getBoundingClientRect().width);
+  return html2canvas(element, {
     scale: 2,
     width,
     windowWidth: width,
@@ -86,6 +83,30 @@ export async function downloadQuotePdf(element: HTMLElement, filename: string): 
       });
     },
   });
+}
+
+export async function downloadQuotePng(element: HTMLElement, filename: string): Promise<void> {
+  const canvas = await captureQuoteSheet(element);
+  await new Promise<void>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("PNG capture unavailable"));
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      resolve();
+    }, "image/png");
+  });
+}
+
+export async function downloadQuotePdf(element: HTMLElement, filename: string): Promise<void> {
+  const { jsPDF } = await import("jspdf");
+  const canvas = await captureQuoteSheet(element);
 
   const pageWidth = 210;
   const pageHeight = 297;

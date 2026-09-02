@@ -1,0 +1,89 @@
+name: quote-api-latency
+description: >
+  Reduce quote-page data-fetch latency. The quote flow currently fires 2 parallel API
+  calls (getVehicle + calculateOnRoad), each hitting Neon over HTTP with 6–8 queries per
+  calculation and duplicate vehicle lookups. Optimize server-side batching/caching and
+  client/API round trips to improve time-to-interactive on the quote page.
+
+metric:
+  primary:
+    type: hard
+    name: quote_load_latency_ms
+    direction: minimize
+    target: 800
+  degenerate_gates:
+    - name: tests_passed
+      check: "== 1"
+      description: All Vitest tests must pass
+    - name: calc_valid
+      check: "== 1"
+      description: calculateOnRoad must return a valid breakdown for the benchmark vehicle
+  diagnostics:
+    - name: calc_latency_ms
+    - name: duplicate_vehicle_lookups
+    - name: quote_page_api_calls
+
+measurement:
+  command: "npx tsx scripts/bench-quote-api.ts"
+  timeout_seconds: 300
+  working_directory: "web"
+  stability:
+    mode: repeat
+    repeat_count: 3
+    aggregation: median
+    noise_threshold: 50
+
+scope:
+  mutable:
+    - "web/src/server/services/catalog-service.ts"
+    - "web/src/server/services/quote-export-service.ts"
+    - "web/src/server/services/quote-history-service.ts"
+    - "web/src/server/db/repositories/catalog.ts"
+    - "web/src/server/config/policy-store.ts"
+    - "web/src/app/api/calculate-on-road-cost/route.ts"
+    - "web/src/app/api/vehicles/[id]/route.ts"
+    - "web/src/app/api/vehicles/search/route.ts"
+    - "web/src/app/api/export-quote/route.ts"
+    - "web/src/app/api/quotes/route.ts"
+    - "web/src/views/OnRoadQuotePage.tsx"
+    - "web/src/views/HomePage.tsx"
+    - "web/src/views/VehiclePage.tsx"
+    - "web/src/api/client.ts"
+  immutable:
+    - "web/scripts/bench-quote-api.ts"
+    - "web/src/server/domain/"
+    - "web/src/server/services/quote-sheet-fill.ts"
+    - "web/src/server/assets/quote-report/bang-bao-gia.xlsx"
+    - "web/src/types/"
+    - "web/src/lib/exportQuotePdf.ts"
+    - "web/src/i18n/"
+    - "web/src/components/QuoteSheet.tsx"
+    - "web/src/server/mappers.ts"
+    - "db/neon-init.sql"
+
+execution:
+  mode: serial
+  backend: worktree
+  max_concurrent: 1
+
+parallel:
+  port_strategy: none
+  shared_files: []
+
+dependencies:
+  approved: []
+
+constraints:
+  - "Preserve existing /api/* response shapes — no breaking contract changes"
+  - "Keep fee math in src/server/domain/ unchanged"
+  - "Do not add new npm dependencies without approval"
+  - "Default UI language remains Vietnamese"
+  - "Quote page layout contract unchanged (Price left, Accessories right)"
+
+stopping:
+  max_iterations: 4
+  max_hours: 1
+  plateau_iterations: 3
+  target_reached: true
+
+max_runner_up_merges_per_batch: 1

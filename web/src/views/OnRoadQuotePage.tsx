@@ -1,5 +1,5 @@
 "use client";
-import { ArrowLeft, FileSpreadsheet, FileText, Languages, RefreshCw } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, FileText, ImagePlus, Languages, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
@@ -14,7 +14,8 @@ import { QuoteSheet } from "../components/QuoteSheet";
 import { useI18n } from "../i18n/LanguageContext";
 import { languages, type Lang } from "../i18n/translations";
 import { quoteDiscountWithRelationship } from "../lib/customerRelationshipDiscount";
-import { downloadQuotePdf } from "../lib/exportQuotePdf";
+import { downloadQuotePdf, downloadQuotePng } from "../lib/exportQuotePdf";
+import type { QuoteSheetView } from "../lib/quoteSheetView";
 import {
   composeStructuredAddress,
   resolveDeliveryAddress,
@@ -95,7 +96,8 @@ export function OnRoadQuotePage() {
   const [consultingEmployees, setConsultingEmployees] = useState<ConsultingEmployee[]>([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
-  const [exporting, setExporting] = useState<"xlsx" | "pdf" | null>(null);
+  const [exporting, setExporting] = useState<"xlsx" | "pdf" | "png" | null>(null);
+  const [reportView, setReportView] = useState<QuoteSheetView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -435,6 +437,31 @@ export function OnRoadQuotePage() {
     }
   }
 
+  async function exportQuotePng() {
+    const sheet = document.getElementById("quote-sheet");
+    if (!sheet) {
+      setError(t("apiError"));
+      return;
+    }
+    setExporting("png");
+    setError(null);
+    setNotice(null);
+    try {
+      const name = customerName.trim() || t("customerName");
+      try {
+        await api.saveQuote({ ...quotePayload(name), breakdown: result ?? undefined });
+        setNotice(t("quoteHistory.saved"));
+      } catch {
+        setNotice(null);
+      }
+      await downloadQuotePng(sheet, `quote-${vehicle?.model ?? "mitsubishi"}-${exportLang}.png`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("apiError"));
+    } finally {
+      setExporting(null);
+    }
+  }
+
   function quotePayload(name: string) {
     return {
       vehicleId: id,
@@ -452,6 +479,49 @@ export function OnRoadQuotePage() {
       forgoneOfferIds: policyChoices.forgoneOfferIds,
     };
   }
+
+  useEffect(() => {
+    if (!vehicle || !result || !id || !quoteLocationId) {
+      return;
+    }
+    const name = customerName.trim() || t("customerName");
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      api
+        .getQuoteReport({ ...quotePayload(name), breakdown: result })
+        .then((view) => {
+          if (!cancelled) {
+            setReportView(view);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError(t("apiError"));
+          }
+        });
+    }, 200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    vehicle,
+    result,
+    id,
+    quoteLocationId,
+    customerName,
+    customerAddress,
+    color,
+    exportLang,
+    extras,
+    includeOptional,
+    categoryId,
+    customerFields.customerId,
+    policyChoices.usageType,
+    selectedOfferIdsKey,
+    forgoneOfferIdsKey,
+    t,
+  ]);
 
   async function recalculate() {
     if (!id || !quoteLocationId) {
@@ -536,19 +606,8 @@ export function OnRoadQuotePage() {
         )}
 
         {vehicle && result && (
-          <div
-            className="-mx-4 overflow-x-auto px-4 motion-scale-in sm:-mx-6 sm:px-6 print:mx-0 print:overflow-visible print:px-0"
-          >
-            <QuoteSheet
-              vehicle={vehicle}
-              result={result}
-              customerName={customerName}
-              customerAddress={customerAddress}
-              color={color}
-              selectedAccessories={extras.accessories}
-              language={exportLang}
-              bankLoan={resolveQuoteBankLoan(extras.bankLoan)}
-            />
+          <div className="motion-scale-in print:mx-0 print:px-0">
+            <QuoteSheet view={reportView} vehicle={vehicle} />
           </div>
         )}
 
@@ -576,11 +635,11 @@ export function OnRoadQuotePage() {
                   ))}
                 </select>
               </label>
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+              <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
                 <button
                   type="button"
                   onClick={exportQuote}
-                  disabled={exporting !== null}
+                  disabled={exporting !== null || !reportView}
                   className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md bg-ink px-4 text-sm font-semibold text-paper hover:bg-forest disabled:opacity-60 sm:h-8"
                 >
                   <FileSpreadsheet className="h-4 w-4" />
@@ -589,11 +648,20 @@ export function OnRoadQuotePage() {
                 <button
                   type="button"
                   onClick={exportQuotePdf}
-                  disabled={exporting !== null}
+                  disabled={exporting !== null || !reportView}
                   className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md border border-ink/15 bg-white px-4 text-sm font-semibold text-ink hover:bg-paper disabled:opacity-60 sm:h-8"
                 >
                   <FileText className="h-4 w-4" />
                   {exporting === "pdf" ? t("exportingPdf") : t("exportPdf")}
+                </button>
+                <button
+                  type="button"
+                  onClick={exportQuotePng}
+                  disabled={exporting !== null || !reportView}
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md border border-ink/15 bg-white px-4 text-sm font-semibold text-ink hover:bg-paper disabled:opacity-60 sm:h-8"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  {exporting === "png" ? t("exportingPng") : t("exportPng")}
                 </button>
               </div>
             </div>

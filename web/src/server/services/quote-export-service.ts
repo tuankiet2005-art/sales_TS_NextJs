@@ -1,10 +1,8 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import ExcelJS from "exceljs";
-
-import { resolveQuoteCalculation } from "./catalog-service";
 import { persistCalculatedQuote, type QuoteSaveRequest } from "./quote-history-service";
+import { resolveQuoteCalculation } from "./catalog-service";
+import { loadQuoteTemplateWorkbook } from "./quote-report-path";
 import { fillQuoteWorkbook, normalizeLanguage } from "./quote-sheet-fill";
+import { quoteSheetFillInput } from "./quote-report-service";
 
 export async function exportQuote(body: QuoteSaveRequest) {
   const calcResult = await resolveQuoteCalculation(body, body.breakdown);
@@ -15,33 +13,8 @@ export async function exportQuote(body: QuoteSaveRequest) {
 
   await persistCalculatedQuote(body, calc, vehicleRow.brand.code);
 
-  const templatePath = path.join(process.cwd(), "src/server/assets/bang-bao-gia.xlsx");
-  const template = await readFile(templatePath);
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(template as unknown as ExcelJS.Buffer);
-
-  fillQuoteWorkbook(workbook, {
-    language: body.language,
-    customerName: body.customerName,
-    customerAddress: body.customerAddress,
-    color: body.color || vehicleRow.vehicle.defaultColor || "",
-    quoteSheetName: vehicleRow.vehicle.quoteSheetName,
-    vehicleName: vehicleRow.vehicle.name,
-    model: vehicleRow.vehicle.model,
-    modelYear: vehicleRow.vehicle.modelYear,
-    deliveryNote: vehicleRow.vehicle.deliveryNote,
-    listPrice: calc.listPrice,
-    discountAmount: calc.discountAmount ?? 0,
-    salePrice: calc.salePrice ?? calc.listPrice,
-    fees: calc.fees,
-    totalMandatoryFees: calc.totalMandatoryFees,
-    totalOptionalFees: calc.totalOptionalFees,
-    accessoriesTotal: calc.accessoriesTotal ?? 0,
-    estimatedOnRoadTotal: calc.estimatedOnRoadTotal,
-    deposit: calc.deposit ?? 0,
-    bankLoan: body.bankLoan,
-    accessories: calc.accessories,
-  });
+  const workbook = await loadQuoteTemplateWorkbook();
+  fillQuoteWorkbook(workbook, quoteSheetFillInput(body, calc, vehicleRow.vehicle));
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   const buffer = new Uint8Array(arrayBuffer as ArrayBuffer);

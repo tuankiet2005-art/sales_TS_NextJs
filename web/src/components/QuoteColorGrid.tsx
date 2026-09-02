@@ -8,7 +8,7 @@ const REPORT_COLOR_SLOTS = ["Bạc", "Nâu", "Đen", "Trắng"] as const;
 function slotColors(colorNames: string[]): string[] {
   const available = colorNames.map((name) => name.trim()).filter(Boolean);
   const set = new Set(available);
-  const slots = REPORT_COLOR_SLOTS.map((name) => (set.has(name) ? name : ""));
+  const slots: string[] = REPORT_COLOR_SLOTS.map((name) => (set.has(name) ? name : ""));
   const extras = available.filter(
     (name) => !REPORT_COLOR_SLOTS.includes(name as (typeof REPORT_COLOR_SLOTS)[number]),
   );
@@ -20,17 +20,29 @@ function slotColors(colorNames: string[]): string[] {
   return slots;
 }
 
-function ColorGridCell({ name, photoSrc }: { name: string; photoSrc: string }) {
+function ColorGridCell({
+  name,
+  photoSrc,
+  compact,
+}: {
+  name: string;
+  photoSrc: string;
+  compact?: boolean;
+}) {
   return (
-    <div className="flex h-full min-h-[9.25rem] flex-col items-stretch justify-end px-1.5 pb-1.5 pt-1">
+    <div
+      className={`flex h-full flex-col items-stretch justify-end ${compact ? "min-h-0 px-1 pb-1 pt-0.5" : "min-h-[9.25rem] px-1.5 pb-1.5 pt-1"}`}
+    >
       <div className="flex min-h-0 flex-1 items-center justify-center">
         <ReportColorPhoto
           src={photoSrc}
           alt={name}
-          className="h-full max-h-[7.25rem] w-full object-contain object-center drop-shadow-[0_6px_10px_rgba(0,0,0,0.2)]"
+          className={`h-full w-full object-contain object-center drop-shadow-[0_6px_10px_rgba(0,0,0,0.2)] ${compact ? "max-h-full" : "max-h-[7.25rem]"}`}
         />
       </div>
-      <p className="mt-1 shrink-0 text-center text-[12px] font-black uppercase leading-tight tracking-wide text-[#1f1f1f]">
+      <p
+        className={`shrink-0 text-center font-black uppercase leading-tight tracking-wide text-[#1f1f1f] ${compact ? "mt-0.5 text-[9px]" : "mt-1 text-[12px]"}`}
+      >
         {colorReportLabel(name)}
       </p>
     </div>
@@ -40,14 +52,18 @@ function ColorGridCell({ name, photoSrc }: { name: string; photoSrc: string }) {
 export function QuoteColorGrid({
   colorNames,
   colorPhotos,
+  compact = false,
 }: {
   colorNames: string[];
   colorPhotos?: ColorPhotoMap | null;
+  compact?: boolean;
 }) {
   const slots = slotColors(colorNames);
 
   return (
-    <div className="grid h-full min-h-[18.5rem] grid-cols-2 grid-rows-2 border border-[#1f1f1f] bg-white">
+    <div
+      className={`grid h-full grid-cols-2 grid-rows-2 border border-[#1f1f1f] bg-white ${compact ? "min-h-0" : "min-h-[18.5rem]"}`}
+    >
       {slots.map((name, index) => {
         const cellBorder =
           index === 0
@@ -58,8 +74,10 @@ export function QuoteColorGrid({
                 ? "border-r border-[#1f1f1f]"
                 : "";
         return (
-          <div key={`${name || "empty"}-${index}`} className={`h-full ${cellBorder}`}>
-            {name ? <ColorGridCell name={name} photoSrc={colorPhoto(name, colorPhotos)} /> : null}
+          <div key={`${name || "empty"}-${index}`} className={`h-full min-h-0 ${cellBorder}`}>
+            {name ? (
+              <ColorGridCell compact={compact} name={name} photoSrc={colorPhoto(name, colorPhotos)} />
+            ) : null}
           </div>
         );
       })}

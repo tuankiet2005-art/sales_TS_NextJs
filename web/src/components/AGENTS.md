@@ -18,7 +18,7 @@ Shared chrome and quote widgets used by pages.
 - `ShaderGradientBackdrop.tsx` — animated mesh-gradient page backdrop (shadergradient.co–inspired, CSS + Motion)
 - `FadeIn.tsx` — `FadeIn`, `StaggerChildren`, `StaggerItem` reveal helpers (reactbits.dev–style entrances)
 - `QuotePricePanel` / `QuoteAccessoriesPanel` in `QuoteAdjustments.tsx` — equal left/right editors; `PanelHeader` gives icon badge and title the same `h-8` height with centered text
-- `QuoteSheet.tsx` — visual replica of the dealer Excel quote; `#quote-sheet` is the PDF source (`lib/exportQuotePdf.ts` sanitizes Tailwind `oklch`/`lab` before html2canvas)
+- `QuoteSheet.tsx` — renders the filled dealer Excel from `src/server/assets/quote-report/`; clips to bordered **A3:G42**; scales to the same width as the quote panels above (no horizontal scroll); Excel cell borders are the only frame (no extra wrapper border); `#quote-sheet` is the PDF/PNG source
 - `VehicleCard.tsx`, `ModelCard.tsx`, `ModelConfigBar.tsx`, `ModelYearPicker.tsx`, `ModelTrimPicker.tsx`, `CostBreakdown.tsx` — catalog / fee list
 - `CurrencyInput.tsx` — VND money fields (`formatVnd` on blur, raw digits while editing)
 - `ProvincePicker.tsx` — type-to-filter province list; `Ha Noi` matches `Hà Nội`
@@ -33,7 +33,7 @@ Shared chrome and quote widgets used by pages.
 - Equal two-column split (`lg:grid-cols-2`): Price panel uses a 2-column field grid (`h-12` inputs) plus Recalculate; Accessories catalog on the right
 - Accessories the client buys appear in the Accessories column (editable name, amount, labeled Remove button)
 - Accessory photos: `aspect-[16/10] object-cover`
-- `QuoteSheet` follows `bang-bao-gia.xlsx` (7-column dealer grid, same row order and labels as the template)
+- `QuoteSheet` is driven by `bang-bao-gia.xlsx` in `src/server/assets/quote-report/` (layout, labels, colors, logos). Live color photos overlay **CÁC MÀU XE**.
 - Sheet and export language follow the header switcher (`lib/quoteLabels.ts`); the quote-page selector can still override for one export
 - Color-car photos use `max-h-20 w-full object-contain` inside a fixed `h-20` frame so PDF capture does not stretch them
 - Color photos prefer `vehicle.colorPhotos[name]`, then `public/colors/`
@@ -50,7 +50,7 @@ Shared chrome and quote widgets used by pages.
 
 ## Verification
 
-- Visual check of on-road page: equal Price / Accessories columns, Excel and PDF under the sheet
+- Visual check of on-road page: equal Price / Accessories columns, Excel, PDF, and PNG under the sheet
 
 ## Child DOX Index
 

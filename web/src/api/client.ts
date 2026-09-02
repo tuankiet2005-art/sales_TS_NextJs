@@ -37,6 +37,7 @@ import type {
   VehicleSummary,
   AccessoryCatalogItem,
 } from "../types";
+import type { QuoteSheetView } from "../lib/quoteSheetView";
 import type { RelationshipDiscountOffer } from "../lib/customerRelationshipDiscount";
 import { extrasPayload } from "../lib/quoteExtras";
 import { modelToSlug } from "../lib/modelSlug";
@@ -357,6 +358,31 @@ export const api = {
     breakdown?: CostBreakdown;
   }) {
     return request<QuoteHistory>("/api/quotes", {
+      method: "POST",
+      body: JSON.stringify({
+        ...payload,
+        extras: undefined,
+        ...(payload.extras ? extrasPayload(payload.extras) : {}),
+      }),
+    });
+  },
+  getQuoteReport(payload: {
+    vehicleId: number;
+    locationId: number;
+    categoryId?: number;
+    includeOptionalInsurance: boolean;
+    customerId?: number;
+    customerName: string;
+    customerAddress?: string;
+    color?: string;
+    language?: string;
+    extras?: QuoteExtras;
+    usageType?: UsageType;
+    selectedOfferIds?: string[];
+    forgoneOfferIds?: string[];
+    breakdown?: CostBreakdown;
+  }) {
+    return request<QuoteSheetView>("/api/quote-report", {
       method: "POST",
       body: JSON.stringify({
         ...payload,

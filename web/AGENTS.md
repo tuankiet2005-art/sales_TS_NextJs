@@ -48,14 +48,14 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 - Data-fetch benchmark: `npx tsx scripts/bench-data-fetch.ts`
 - Vehicle confirm saves `VehicleDetail` to `sessionStorage` (`lib/vehicleCache.ts`); quote page uses cached vehicle + `POST /api/calculate-on-road-cost` when cache exists, else `POST /api/quote-load`
 - Quote export/save accept optional client `breakdown` to skip redundant `calculateOnRoad` when `vehicleId` matches (`resolveQuoteCalculation`)
-- Excel export fills `src/server/assets/bang-bao-gia.xlsx` by labels on `vehicles.quote_sheet_name` (never hardcoded cells on sheet 0); unused tabs stay hidden
-- PDF export (`src/lib/exportQuotePdf.ts`) inlines computed styles and strips stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`/`lab` (canvas pixel sampling converts modern color functions to `rgb`/`rgba`)
+- Excel export fills `src/server/assets/quote-report/bang-bao-gia.xlsx` (`{{tokens}}` on `vehicles.quote_sheet_name`; unused tabs stay hidden). Replacing that file changes the on-screen report, Excel, PDF, and PNG.
+- PDF and PNG export (`src/lib/exportQuotePdf.ts`) inline computed styles and strip stylesheets so html2canvas 1.4.1 does not parse Tailwind v4 `oklch`/`lab` (canvas pixel sampling converts modern color functions to `rgb`/`rgba`)
 - Default UI language Vietnamese (`vi`); match `frontend/src/i18n/` behavior when UI is ported
 - Money display uses `lib/format.ts`: `formatVnd` for UI (₫ symbol), `formatQuoteAmount` for the dealer quote sheet beside "ĐVT: VNĐ"; editable money fields use `CurrencyInput`
-- Auth: HMAC bearer tokens with roles — `admin` (catalog + quotes) or `sales` (quotes only). Login via `POST /api/auth/login`. Operator APIs (`/api/quotes/**`, `/api/calculate-on-road-cost`, `/api/quote-load`, `/api/export-quote`) require a valid token; `/api/admin/**` requires the `admin` role. Catalog reference GETs stay public for cache parity
+- Auth: HMAC bearer tokens with roles — `admin` (catalog + quotes) or `sales` (quotes only). Login via `POST /api/auth/login`. Operator APIs (`/api/quotes/**`, `/api/calculate-on-road-cost`, `/api/quote-load`, `/api/export-quote`, `/api/quote-report`) require a valid token; `/api/admin/**` requires the `admin` role. Catalog reference GETs stay public for cache parity
 - Layout is mobile-first: phones stack, tablets use two columns where the contract needs them, desktop keeps the wide catalog
 - UI motion uses [Motion](https://motion.dev/) (`motion` package) with shared variants in `lib/motionVariants.ts`, `MotionProvider` + `ShaderGradientBackdrop` in root layout, and `FadeIn`/`StaggerChildren` helpers; CSS tokens in `globals.css` and `lib/motion.ts` remain for lightweight cases; honor `prefers-reduced-motion`
-- Quote page: Price left and Accessories right are equal columns from `md` up; they stack on phones. The Excel quote sheet stays desktop-width and scrolls sideways on small screens
+- Quote page: Price left and Accessories right are equal columns from `md` up; they stack on phones. The quote report clips to bordered **A3:G42** and scales to fit the page width (no horizontal scroll)
 - Header: compact bar + hamburger below `lg`; language switcher stays on the bar
 - Do not add the full shadcn component kit unless asked
 - Favicon: drop a PNG, JPG, WebP, GIF, or SVG in `public/brand/favicon-drop/`. `npm run sync:favicon` writes `src/app/icon.png` (tab) and `src/app/apple-icon.png`, removes default `src/app/favicon.ico`, commits, and pushes. Local-only preview: `npm run apply:favicon`
@@ -75,6 +75,7 @@ Same `/api/*` contract as `backend/AGENTS.md` and `frontend/src/api/client.ts`. 
 | `src/server/catalog/` | Registration-photo import (`npm run import:catalog`); WebP blobs in `vehicle_images` table |
 | `src/server/config/AGENTS.md` | YAML policy defaults, `app_settings` overrides |
 | `src/server/domain/AGENTS.md` | Fee rule resolution, dealer pricing, on-road cost assembly |
+| `src/server/assets/quote-report/AGENTS.md` | Signed dealer Excel; source of truth for quote layout |
 
 <!-- BEGIN:nextjs-agent-rules -->
 
