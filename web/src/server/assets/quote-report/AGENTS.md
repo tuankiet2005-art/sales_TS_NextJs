@@ -15,7 +15,7 @@ Dealer quote layout source of truth. The on-screen report, Excel export, PDF, an
 - Fill uses named cells and `{{token}}` placeholders in `quote-sheet-fill.ts`. Do not hardcode layout in app code.
 - Header includes Mitsubishi logo and **BẢNG BÁO GIÁ CHI TIẾT**.
 - Gifts and fees come from the live quote calculation.
-- Bottom merged cell receives a 2×2 color photo grid overlay (`QuoteColorGrid` + `ReportColorPhoto`) on screen; template car placeholders under **CÁC MÀU XE** are hidden. Excel export uses the template as-is.
+- Bottom merged cell receives a dynamic 1–5 photo grid overlay (`QuoteColorGrid` + `ReportColorPhoto`, `lib/colorGridLayout.ts`) on screen; template car placeholders under **CÁC MÀU XE** are hidden. Word export composites the same layout via `quote-docx-fill.ts`. Excel export uses the template as-is.
 
 ## Work Guidance
 

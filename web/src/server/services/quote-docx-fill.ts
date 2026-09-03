@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import PizZip from "pizzip";
 import sharp from "sharp";
 
+import { colorGridCellRects } from "@/lib/colorGridLayout";
 import { formatQuoteAmount } from "@/lib/format";
 import { translateQuoteLabel } from "@/lib/quoteLabels";
 import type { Lang } from "@/i18n/translations";
@@ -187,32 +188,37 @@ async function embedColorGridImage(xml: string, zip: PizZip, images: QuoteColorG
 }
 
 async function buildColorGridComposite(images: QuoteColorGridImage[]) {
-  const cellW = 250;
-  const cellH = 150;
-  const slots: Array<QuoteColorGridImage | null> = [null, null, null, null];
-  for (let index = 0; index < Math.min(images.length, 4); index += 1) {
-    slots[index] = images[index];
+  const count = Math.min(images.length, 5);
+  if (count <= 0) {
+    return null;
   }
 
+  const canvasWidth = 500;
+  const canvasHeight = 300;
+  const padding = count === 1 ? 12 : 8;
+  const rects = colorGridCellRects(count, canvasWidth, canvasHeight, padding);
   const layers: sharp.OverlayOptions[] = [];
-  for (let index = 0; index < slots.length; index += 1) {
-    const item = slots[index];
-    if (!item) {
+
+  for (let index = 0; index < count; index += 1) {
+    const item = images[index];
+    const rect = rects[index];
+    if (!item || !rect) {
       continue;
     }
     const resized = await sharp(item.buffer)
-      .resize(cellW - 16, cellH - 28, {
+      .resize(rect.width, rect.height, {
         fit: "contain",
         background: { r: 255, g: 255, b: 255, alpha: 0 },
       })
       .png()
       .toBuffer();
-    const col = index % 2;
-    const row = Math.floor(index / 2);
+    const metadata = await sharp(resized).metadata();
+    const imageWidth = metadata.width ?? rect.width;
+    const imageHeight = metadata.height ?? rect.height;
     layers.push({
       input: resized,
-      left: col * cellW + 8,
-      top: row * cellH + 8,
+      left: rect.left + Math.round((rect.width - imageWidth) / 2),
+      top: rect.top + Math.round((rect.height - imageHeight) / 2),
     });
   }
 
@@ -222,8 +228,8 @@ async function buildColorGridComposite(images: QuoteColorGridImage[]) {
 
   return sharp({
     create: {
-      width: cellW * 2,
-      height: cellH * 2,
+      width: canvasWidth,
+      height: canvasHeight,
       channels: 4,
       background: { r: 255, g: 255, b: 255, alpha: 1 },
     },

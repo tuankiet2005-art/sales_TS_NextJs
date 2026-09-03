@@ -101,7 +101,7 @@ export function QuoteSheet({
         ))}
         {view.colorGrid ? (
           <div
-            className="absolute z-10 box-border overflow-hidden border-r border-[#1f1f1f] bg-white"
+            className="absolute z-10 box-border overflow-hidden bg-white"
             style={view.colorGrid}
           >
             <QuoteColorGrid

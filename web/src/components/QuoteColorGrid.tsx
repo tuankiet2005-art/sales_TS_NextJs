@@ -1,24 +1,7 @@
 import type { ColorPhotoMap } from "../lib/colorPhotos";
+import { colorGridRows, orderedReportColors } from "../lib/colorGridLayout";
 import { colorPhoto, colorReportLabel } from "../lib/vehicleColor";
 import { ReportColorPhoto } from "./ReportColorPhoto";
-
-/** Excel quote-sheet slot order: top-left → top-right → bottom-left → bottom-right. */
-const REPORT_COLOR_SLOTS = ["Bạc", "Nâu", "Đen", "Trắng"] as const;
-
-function slotColors(colorNames: string[]): string[] {
-  const available = colorNames.map((name) => name.trim()).filter(Boolean);
-  const set = new Set(available);
-  const slots: string[] = REPORT_COLOR_SLOTS.map((name) => (set.has(name) ? name : ""));
-  const extras = available.filter(
-    (name) => !REPORT_COLOR_SLOTS.includes(name as (typeof REPORT_COLOR_SLOTS)[number]),
-  );
-  for (let index = 0; index < slots.length && extras.length > 0; index += 1) {
-    if (!slots[index]) {
-      slots[index] = extras.shift()!;
-    }
-  }
-  return slots;
-}
 
 function ColorGridCell({
   name,
@@ -33,7 +16,7 @@ function ColorGridCell({
 }) {
   if (photosOnly) {
     return (
-      <div className={`flex h-full w-full items-center justify-center ${compact ? "min-h-0 p-1" : "p-2"}`}>
+      <div className="flex h-full w-full min-h-0 items-center justify-center p-1">
         <ReportColorPhoto
           src={photoSrc}
           alt={name}
@@ -77,33 +60,48 @@ export function QuoteColorGrid({
   frameless?: boolean;
   photosOnly?: boolean;
 }) {
-  const slots = slotColors(colorNames);
-  const showInternalBorders = !photosOnly && !frameless;
+  const colors = orderedReportColors(colorNames);
+  const rows = colorGridRows(colors.length);
+  const showInternalBorders = !photosOnly && !frameless && colors.length === 4;
+
+  if (!rows.length) {
+    return <div className="h-full w-full bg-white" />;
+  }
 
   return (
     <div
-      className={`grid h-full w-full grid-cols-2 grid-rows-2 bg-white ${frameless || photosOnly ? "" : "border border-[#1f1f1f]"} ${compact ? "min-h-0" : "min-h-[18.5rem]"}`}
+      className={`flex h-full w-full flex-col bg-white ${frameless || photosOnly ? "" : "border border-[#1f1f1f]"} ${compact ? "min-h-0" : "min-h-[18.5rem]"}`}
     >
-      {slots.map((name, index) => {
-        const cellBorder = !showInternalBorders
-          ? ""
-          : index === 0
-            ? "border-r border-b border-[#1f1f1f]"
-            : index === 1
-              ? "border-b border-[#1f1f1f]"
-              : index === 2
-                ? "border-r border-[#1f1f1f]"
-                : "";
+      {rows.map((row, rowIndex) => {
+        const maxCols = Math.max(...rows.map((entry) => entry.length));
+        const centerRow = row.length < maxCols;
+
         return (
-          <div key={`${name || "empty"}-${index}`} className={`h-full min-h-0 ${cellBorder}`}>
-            {name ? (
-              <ColorGridCell
-                compact={compact}
-                photosOnly={photosOnly}
-                name={name}
-                photoSrc={colorPhoto(name, colorPhotos)}
-              />
-            ) : null}
+          <div
+            key={`row-${rowIndex}`}
+            className={`flex min-h-0 flex-1 ${centerRow ? "justify-center" : ""} ${showInternalBorders && rowIndex === 0 ? "border-b border-[#1f1f1f]" : ""}`}
+          >
+            {row.map((colorIndex, colIndex) => {
+              const name = colors[colorIndex]!;
+              const cellBorder =
+                showInternalBorders && colIndex === 0 && row.length > 1
+                  ? "border-r border-[#1f1f1f]"
+                  : "";
+              return (
+                <div
+                  key={`${name}-${colorIndex}`}
+                  className={`h-full min-h-0 ${cellBorder}`}
+                  style={{ flex: `1 1 ${100 / maxCols}%` }}
+                >
+                  <ColorGridCell
+                    compact={compact}
+                    photosOnly={photosOnly}
+                    name={name}
+                    photoSrc={colorPhoto(name, colorPhotos)}
+                  />
+                </div>
+              );
+            })}
           </div>
         );
       })}
