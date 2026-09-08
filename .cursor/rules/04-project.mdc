@@ -9,33 +9,32 @@ alwaysApply: true
 
 ## What this is
 
-Next.js monolith for Vietnam vehicle catalog and location-based on-road cost quotes. App lives in `web/`; Neon PostgreSQL is the database.
+Vietnam vehicle catalog and location-based on-road cost quotes. Split monorepo: Next.js UI in `apps/frontend`, Express API in `apps/backend`, shared types in `packages/shared`. Neon PostgreSQL is the database.
 
 ## Run
 
 | Command | Effect |
 |---|---|
-| `npm run dev` or `npm start` (repo root) | Next.js on `:3000` (`web/`) |
-| `npm run dev` (from `web/`) | Same — local development |
-| `npm run build && npm start` (from `web/`) | Production server (needs a complete `.next` build) |
-
-Do not expect a Vite `:5173` or Spring Boot `:8002` process. There is no `frontend/` + `backend/` split.
+| `npm run dev` (repo root) | Backend `:4000` + frontend `:3000` |
+| `npm run dev:backend` | API only (`apps/backend`) |
+| `npm run dev:frontend` | UI only (`apps/frontend`) |
+| `npm run build` | Build both apps |
+| `npm run test` | Run tests in both workspaces |
 
 ## Stack
 
-- **App:** Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4 (`web/`)
-- **API:** Next.js route handlers under `web/src/app/api/`
-- **Database:** Neon PostgreSQL via Drizzle (`web/src/server/db/`)
+- **Frontend:** Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4 (`apps/frontend/`)
+- **Backend:** Express API, route handlers under `apps/backend/src/routes/handlers/`
+- **Database:** Neon PostgreSQL via Drizzle (`apps/backend/src/server/db/`)
 
 ## Key paths
 
 | Area | Contract doc |
 |---|---|
 | Repo-wide DOX | `AGENTS.md` |
-| Next.js app | `web/AGENTS.md` |
+| Frontend | `apps/frontend/AGENTS.md` |
+| Backend modules | `apps/backend/src/server/modules/AGENTS.md` |
 | Neon SQL | `db/AGENTS.md` |
-| Domain vocabulary | `CONCEPTS.md` |
-| Past solutions | `docs/solutions/` (search before debugging) |
 | CE skills | `.cursor/skills/` |
 
 ## Auth & security notes
@@ -46,6 +45,6 @@ Do not expect a Vite `:5173` or Spring Boot `:8002` process. There is no `fronte
 
 ## Environment
 
-- Copy `web/.env.example` → `web/.env.local`
+- Copy `.env.example` → `apps/backend/.env.local` and `apps/frontend/.env.local`
 - Quote `ADMIN_PASSWORD` — unquoted `!` breaks bash `source`. Do not `source` `.env.local`
-- Production: Vercel Root Directory = `web` + Neon `DATABASE_URL`
+- Production: Vercel Root Directory = `apps/frontend` + backend on any Node host + Neon `DATABASE_URL`

@@ -1,0 +1,44 @@
+"use client";
+
+import { motion } from "motion/react";
+import { AdminAuthProvider, useAdminAuth } from "@/features/auth/context/AdminAuthContext";
+import { sessionGateView } from "@/features/auth/context/sessionGate";
+import { LoadingBlock } from "@/features/shared/components/LoadingState";
+import { LoginScreen } from "@/features/auth/components/LoginScreen";
+import { PageMotion } from "@/features/shared/components/PageMotion";
+import { LanguageProvider, useI18n } from "@/i18n/LanguageContext";
+
+function Gate({ children }: { children: React.ReactNode }) {
+  const { ready, signedIn } = useAdminAuth();
+  const { t } = useI18n();
+  const view = sessionGateView(ready, signedIn);
+  if (view === "pending") {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex min-h-screen items-center justify-center bg-paper/60 backdrop-blur-sm"
+      >
+        <LoadingBlock message={t("loadingApp")} size="lg" />
+      </motion.div>
+    );
+  }
+  if (view === "login") {
+    return (
+      <PageMotion>
+        <LoginScreen />
+      </PageMotion>
+    );
+  }
+  return <PageMotion>{children}</PageMotion>;
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <LanguageProvider>
+      <AdminAuthProvider>
+        <Gate>{children}</Gate>
+      </AdminAuthProvider>
+    </LanguageProvider>
+  );
+}

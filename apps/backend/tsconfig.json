@@ -1,0 +1,17 @@
+{
+  "extends": "@onroad/tsconfig/node.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@repo/port-in-use-hint": ["../../scripts/port-in-use-hint.mjs"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}

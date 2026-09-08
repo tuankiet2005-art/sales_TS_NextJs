@@ -1,0 +1,23 @@
+{
+  "name": "@onroad/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": "./src/types/index.ts",
+    "./format": "./src/format.ts",
+    "./customer/customerRelationships": "./src/customer/customerRelationships.ts",
+    "./customer/customerRelationshipDiscount": "./src/customer/customerRelationshipDiscount.ts",
+    "./customer/customerAddress.types": "./src/customer/customerAddress.types.ts",
+    "./customer/customerValidation": "./src/customer/customerValidation.ts",
+    "./customer/customerApiError": "./src/customer/customerApiError.ts",
+    "./catalog/vehicleImageUrl": "./src/catalog/vehicleImageUrl.ts",
+    "./catalog/colorPhotos": "./src/catalog/colorPhotos.ts",
+    "./catalog/modelSlug": "./src/catalog/modelSlug.ts",
+    "./quote/colorGridLayout": "./src/quote/colorGridLayout.ts",
+    "./quote/quoteLabels": "./src/quote/quoteLabels.ts",
+    "./quote/quoteSheetView": "./src/quote/quoteSheetView.ts",
+    "./quote/bankLoanValidation": "./src/quote/bankLoanValidation.ts",
+    "./i18n/lang": "./src/i18n/lang.ts"
+  }
+}

@@ -1,11 +1,19 @@
 {
   "name": "onroad",
   "private": true,
-  "description": "Local convenience scripts. Vercel Root Directory must stay web/.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "npm --prefix web run dev",
-    "build": "npm --prefix web run build",
-    "start": "npm --prefix web run start",
-    "test": "npm --prefix web run test"
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @onroad/backend\" \"npm run dev -w @onroad/frontend\"",
+    "dev:backend": "npm run dev -w @onroad/backend",
+    "dev:frontend": "npm run dev -w @onroad/frontend",
+    "build": "npm run build -w @onroad/backend && npm run build -w @onroad/frontend",
+    "test": "npm run test -w @onroad/backend && npm run test -w @onroad/frontend",
+    "start": "concurrently -k -n api,web -c blue,green \"npm run start -w @onroad/backend\" \"npm run start -w @onroad/frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }
