@@ -1,9 +1,20 @@
-import { removeBackground } from "@imgly/background-removal-node";
 import sharp from "sharp";
 
-import { isReportColorBackgroundRemovedOnServer } from "./reportColorBgRemoval";
+import { isReportColorBackgroundRemovedOnServer } from "./reportColorBgRemoval.js";
 
-export { isReportColorBackgroundRemovedOnServer } from "./reportColorBgRemoval";
+export { isReportColorBackgroundRemovedOnServer } from "./reportColorBgRemoval.js";
+
+async function removeBackgroundFromPng(pngBuffer: Buffer): Promise<Buffer> {
+  const { removeBackground } = await import("@imgly/background-removal-node");
+  const cutout = await removeBackground(new Blob([new Uint8Array(pngBuffer)], { type: "image/png" }), {
+    model: "medium",
+    output: {
+      format: "image/png",
+      quality: 1,
+    },
+  });
+  return Buffer.from(await cutout.arrayBuffer());
+}
 
 async function encodeReportColorPhotoWebp(buffer: Buffer): Promise<Buffer> {
   return sharp(buffer)
@@ -19,14 +30,7 @@ async function encodeReportColorPhotoWebp(buffer: Buffer): Promise<Buffer> {
 /** Remove background and encode as WebP for batch reprocessing scripts. */
 export async function processVehicleImageBuffer(buffer: Buffer): Promise<Buffer> {
   const pngBuffer = await sharp(buffer).png().toBuffer();
-  const cutout = await removeBackground(new Blob([new Uint8Array(pngBuffer)], { type: "image/png" }), {
-    model: "medium",
-    output: {
-      format: "image/png",
-      quality: 1,
-    },
-  });
-  const pngCutout = Buffer.from(await cutout.arrayBuffer());
+  const pngCutout = await removeBackgroundFromPng(pngBuffer);
   return sharp(pngCutout).webp({ quality: 85, alphaQuality: 90 }).toBuffer();
 }
 
@@ -38,14 +42,7 @@ export async function processReportColorPhotoBuffer(buffer: Buffer): Promise<Buf
 
   try {
     const pngBuffer = await sharp(buffer).rotate().png().toBuffer();
-    const cutout = await removeBackground(new Blob([new Uint8Array(pngBuffer)], { type: "image/png" }), {
-      model: "medium",
-      output: {
-        format: "image/png",
-        quality: 1,
-      },
-    });
-    const pngCutout = Buffer.from(await cutout.arrayBuffer());
+    const pngCutout = await removeBackgroundFromPng(pngBuffer);
     return sharp(pngCutout)
       .webp({
         quality: 92,

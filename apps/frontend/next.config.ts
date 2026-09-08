@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   turbopack: {},
   transpilePackages: ["@onroad/shared"],
   serverExternalPackages: [
-    "sharp",
     "@imgly/background-removal-node",
+    "sharp",
     "exceljs",
     "@neondatabase/serverless",
   ],

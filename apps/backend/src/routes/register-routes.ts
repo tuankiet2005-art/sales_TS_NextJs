@@ -16,7 +16,8 @@ export async function registerApiRoutes(app: Express) {
     return sb.length - sa.length;
   });
 
-  for (const { path, handlers } of routes) {
+  for (const { path, loadHandlers } of routes) {
+    const handlers = (await loadHandlers()) as RouteExports;
     app.all(path, adaptHandlers(handlers as RouteExports));
     console.log(`  ${path}`);
   }

@@ -5,7 +5,7 @@ import type { RouteExports } from "./shared/express-adapter.js";
 import { ROUTE_MANIFEST } from "./routes/route-manifest.js";
 
 type RouteMatcher = {
-  handlers: RouteExports;
+  loadHandlers: () => Promise<unknown>;
   matchPath: (pathname: string) => false | { params: Record<string, string> };
 };
 
@@ -21,8 +21,8 @@ const ROUTE_MATCHERS: RouteMatcher[] = [...ROUTE_MANIFEST]
     if (sa.dynamic !== sb.dynamic) return sa.dynamic - sb.dynamic;
     return sb.length - sa.length;
   })
-  .map(({ path, handlers }) => ({
-    handlers: handlers as RouteExports,
+  .map(({ loadHandlers, path }) => ({
+    loadHandlers,
     matchPath: match(path, { decode: decodeURIComponent }),
   }));
 
@@ -30,10 +30,11 @@ export async function dispatchApiRequest(request: NextRequest): Promise<Response
   const pathname = new URL(request.url).pathname;
   const method = request.method as keyof RouteExports;
 
-  for (const { handlers, matchPath } of ROUTE_MATCHERS) {
+  for (const { loadHandlers, matchPath } of ROUTE_MATCHERS) {
     const matched = matchPath(pathname);
     if (!matched) continue;
 
+    const handlers = (await loadHandlers()) as RouteExports;
     const handler = handlers[method];
     if (!handler) {
       return Response.json({ message: "Method not allowed" }, { status: 405 });
