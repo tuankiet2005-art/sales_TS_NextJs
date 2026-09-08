@@ -37,7 +37,7 @@ Shared chrome and quote widgets used by pages.
 - Sheet and export language follow the header switcher (`@onroad/shared/quote/quoteLabels`); the quote-page selector can still override for one export
 - Color-car photos use `max-h-20 w-full object-contain` inside a fixed `h-20` frame so PDF capture does not stretch them
 - Color photos prefer `vehicle.colorPhotos[name]` (Neon `vehicle_images`); missing colors fall back to an inline swatch from `colorHex()`
-- Quote sheet **CÁC MÀU XE** uses `QuoteColorGrid` + `ReportColorPhoto`; layout scales 1–5 photos evenly (`lib/colorGridLayout.ts` — one full frame, pairs side-by-side, up to 3+2 for five); `GET /api/report-color-photo/[id]`
+- Quote sheet **CÁC MÀU XE** uses `QuoteColorGrid` + `ReportColorPhoto`; layout is a centered 2-column grid (`lib/colorGridLayout.ts` — 1 full frame, 2×N rows, odd last row centered); up to six colors; `GET /api/report-color-photo/[id]`
 - Icons from `lucide-react` only
 - Motion: `motion` package + `lib/motionVariants.ts`; `MotionProvider` and `ShaderGradientBackdrop` in root layout; `FadeIn` / `StaggerChildren` for reveals; CSS tokens in `globals.css` and `lib/motion.ts` for simple cases; honor `prefers-reduced-motion`
 - Compact form rows: `.form-fields-row` / `.form-fields-row--auto` / `.form-fields-row--4` / `.form-fields-row--bank-loan-metrics` in `globals.css` — bank loan rate/term/fixed stay narrow; consultant field expands

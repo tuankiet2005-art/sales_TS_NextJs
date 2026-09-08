@@ -125,12 +125,16 @@ export function QuoteSheet({
         {view.colorGrid ? (
           <div
             className="absolute z-10 box-border overflow-hidden bg-white"
-            style={view.colorGrid}
+            style={{
+              left: view.colorGrid.left,
+              top: view.colorGrid.top,
+              width: view.colorGrid.width,
+              height: view.colorGrid.height,
+            }}
           >
             <QuoteColorGrid
               compact
-              frameless
-              photosOnly
+              quiet
               colorNames={colors(vehicle)}
               colorPhotos={vehicle.colorPhotos}
             />

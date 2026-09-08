@@ -3,16 +3,23 @@ import { platform } from "node:os";
 
 /**
  * @param {number} port
+ */
+export function formatStopPortCommand(port) {
+  const isWin = platform() === "win32";
+  return isWin
+    ? `Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`
+    : `kill -9 $(lsof -t -i:${port})`;
+}
+
+/**
+ * @param {number} port
  * @param {string} [service]
  */
 export function formatPortInUseMessage(port, service = "server") {
-  const isWin = platform() === "win32";
   const reason = `Port ${port} is already in use — another process is listening, so the ${service} cannot start.`;
-  const solution = isWin
-    ? `Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`
-    : `kill -9 $(lsof -t -i:${port})`;
+  const command = formatStopPortCommand(port);
 
-  return `\n${reason}\nSolution: ${solution}\n`;
+  return `\n${reason}\n\n${command}\n`;
 }
 
 /**

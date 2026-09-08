@@ -188,7 +188,7 @@ async function embedColorGridImage(xml: string, zip: PizZip, images: QuoteColorG
 }
 
 async function buildColorGridComposite(images: QuoteColorGridImage[]) {
-  const count = Math.min(images.length, 5);
+  const count = Math.min(images.length, 6);
   if (count <= 0) {
     return null;
   }

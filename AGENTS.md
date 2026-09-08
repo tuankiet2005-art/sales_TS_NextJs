@@ -91,6 +91,8 @@ Default section order:
 | `apps/backend/src/server/modules/AGENTS.md` | Express API domain modules (port 4000) |
 | `packages/shared/` | Shared types and pure utilities |
 | `db/AGENTS.md` | Operator SQL for Neon (`neon-init.sql`); schema source of truth for postgres |
+| `docs/solutions/` | Documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter (`module`, `tags`, `problem_type`) |
+| `CONCEPTS.md` | Shared domain vocabulary (entities, named processes, status concepts) |
 
 ### Project facts
 

@@ -396,18 +396,23 @@ export function ModelPage() {
                   </button>
                 </div>
 
-                <label className="mt-5 block text-sm font-medium">{t("vehicleCategory")}</label>
-                <select
-                  value={categoryId ?? ""}
-                  onChange={(event) => setCategoryId(Number(event.target.value))}
-                  className="mt-1 h-12 w-full rounded-xl border border-ink/10 bg-paper px-3"
-                >
+                <p className="mt-5 text-sm font-medium">{t("vehicleCategory")}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
                   {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setCategoryId(category.id)}
+                      className={`rounded-xl border px-3 py-2 text-left text-sm ${motionInteractive} ${
+                        categoryId === category.id
+                          ? "border-ink bg-mist font-semibold text-ink"
+                          : "border-ink/10 bg-white text-ink/80 hover:border-ink/20"
+                      }`}
+                    >
                       {t(`category.${category.code}`)}
-                    </option>
+                    </button>
                   ))}
-                </select>
+                </div>
                 {categoryId !== vehicle.category.id && (
                   <p className="mt-2 text-xs text-copper">{t("categoryOverride")}</p>
                 )}

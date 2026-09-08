@@ -1,31 +1,54 @@
 import type { ColorPhotoMap } from "@/features/catalog/lib/colorPhotos";
-import { colorGridRows, orderedReportColors } from "@/features/quote/lib/colorGridLayout";
 import { colorPhoto, colorReportLabel } from "@/features/catalog/lib/vehicleColor";
+import { colorGridRows, orderedReportColors } from "@onroad/shared/quote/colorGridLayout";
 import { ReportColorPhoto } from "./ReportColorPhoto";
+
+type LabelPosition = "below" | "left" | "right";
+
+function labelPositionForCell(colIndex: number, colCount: number): LabelPosition {
+  if (colCount < 2) {
+    return "below";
+  }
+  return colIndex === 0 ? "left" : "right";
+}
 
 function ColorGridCell({
   name,
   photoSrc,
   compact,
+  labelPosition = "below",
+  quiet = false,
 }: {
   name: string;
   photoSrc: string;
   compact?: boolean;
+  labelPosition?: LabelPosition;
+  quiet?: boolean;
 }) {
-  return (
-    <div
-      className={`flex h-full flex-col items-stretch justify-end ${compact ? "min-h-0 px-1 pb-1 pt-0.5" : "min-h-[9.25rem] px-1.5 pb-1.5 pt-1"}`}
-    >
-      <div className="flex min-h-0 flex-1 items-center justify-center">
-        <ReportColorPhoto
-          src={photoSrc}
-          alt={name}
-          className={`h-full w-full object-contain object-center drop-shadow-[0_6px_10px_rgba(0,0,0,0.2)] ${compact ? "max-h-full" : "max-h-[7.25rem]"}`}
-        />
-      </div>
-      <p
-        className={`shrink-0 text-center font-black uppercase leading-tight tracking-wide text-[#1f1f1f] ${compact ? "mt-0.5 text-[12px]" : "mt-1 text-[12px]"}`}
+  const labelClass = `shrink-0 font-black uppercase leading-none tracking-wide text-[#1f1f1f] ${compact ? "text-[10px]" : "text-[11px]"}`;
+  const photoClass = `block h-full max-h-full w-full max-w-full object-contain object-center ${quiet ? "" : "drop-shadow-[0_4px_8px_rgba(0,0,0,0.18)]"}`;
+  const label = <p className={`${labelClass} self-center`}>{colorReportLabel(name)}</p>;
+  const photo = (
+    <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+      <ReportColorPhoto src={photoSrc} alt={name} quiet={quiet} className={photoClass} />
+    </div>
+  );
+
+  if (labelPosition === "left" || labelPosition === "right") {
+    return (
+      <div
+        className={`flex h-full min-h-0 items-stretch gap-0.5 ${compact ? "px-0.5 py-0" : "px-1 py-0.5"} ${labelPosition === "right" ? "flex-row-reverse" : ""}`}
       >
+        {label}
+        {photo}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex h-full min-h-0 flex-col ${compact ? "px-1 py-0.5" : "px-1.5 py-1"}`}>
+      {photo}
+      <p className={`shrink-0 text-center ${labelClass} ${compact ? "mt-0.5" : "mt-1"}`}>
         {colorReportLabel(name)}
       </p>
     </div>
@@ -36,102 +59,56 @@ export function QuoteColorGrid({
   colorNames,
   colorPhotos,
   compact = false,
-  frameless = false,
-  photosOnly = false,
+  quiet = false,
 }: {
   colorNames: string[];
   colorPhotos?: ColorPhotoMap | null;
   compact?: boolean;
-  frameless?: boolean;
-  photosOnly?: boolean;
+  quiet?: boolean;
 }) {
   const colors = orderedReportColors(colorNames);
   const rows = colorGridRows(colors.length);
-  const showInternalBorders = !photosOnly && !frameless && colors.length === 4;
 
   if (!rows.length) {
     return <div className="h-full w-full bg-white" />;
   }
 
   const maxCols = Math.max(...rows.map((entry) => entry.length));
-  const gap = 4;
-
-  if (photosOnly) {
-    return (
-      <div
-        className="grid h-full w-full place-content-center bg-white"
-        style={{
-          gridTemplateColumns: `repeat(${maxCols}, max-content)`,
-          gridTemplateRows: `repeat(${rows.length}, max-content)`,
-          gap: `${gap}px`,
-          ["--photo-max-h" as string]: `calc((100% - ${(rows.length - 1) * gap}px) / ${rows.length})`,
-          ["--photo-max-w" as string]: `calc((100% - ${(maxCols - 1) * gap}px) / ${maxCols})`,
-        }}
-      >
-        {rows.map((row, rowIndex) => {
-          const centerRow = row.length < maxCols;
-          const colOffset = centerRow ? Math.floor((maxCols - row.length) / 2) : 0;
-
-          return row.map((colorIndex, colIndex) => {
-            const name = colors[colorIndex]!;
-            return (
-              <div
-                key={`${name}-${colorIndex}`}
-                style={{
-                  gridRow: rowIndex + 1,
-                  gridColumn: colOffset + colIndex + 1,
-                }}
-              >
-                <ReportColorPhoto
-                  src={colorPhoto(name, colorPhotos)}
-                  alt={name}
-                  quiet
-                  className="block object-contain object-center"
-                  style={{ maxHeight: "var(--photo-max-h)", maxWidth: "var(--photo-max-w)" }}
-                />
-              </div>
-            );
-          });
-        })}
-      </div>
-    );
-  }
 
   return (
     <div
-      className={`flex h-full w-full flex-col bg-white ${frameless ? "" : "border border-[#1f1f1f]"} ${compact ? "min-h-0" : "min-h-[18.5rem]"}`}
+      className={`box-border h-full w-full overflow-hidden border border-[#1f1f1f] bg-white ${compact ? "min-h-0 p-0.5" : "min-h-[18.5rem] p-1"}`}
     >
-      {rows.map((row, rowIndex) => {
-        const centerRow = row.length < maxCols;
-
-        return (
-          <div
-            key={`row-${rowIndex}`}
-            className={`flex min-h-0 flex-1 ${centerRow ? "justify-center" : ""} ${showInternalBorders && rowIndex === 0 ? "border-b border-[#1f1f1f]" : ""}`}
-          >
-            {row.map((colorIndex, colIndex) => {
-              const name = colors[colorIndex]!;
-              const cellBorder =
-                showInternalBorders && colIndex === 0 && row.length > 1
-                  ? "border-r border-[#1f1f1f]"
-                  : "";
-              return (
-                <div
-                  key={`${name}-${colorIndex}`}
-                  className={`h-full min-h-0 ${cellBorder}`}
-                  style={{ flex: `1 1 ${100 / maxCols}%` }}
-                >
+      <div
+        className="grid h-full min-h-0 w-full"
+        style={{
+          gridTemplateColumns: `repeat(${maxCols}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${rows.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {rows.flatMap((row) =>
+          row.map((colorIndex, colIndex) => {
+            const name = colors[colorIndex]!;
+            const isShortRow = row.length < maxCols;
+            return (
+              <div
+                key={`${name}-${colorIndex}`}
+                className={`min-h-0 min-w-0 overflow-hidden ${isShortRow ? "col-span-full flex justify-center" : ""}`}
+              >
+                <div className={`h-full min-h-0 ${isShortRow ? "w-1/2" : "w-full"}`}>
                   <ColorGridCell
                     compact={compact}
+                    quiet={quiet}
+                    labelPosition={labelPositionForCell(colIndex, row.length)}
                     name={name}
                     photoSrc={colorPhoto(name, colorPhotos)}
                   />
                 </div>
-              );
-            })}
-          </div>
-        );
-      })}
+              </div>
+            );
+          }),
+        )}
+      </div>
     </div>
   );
 }

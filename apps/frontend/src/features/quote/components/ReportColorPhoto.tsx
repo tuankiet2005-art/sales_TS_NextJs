@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { loadReportColorPhotoCutout } from "@/features/quote/lib/reportColorPhotoCutout";
+import { useEffect, useState, type CSSProperties } from "react";
+import {
+  getCachedReportColorPhotoCutout,
+  loadReportColorPhotoCutout,
+} from "@/features/quote/lib/reportColorPhotoCutout";
 import { toReportColorPhotoSrc } from "@/features/quote/lib/reportColorPhoto";
 import { LoadingSpinner } from "@/features/shared/components/LoadingState";
 
@@ -16,51 +19,51 @@ export function ReportColorPhoto({
   alt: string;
   className?: string;
   style?: CSSProperties;
-  /** Quote sheet: no spinner — blank until the cutout is ready. */
+  /** Quote sheet: show the catalog photo immediately, then swap to the cutout when ready. */
   quiet?: boolean;
 }) {
-  const reportSrc = useMemo(() => toReportColorPhotoSrc(src), [src]);
-  const usesReportApi = reportSrc !== src;
-  const [displaySrc, setDisplaySrc] = useState(usesReportApi ? "" : src);
-  const [loading, setLoading] = useState(Boolean(usesReportApi && src));
-  const [ready, setReady] = useState(!usesReportApi);
+  const reportSrc = toReportColorPhotoSrc(src);
+  const usesReportApi = Boolean(src) && reportSrc !== src;
+  const initialCutout = usesReportApi ? getCachedReportColorPhotoCutout(reportSrc) : undefined;
+  const [displaySrc, setDisplaySrc] = useState(initialCutout ?? src);
+  const [cutoutPending, setCutoutPending] = useState(usesReportApi && !initialCutout);
 
   useEffect(() => {
     if (!src) {
       setDisplaySrc("");
-      setLoading(false);
-      setReady(true);
+      setCutoutPending(false);
       return;
     }
 
     if (!usesReportApi) {
       setDisplaySrc(src);
-      setLoading(false);
-      setReady(true);
+      setCutoutPending(false);
       return;
     }
 
     let cancelled = false;
-    setLoading(true);
-    setReady(false);
-    setDisplaySrc("");
+    const cached = getCachedReportColorPhotoCutout(reportSrc);
+    if (cached) {
+      setDisplaySrc(cached);
+      setCutoutPending(false);
+      return;
+    }
+
+    setDisplaySrc(src);
+    setCutoutPending(true);
 
     loadReportColorPhotoCutout(reportSrc, src)
       .then((url) => {
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          setDisplaySrc(url);
+          setCutoutPending(false);
         }
-        setDisplaySrc(url);
-        setLoading(false);
-        setReady(true);
       })
       .catch(() => {
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          setDisplaySrc(src);
+          setCutoutPending(false);
         }
-        setDisplaySrc(src);
-        setLoading(false);
-        setReady(false);
       });
 
     return () => {
@@ -70,40 +73,37 @@ export function ReportColorPhoto({
 
   if (!displaySrc) {
     if (quiet) {
-      return <span className="inline-block" style={style} aria-busy={loading} />;
+      return null;
     }
     return (
-      <div className="relative flex h-full w-full items-center justify-center" aria-busy={loading}>
+      <div className="relative flex h-full w-full items-center justify-center" aria-busy={cutoutPending}>
         <LoadingSpinner className="h-4 w-4" />
       </div>
     );
   }
 
+  const image = (
+    <img
+      src={displaySrc}
+      alt={alt}
+      className={quiet ? className : `${className} ${cutoutPending ? "opacity-70" : "opacity-100"}`}
+      style={style}
+      data-report-color-photo={cutoutPending ? "pending" : "ready"}
+    />
+  );
+
   if (quiet) {
-    return (
-      <img
-        src={displaySrc}
-        alt={alt}
-        className={className}
-        style={style}
-        data-report-color-photo={ready ? "ready" : "pending"}
-      />
-    );
+    return image;
   }
 
   return (
-    <div className="relative flex h-full min-h-[inherit] w-full items-center justify-center" aria-busy={loading}>
-      {loading && !quiet ? (
+    <div className="relative flex h-full min-h-[inherit] w-full items-center justify-center" aria-busy={cutoutPending}>
+      {cutoutPending ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90">
           <LoadingSpinner className="h-4 w-4" />
         </div>
       ) : null}
-      <img
-        src={displaySrc}
-        alt={alt}
-        className={`${className} ${loading ? "opacity-0" : "opacity-100"}`}
-        data-report-color-photo={ready ? "ready" : "pending"}
-      />
+      {image}
     </div>
   );
 }
