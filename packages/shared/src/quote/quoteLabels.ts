@@ -225,6 +225,11 @@ const DICTS: Record<Lang, [string, string][]> = {
   ],
 };
 
+function quoteLabelPattern(source: string): RegExp {
+  const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(escaped.replace(/\s+/g, "\\s+"), "g");
+}
+
 export function translateQuoteLabel(text: string, language: Lang = "vi"): string {
   if (!text) {
     return text;
@@ -232,9 +237,10 @@ export function translateQuoteLabel(text: string, language: Lang = "vi"): string
   let result = text;
   const pairs = [...DICTS[language]].sort((a, b) => b[0].length - a[0].length);
   for (const [from, to] of pairs) {
-    if (result.includes(from)) {
-      result = result.replaceAll(from, to);
+    if (!from) {
+      continue;
     }
+    result = result.replace(quoteLabelPattern(from), to);
   }
   return result;
 }

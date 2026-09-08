@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { loadReportColorPhotoCutout } from "@/features/quote/lib/reportColorPhotoCutout";
 import { toReportColorPhotoSrc } from "@/features/quote/lib/reportColorPhoto";
 import { LoadingSpinner } from "@/features/shared/components/LoadingState";
@@ -9,11 +9,13 @@ export function ReportColorPhoto({
   src,
   alt,
   className = "",
+  style,
   quiet = false,
 }: {
   src: string;
   alt: string;
   className?: string;
+  style?: CSSProperties;
   /** Quote sheet: no spinner — blank until the cutout is ready. */
   quiet?: boolean;
 }) {
@@ -68,12 +70,24 @@ export function ReportColorPhoto({
 
   if (!displaySrc) {
     if (quiet) {
-      return <div className="h-full w-full bg-white" aria-busy={loading} />;
+      return <span className="inline-block" style={style} aria-busy={loading} />;
     }
     return (
       <div className="relative flex h-full w-full items-center justify-center" aria-busy={loading}>
         <LoadingSpinner className="h-4 w-4" />
       </div>
+    );
+  }
+
+  if (quiet) {
+    return (
+      <img
+        src={displaySrc}
+        alt={alt}
+        className={className}
+        style={style}
+        data-report-color-photo={ready ? "ready" : "pending"}
+      />
     );
   }
 

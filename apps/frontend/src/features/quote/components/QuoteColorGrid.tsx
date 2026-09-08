@@ -7,26 +7,11 @@ function ColorGridCell({
   name,
   photoSrc,
   compact,
-  photosOnly,
 }: {
   name: string;
   photoSrc: string;
   compact?: boolean;
-  photosOnly?: boolean;
 }) {
-  if (photosOnly) {
-    return (
-      <div className="flex h-full w-full min-h-0 items-center justify-center p-1">
-        <ReportColorPhoto
-          src={photoSrc}
-          alt={name}
-          quiet
-          className="max-h-full max-w-full object-contain object-center"
-        />
-      </div>
-    );
-  }
-
   return (
     <div
       className={`flex h-full flex-col items-stretch justify-end ${compact ? "min-h-0 px-1 pb-1 pt-0.5" : "min-h-[9.25rem] px-1.5 pb-1.5 pt-1"}`}
@@ -68,12 +53,55 @@ export function QuoteColorGrid({
     return <div className="h-full w-full bg-white" />;
   }
 
+  const maxCols = Math.max(...rows.map((entry) => entry.length));
+  const gap = 4;
+
+  if (photosOnly) {
+    return (
+      <div
+        className="grid h-full w-full place-content-center bg-white"
+        style={{
+          gridTemplateColumns: `repeat(${maxCols}, max-content)`,
+          gridTemplateRows: `repeat(${rows.length}, max-content)`,
+          gap: `${gap}px`,
+          ["--photo-max-h" as string]: `calc((100% - ${(rows.length - 1) * gap}px) / ${rows.length})`,
+          ["--photo-max-w" as string]: `calc((100% - ${(maxCols - 1) * gap}px) / ${maxCols})`,
+        }}
+      >
+        {rows.map((row, rowIndex) => {
+          const centerRow = row.length < maxCols;
+          const colOffset = centerRow ? Math.floor((maxCols - row.length) / 2) : 0;
+
+          return row.map((colorIndex, colIndex) => {
+            const name = colors[colorIndex]!;
+            return (
+              <div
+                key={`${name}-${colorIndex}`}
+                style={{
+                  gridRow: rowIndex + 1,
+                  gridColumn: colOffset + colIndex + 1,
+                }}
+              >
+                <ReportColorPhoto
+                  src={colorPhoto(name, colorPhotos)}
+                  alt={name}
+                  quiet
+                  className="block object-contain object-center"
+                  style={{ maxHeight: "var(--photo-max-h)", maxWidth: "var(--photo-max-w)" }}
+                />
+              </div>
+            );
+          });
+        })}
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`flex h-full w-full flex-col bg-white ${frameless || photosOnly ? "" : "border border-[#1f1f1f]"} ${compact ? "min-h-0" : "min-h-[18.5rem]"}`}
+      className={`flex h-full w-full flex-col bg-white ${frameless ? "" : "border border-[#1f1f1f]"} ${compact ? "min-h-0" : "min-h-[18.5rem]"}`}
     >
       {rows.map((row, rowIndex) => {
-        const maxCols = Math.max(...rows.map((entry) => entry.length));
         const centerRow = row.length < maxCols;
 
         return (
@@ -95,7 +123,6 @@ export function QuoteColorGrid({
                 >
                   <ColorGridCell
                     compact={compact}
-                    photosOnly={photosOnly}
                     name={name}
                     photoSrc={colorPhoto(name, colorPhotos)}
                   />

@@ -74,8 +74,8 @@ describe("fillQuoteWorkbook", () => {
     expect(cellText(sheet!, "A6")).toContain("Nguyễn Văn Định");
     expect(cellText(sheet!, "A7")).toContain("Địa chỉ:");
     expect(cellText(sheet!, "A7")).toContain("123 Thủ Đức");
-    expect(cellText(sheet!, "D7")).toContain("TVBH:");
-    expect(cellText(sheet!, "F7")).toContain("SĐT:");
+    expect(cellText(sheet!, "D7")).toContain("Tư vấn bán hàng:");
+    expect(cellText(sheet!, "F7")).toContain("Số điện thoại:");
     expect(cellText(sheet!, "B8")).toBe("Xpander Eco");
     expect(sheet!.getCell("B9").value).toBe(111000000);
     expect(sheet!.getCell("B10").value).toBe(5000000);

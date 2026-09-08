@@ -34,7 +34,7 @@ Shared chrome and quote widgets used by pages.
 - Accessories the client buys appear in the Accessories column (editable name, amount, labeled Remove button)
 - Accessory photos: `aspect-[16/10] object-cover`
 - `QuoteSheet` is driven by `bang-bao-gia.xlsx` in `src/server/assets/quote-report/` (layout, labels, colors, logos). The on-screen preview overlays the 2×2 color grid in the template's merged car slot.
-- Sheet and export language follow the header switcher (`lib/quoteLabels.ts`); the quote-page selector can still override for one export
+- Sheet and export language follow the header switcher (`@onroad/shared/quote/quoteLabels`); the quote-page selector can still override for one export
 - Color-car photos use `max-h-20 w-full object-contain` inside a fixed `h-20` frame so PDF capture does not stretch them
 - Color photos prefer `vehicle.colorPhotos[name]` (Neon `vehicle_images`); missing colors fall back to an inline swatch from `colorHex()`
 - Quote sheet **CÁC MÀU XE** uses `QuoteColorGrid` + `ReportColorPhoto`; layout scales 1–5 photos evenly (`lib/colorGridLayout.ts` — one full frame, pairs side-by-side, up to 3+2 for five); `GET /api/report-color-photo/[id]`

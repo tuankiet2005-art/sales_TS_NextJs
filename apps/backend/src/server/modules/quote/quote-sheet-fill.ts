@@ -50,10 +50,7 @@ export function fillQuoteWorkbook(workbook: ExcelJS.Workbook, input: QuoteSheetF
   }
 
   fillQuote(sheet, input);
-  const language = normalizeLanguage(input.language);
-  if (language !== "vi") {
-    translateSheet(sheet, language);
-  }
+  translateSheet(sheet, normalizeLanguage(input.language));
 
   for (const other of workbook.worksheets) {
     other.state = other === sheet ? "visible" : "hidden";
