@@ -1,15 +1,18 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+
+const monorepoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const nextConfig: NextConfig = {
   turbopack: {},
   transpilePackages: ["@onroad/shared"],
+  outputFileTracingRoot: monorepoRoot,
   outputFileTracingIncludes: {
     "/api/[[...path]]": [
-      "../../apps/backend/dist/server/config/data/**",
-      "../../apps/backend/dist/server/assets/**",
+      "./apps/backend/dist/server/assets/**",
     ],
-  },
-  serverExternalPackages: [
+  },  serverExternalPackages: [
     "@imgly/background-removal-node",
     "sharp",
     "exceljs",

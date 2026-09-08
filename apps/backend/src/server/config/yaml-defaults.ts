@@ -1,7 +1,10 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
+
+import {
+  DEALER_POLICY_YAML,
+  FEE_POLICY_YAML,
+  LICENSE_PLATE_REGIONS_YAML,
+} from "./policy-yaml-content.js";
 
 import type {
   DealerPolicyRecord,
@@ -9,10 +12,7 @@ import type {
   PlateRegionsRecord,
 } from "./types.js";
 
-const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), "data");
-
-function readYamlFile<T>(filename: string): T {
-  const raw = readFileSync(join(DATA_DIR, filename), "utf8");
+function parseYamlFile<T>(raw: string): T {
   return parse(raw) as T;
 }
 
@@ -49,7 +49,7 @@ type PlateRegionsYaml = {
 };
 
 export function loadDefaultFeePolicy(): FeePolicyRecord {
-  const doc = readYamlFile<FeePolicyYaml>("fee-policy.yml");
+  const doc = parseYamlFile<FeePolicyYaml>(FEE_POLICY_YAML);
   return {
     registrationTaxPercent: doc["fee-policy"]["registration-tax-percent"],
     registrationTaxCommercialPercent: doc["fee-policy"]["registration-tax-commercial-percent"],
@@ -57,7 +57,7 @@ export function loadDefaultFeePolicy(): FeePolicyRecord {
 }
 
 export function loadDefaultDealerPolicy(): DealerPolicyRecord {
-  const doc = readYamlFile<DealerPolicyYaml>("dealer-policy.yml");
+  const doc = parseYamlFile<DealerPolicyYaml>(DEALER_POLICY_YAML);
   const policy = doc["dealer-policy"];
   return {
     privateDiscountPercent: policy.discount["private-percent"],
@@ -74,7 +74,7 @@ export function loadDefaultDealerPolicy(): DealerPolicyRecord {
 }
 
 export function loadDefaultPlateRegions(): PlateRegionsRecord {
-  const doc = readYamlFile<PlateRegionsYaml>("license-plate-regions.yml");
+  const doc = parseYamlFile<PlateRegionsYaml>(LICENSE_PLATE_REGIONS_YAML);
   const policy = doc["license-plate-regions"];
   const areas: PlateRegionsRecord["areas"] = {};
   for (const [code, value] of Object.entries(policy.areas ?? {})) {
