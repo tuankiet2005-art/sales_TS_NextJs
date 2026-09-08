@@ -5,11 +5,13 @@
   "type": "module",
   "exports": {
     ".": "./dist/app.js",
-    "./vercel": "./dist/vercel.js"
+    "./vercel": "./dist/vercel.js",
+    "./dispatch": "./dist/dispatch-api-request.js",
+    "./load-env": "./dist/load-env-entry.js"
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "node scripts/generate-route-manifest.mjs && tsc -p tsconfig.json",
+    "build": "node scripts/generate-route-manifest.mjs && tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "start": "node scripts/run-start.mjs",
     "test": "vitest run"
   },
@@ -22,6 +24,7 @@
     "drizzle-orm": "^0.45.2",
     "exceljs": "^4.4.0",
     "express": "^4.21.2",
+    "path-to-regexp": "^8.2.0",
     "pizzip": "^3.2.0",
     "sharp": "^0.34.5",
     "yaml": "^2.9.0"
@@ -33,6 +36,7 @@
     "@types/node": "^20",
     "@vitest/coverage-v8": "^4.1.11",
     "drizzle-kit": "^0.31.10",
+    "tsc-alias": "^1.9.4",
     "tsx": "^4.20.5",
     "typescript": "^5",
     "vitest": "^4.1.11"
