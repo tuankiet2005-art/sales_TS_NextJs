@@ -1,0 +1,495 @@
+import {
+  countActiveModels,
+  countActiveVehicles,
+  findActiveVehicleById,
+  findBrandByCode,
+  findCategoryById,
+  findLocationById,
+  listActiveFeeDefinitions,
+  listActiveFeeRules,
+  listActiveVehicleFilterOptions,
+  listActiveVariantsForBrandModel,
+  listBrands,
+  listCategories,
+  listDistrictsByLocationId,
+  listLocations,
+  searchActiveModelSummaries,
+  searchActiveVehicles,
+} from "./catalog.repository";
+import {
+  buildVehicleModelContext,
+  mapBrand,
+  mapCategory,
+  mapCostBreakdown,
+  mapLocation,
+  mapLocationDistrict,
+  mapVehicleDetail,
+  mapVehicleModelDetail,
+  mapVehicleModelSummary,
+  mapVehicleSummaryWithPolicy,
+} from "../../shared/mappers";
+import { getDealerPolicy, loadPolicySnapshot } from "../../config/policy-store";
+import { calculateOnRoadCost } from "../../domain/on-road-cost";
+import type { CalculateOnRoadInput } from "../../domain/types";
+import type {
+  Brand,
+  Category,
+  CostBreakdown,
+  Location,
+  LocationDistrict,
+  Paginated,
+  VehicleModelDetail,
+  VehicleModelSummary,
+  VehicleSummary,
+} from "@onroad/shared/types";
+
+type CatalogListCache = {
+  brands: Brand[] | null;
+  categories: Category[] | null;
+  locations: Location[] | null;
+};
+
+let catalogListCache: CatalogListCache = {
+  brands: null,
+  categories: null,
+  locations: null,
+};
+
+const brandByCodeCache: Record<string, Brand> = {};
+
+const locationDistrictsCache: Record<number, LocationDistrict[]> = {};
+
+type FeeDataCache = {
+  definitions: Awaited<ReturnType<typeof listActiveFeeDefinitions>>;
+  rules: Awaited<ReturnType<typeof listActiveFeeRules>>;
+};
+
+let feeDataCache: FeeDataCache | null = null;
+
+export type ActiveVehicleRow = NonNullable<Awaited<ReturnType<typeof findActiveVehicleById>>>;
+
+export type CalculateOnRoadBody = {
+  vehicleId: number;
+  locationId: number;
+  categoryId?: number | null;
+  includeOptionalInsurance?: boolean;
+  listPrice?: number | null;
+  discountAmount?: number | null;
+  salePrice?: number | null;
+  deposit?: number | null;
+  optionalBodyInsurance?: number | null;
+  registrationTax?: number | null;
+  licensePlateFee?: number | null;
+  registrationServiceFee?: number | null;
+  micaPlateFee?: number | null;
+  inspectionFee?: number | null;
+  roadUseFee?: number | null;
+  compulsoryInsurance?: number | null;
+  accessories?: { name: string; amount: number }[] | null;
+  usageType?: string | null;
+  selectedOfferIds?: string[] | null;
+  forgoneOfferIds?: string[] | null;
+};
+
+async function getActiveFeeData(): Promise<FeeDataCache> {
+  if (feeDataCache) {
+    return feeDataCache;
+  }
+  const [definitions, rules] = await Promise.all([listActiveFeeDefinitions(), listActiveFeeRules()]);
+  feeDataCache = { definitions, rules };
+  return feeDataCache;
+}
+
+export function invalidateCatalogCache() {
+  catalogListCache = { brands: null, categories: null, locations: null };
+  feeDataCache = null;
+  for (const key of Object.keys(brandByCodeCache)) {
+    delete brandByCodeCache[key];
+  }
+  for (const key of Object.keys(locationDistrictsCache)) {
+    delete locationDistrictsCache[Number(key)];
+  }
+}
+
+export function resetCatalogCacheForTests() {
+  invalidateCatalogCache();
+}
+
+export async function getBrands() {
+  if (catalogListCache.brands) {
+    return catalogListCache.brands;
+  }
+  const mapped = (await listBrands()).map(mapBrand);
+  catalogListCache.brands = mapped;
+  return mapped;
+}
+
+export async function getBrand(code: string) {
+  const cached = brandByCodeCache[code];
+  if (cached) {
+    return cached;
+  }
+  const row = await findBrandByCode(code);
+  if (!row) {
+    return null;
+  }
+  const mapped = mapBrand(row);
+  brandByCodeCache[code] = mapped;
+  return mapped;
+}
+
+export async function getCatalogBootstrap(brandCode: string) {
+  const [brand, categories, vehicles] = await Promise.all([
+    getBrand(brandCode),
+    getCategories(),
+    searchVehicles({ brandCode }),
+  ]);
+  if (!brand) {
+    return null;
+  }
+  return { brand, categories, vehicles };
+}
+
+export async function getCategories() {
+  if (catalogListCache.categories) {
+    return catalogListCache.categories;
+  }
+  const mapped = (await listCategories()).map(mapCategory);
+  catalogListCache.categories = mapped;
+  return mapped;
+}
+
+export async function getLocations() {
+  if (catalogListCache.locations) {
+    return catalogListCache.locations;
+  }
+  const mapped = (await listLocations()).map(mapLocation);
+  catalogListCache.locations = mapped;
+  return mapped;
+}
+
+export async function getLocationDistricts(locationId: number) {
+  if (locationDistrictsCache[locationId]) {
+    return locationDistrictsCache[locationId];
+  }
+  const mapped = (await listDistrictsByLocationId(locationId)).map(mapLocationDistrict);
+  locationDistrictsCache[locationId] = mapped;
+  return mapped;
+}
+
+export async function searchVehicles(params: {
+  keyword?: string;
+  brandCode?: string;
+  categoryId?: number;
+  model?: string;
+  vehicleType?: string;
+}) {
+  const [rows, policy] = await Promise.all([searchActiveVehicles(params), getDealerPolicy()]);
+  return rows.map((row) => mapVehicleSummaryWithPolicy(row, policy));
+}
+
+export async function searchModelsPage(params: {
+  keyword?: string;
+  brandCode?: string;
+  categoryId?: number;
+  model?: string;
+  vehicleType?: string;
+  page: number;
+  pageSize: number;
+}): Promise<Paginated<VehicleModelSummary> & { filterOptions: { models: string[]; vehicleTypes: string[] } }> {
+  const page = Math.max(1, params.page);
+  const pageSize = Math.max(1, Math.min(params.pageSize, 50));
+  const offset = (page - 1) * pageSize;
+  const searchParams = {
+    keyword: params.keyword,
+    brandCode: params.brandCode,
+    categoryId: params.categoryId,
+    model: params.model,
+    vehicleType: params.vehicleType,
+    limit: pageSize,
+    offset,
+  };
+  const filterScope = {
+    brandCode: params.brandCode,
+    categoryId: params.categoryId,
+  };
+  const [rows, total, policy, filterOptions] = await Promise.all([
+    searchActiveModelSummaries(searchParams),
+    countActiveModels(searchParams),
+    getDealerPolicy(),
+    listActiveVehicleFilterOptions(filterScope.brandCode, filterScope.categoryId),
+  ]);
+  return {
+    items: rows.map((row) => mapVehicleModelSummary(row, policy, row.trimCount)),
+    total,
+    page,
+    pageSize,
+    filterOptions,
+  };
+}
+
+export async function getModelDetail(brandCode: string, model: string): Promise<VehicleModelDetail | null> {
+  const [rows, policy] = await Promise.all([listActiveVariantsForBrandModel(brandCode, model), getDealerPolicy()]);
+  if (rows.length === 0) {
+    return null;
+  }
+  const variants = rows.map((row) => mapVehicleDetail(row, policy));
+  return mapVehicleModelDetail(model, rows[0]!.brand, variants);
+}
+
+export async function searchVehiclesPage(params: {
+  keyword?: string;
+  brandCode?: string;
+  categoryId?: number;
+  model?: string;
+  vehicleType?: string;
+  page: number;
+  pageSize: number;
+}): Promise<Paginated<VehicleSummary> & { filterOptions: { models: string[]; vehicleTypes: string[] } }> {
+  const page = Math.max(1, params.page);
+  const pageSize = Math.max(1, Math.min(params.pageSize, 50));
+  const offset = (page - 1) * pageSize;
+  const searchParams = {
+    keyword: params.keyword,
+    brandCode: params.brandCode,
+    categoryId: params.categoryId,
+    model: params.model,
+    vehicleType: params.vehicleType,
+    limit: pageSize,
+    offset,
+  };
+  const filterScope = {
+    brandCode: params.brandCode,
+    categoryId: params.categoryId,
+  };
+  const [rows, total, policy, filterOptions] = await Promise.all([
+    searchActiveVehicles(searchParams),
+    countActiveVehicles(searchParams),
+    getDealerPolicy(),
+    listActiveVehicleFilterOptions(filterScope.brandCode, filterScope.categoryId),
+  ]);
+  return {
+    items: rows.map((row) => mapVehicleSummaryWithPolicy(row, policy)),
+    total,
+    page,
+    pageSize,
+    filterOptions,
+  };
+}
+
+export async function getVehicleFilterOptions(brandCode?: string, categoryId?: number) {
+  return listActiveVehicleFilterOptions(brandCode, categoryId);
+}
+
+export async function getVehicle(id: number) {
+  const [row, policy] = await Promise.all([findActiveVehicleById(id), getDealerPolicy()]);
+  if (!row) {
+    return null;
+  }
+  const detail = mapVehicleDetail(row, policy);
+  const variantRows = await listActiveVariantsForBrandModel(row.brand.code, row.vehicle.model);
+  const variants = variantRows.map((variantRow) => mapVehicleSummaryWithPolicy(variantRow, policy));
+  return {
+    ...detail,
+    modelContext: buildVehicleModelContext(row.vehicle.model, detail, variants),
+  };
+}
+
+export async function getDealerPolicyResponse() {
+  const policy = await getDealerPolicy();
+  return {
+    privateDiscountPercent: policy.privateDiscountPercent,
+    commercialDiscountPercent: policy.commercialDiscountPercent,
+    offers: policy.offers.map((offer) => ({
+      id: offer.id,
+      kind: offer.kind,
+      amount: offer.amount ?? undefined,
+      percent: offer.percent ?? undefined,
+      title: offer.title,
+      description: offer.description ?? {},
+    })),
+  };
+}
+
+export async function calculateOnRoad(
+  body: CalculateOnRoadBody,
+  options?: { vehicleRow?: ActiveVehicleRow | null },
+) {
+  const vehicleLookup =
+    options && "vehicleRow" in options
+      ? Promise.resolve(options.vehicleRow ?? null)
+      : findActiveVehicleById(body.vehicleId);
+
+  const [vehicleRow, location, categoryById, policySnapshot, feeData] = await Promise.all([
+    vehicleLookup,
+    findLocationById(body.locationId),
+    body.categoryId != null ? findCategoryById(body.categoryId) : Promise.resolve(null),
+    loadPolicySnapshot(),
+    getActiveFeeData(),
+  ]);
+
+  const { feePolicy, plateRegions, dealerPolicy } = policySnapshot;
+  const { definitions: feeDefinitions, rules: activeFeeRules } = feeData;
+
+  if (!vehicleRow) {
+    return null;
+  }
+  if (!location) {
+    return { error: "location" as const };
+  }
+
+  const selectedCategory = body.categoryId != null ? categoryById : vehicleRow.category;
+  if (!selectedCategory) {
+    return { error: "category" as const };
+  }
+
+  const input: CalculateOnRoadInput = {
+    vehicle: {
+      id: vehicleRow.vehicle.id,
+      listPrice: body.listPrice ?? vehicleRow.vehicle.listPrice,
+      taxBasePrice: vehicleRow.vehicle.taxBasePrice,
+      engineCc: vehicleRow.vehicle.engineCc,
+      defaultDeposit: vehicleRow.vehicle.defaultDeposit,
+      registrationServiceFee: vehicleRow.vehicle.registrationServiceFee,
+      micaPlateFee: vehicleRow.vehicle.micaPlateFee,
+      inspectionFee: vehicleRow.vehicle.inspectionFee,
+      name: vehicleRow.vehicle.name,
+      model: vehicleRow.vehicle.model,
+      brandName: vehicleRow.brand.name,
+      categoryId: vehicleRow.category.id,
+      categoryName: vehicleRow.category.name,
+    },
+    location: {
+      id: location.id,
+      code: location.code,
+      name: location.name,
+      feeZone: location.feeZone,
+    },
+    categoryId: body.categoryId,
+    includeOptionalInsurance: body.includeOptionalInsurance ?? false,
+    discountAmount: body.discountAmount,
+    salePrice: body.salePrice,
+    deposit: body.deposit,
+    optionalBodyInsurance: body.optionalBodyInsurance,
+    registrationTax: body.registrationTax,
+    licensePlateFee: body.licensePlateFee,
+    registrationServiceFee: body.registrationServiceFee,
+    micaPlateFee: body.micaPlateFee,
+    inspectionFee: body.inspectionFee,
+    roadUseFee: body.roadUseFee,
+    compulsoryInsurance: body.compulsoryInsurance,
+    accessories: body.accessories,
+    usageType: body.usageType,
+    selectedOfferIds: body.selectedOfferIds,
+    forgoneOfferIds: body.forgoneOfferIds,
+  };
+
+  const result = calculateOnRoadCost(input, {
+    feePolicy,
+    plateRegions,
+    dealerPolicy,
+    feeDefinitions: feeDefinitions.map((def) => ({
+      id: def.id,
+      code: def.code,
+      name: def.name,
+      description: def.description,
+      mandatory: def.mandatory,
+      sortOrder: def.sortOrder,
+    })),
+    activeFeeRules: activeFeeRules.map((rule) => ({
+      id: rule.id,
+      feeDefinitionId: rule.feeDefinitionId,
+      categoryId: rule.categoryId,
+      locationId: rule.locationId,
+      feeZone: rule.feeZone,
+      calculationType: rule.calculationType as "FIXED" | "PERCENT_OF_LIST_PRICE" | "PERCENT_WITH_BOUNDS",
+      fixedAmount: rule.fixedAmount,
+      percentage: rule.percentage,
+      minAmount: rule.minAmount,
+      maxAmount: rule.maxAmount,
+      minEngineCc: rule.minEngineCc,
+      maxEngineCc: rule.maxEngineCc,
+      minPrice: rule.minPrice,
+      maxPrice: rule.maxPrice,
+      priority: rule.priority,
+    })),
+    selectedCategoryId: selectedCategory.id,
+    selectedCategoryName: selectedCategory.name,
+  });
+
+  return { data: mapCostBreakdown(result), vehicleRow };
+}
+
+export async function loadQuotePageData(body: CalculateOnRoadBody) {
+  const [calcResult, dealerPolicy] = await Promise.all([
+    calculateOnRoad(body),
+    getDealerPolicy(),
+  ]);
+  if (!calcResult || "error" in calcResult) {
+    return calcResult;
+  }
+  return {
+    vehicle: mapVehicleDetail(calcResult.vehicleRow, dealerPolicy),
+    breakdown: calcResult.data,
+  };
+}
+
+export async function resolveQuoteCalculation(
+  body: CalculateOnRoadBody,
+  breakdown?: CostBreakdown | null,
+) {
+  if (breakdown && breakdown.vehicleId === body.vehicleId) {
+    const vehicleRow = await findActiveVehicleById(body.vehicleId);
+    if (!vehicleRow) {
+      return null;
+    }
+    if (body.accessories != null) {
+      const accessories = body.accessories;
+      const accessoriesTotal = accessories.reduce((sum, item) => sum + item.amount, 0);
+      const previousTotal = breakdown.accessoriesTotal ?? 0;
+      const accessoriesChanged =
+        accessoriesTotal !== previousTotal ||
+        accessories.length !== (breakdown.accessories?.length ?? 0) ||
+        accessories.some(
+          (item, index) =>
+            item.name !== breakdown.accessories?.[index]?.name ||
+            item.amount !== breakdown.accessories?.[index]?.amount,
+        );
+      if (accessoriesChanged) {
+        return {
+          data: {
+            ...breakdown,
+            accessories,
+            accessoriesTotal,
+            estimatedOnRoadTotal: breakdown.estimatedOnRoadTotal - previousTotal + accessoriesTotal,
+          },
+          vehicleRow,
+        };
+      }
+    }
+    return { data: breakdown, vehicleRow };
+  }
+  const calcResult = await calculateOnRoad(body);
+  if (!calcResult || "error" in calcResult) {
+    return calcResult;
+  }
+  return calcResult;
+}
+
+export async function getHealth() {
+  try {
+    const count = await listBrands().then((rows) => rows.length);
+    return {
+      status: "UP",
+      database: "UP",
+      brands: String(count),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Database error";
+    return {
+      status: "DEGRADED",
+      database: "DOWN",
+      databaseError: message,
+    };
+  }
+}

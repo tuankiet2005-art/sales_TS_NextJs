@@ -77,21 +77,24 @@ Default section order:
 ## User Preferences
 
 - Default UI and export language is Vietnamese (`vi`); keep `vi` first in language lists
-- Quote page: two equal sites — Price left, Accessories right (stack on phones); the report, Word, PDF, and PNG follow `web/src/server/assets/quote-report/bang-bao-gia.docx`; Word, PDF, and PNG sit below the quote sheet
+- Quote page: two equal sites — Price left, Accessories right (stack on phones); the report, Word, PDF, and PNG follow `apps/backend/src/server/assets/quote-report/bang-bao-gia.xlsx`; Word, PDF, and PNG sit below the quote sheet
 - Use Lucide icons only (the set used by shadcn/ui); do not install the full shadcn component library unless asked
 - Do not commit `.env.local` or Neon passwords
-- Production: Vercel (`web/` as Root Directory) + Neon PostgreSQL
+- Production: Vercel (`apps/frontend` as Root Directory) + backend on any Node host + Neon PostgreSQL
 - Only create git commits when the user asks
 
 ## Child DOX Index
 
 | Path | Scope |
 |---|---|
-| `web/AGENTS.md` | Next.js monolith: App Router UI + `/api` on Vercel |
+| `apps/frontend/AGENTS.md` | Next.js UI (port 3000) |
+| `apps/backend/src/server/modules/AGENTS.md` | Express API domain modules (port 4000) |
+| `packages/shared/` | Shared types and pure utilities |
 | `db/AGENTS.md` | Operator SQL for Neon (`neon-init.sql`); schema source of truth for postgres |
 
 ### Project facts
 
 - Brand: **OnRoad** — Vietnam vehicle sales and on-road cost quotes (Mitsubishi catalog from the dealer Excel template)
-- App: Next.js 16 in `web/`, port **3000** (`npm run dev` or `npm start` from repo root; both delegate to `web/`)
-- Database: Neon PostgreSQL (`DATABASE_URL` in `web/.env.local`)
+- Frontend: Next.js 16 in `apps/frontend/`, port **3000**
+- Backend: Express API in `apps/backend/`, port **4000**
+- Database: Neon PostgreSQL (`DATABASE_URL` in `apps/backend/.env.local`)

@@ -1,72 +1,59 @@
-# OnRoad — Vehicle Sales & On-Road Cost Platform
+# OnRoad Monorepo
 
-Next.js monolith for browsing vehicles and calculating location-based on-road costs in Vietnam.
+Vietnam vehicle catalog and on-road cost quotes — split into **frontend** (Next.js UI) and **backend** (Express API).
 
-## Architecture
+## Structure
 
-| Layer | Choice |
-| --- | --- |
-| App | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4 |
-| API | Next.js route handlers under `web/src/app/api/` |
-| Database | Neon PostgreSQL via Drizzle ORM |
+```text
+├── apps/
+│   ├── frontend/          # Next.js 16 — UI only (port 3000)
+│   └── backend/           # Express API — all /api/* routes (port 4000)
+├── packages/
+│   ├── shared/            # Shared TypeScript types and pure utilities
+│   └── tsconfig/          # Shared TS configs
+├── db/                    # Neon SQL operator scripts
+└── package.json           # npm workspaces root
+```
 
-Fee math lives in `web/src/server/domain/`; policy defaults in `web/src/server/config/data/*.yml` with optional `app_settings` overrides.
-
-## Run locally
-
-From the repo root (after `web/.env.local` exists and `npm install` has been run in `web/`):
+## Quick start
 
 ```bash
+# Install (from repo root)
+npm install --legacy-peer-deps
+
+# Copy env
+cp .env.example apps/backend/.env.local
+cp .env.example apps/frontend/.env.local
+# Fill DATABASE_URL, ADMIN_PASSWORD, ADMIN_TOKEN_SECRET in backend .env.local
+
+# Run both apps
 npm run dev
-# or
-npm start
 ```
 
-Or from `web/`:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:4000
+- Frontend proxies `/api/*` → backend via `next.config.ts` rewrites
 
-```bash
-cd web
-cp .env.example .env.local   # set DATABASE_URL (Neon)
-npm install
-npm run dev
-```
+## Scripts
 
-Open http://localhost:3000
+| Command | Effect |
+|---------|--------|
+| `npm run dev` | Start backend + frontend |
+| `npm run dev:backend` | API only (`:4000`) |
+| `npm run dev:frontend` | UI only (`:3000`) |
+| `npm run build` | Build both apps |
+| `npm run test` | Run tests in both workspaces |
 
-`npm start` in `web/` serves a production build when `.next` is complete; otherwise it starts `next dev`. Production-only: `npm run build && npm start` from `web/`.
+## Backend modules
 
-## Deploy (Vercel)
+Each API route maps to one handler under `apps/backend/src/routes/handlers/`. Business logic lives in `apps/backend/src/server/modules/`:
 
-The Next.js app is `web/`. Root `package.json` is local convenience scripts only (no Next.js dependency).
+- `auth`, `catalog`, `quote`, `customer`, `policy`, `bank-loan`, `accessory`, `media`, `translate`
 
-In the Vercel project: **Settings → General → Root Directory** → set to `web` → Save → **Deployments → Redeploy**.
+Database: **Drizzle ORM** + Neon PostgreSQL (not Prisma — schema in `apps/backend/src/server/db/`).
 
-If Root Directory is empty, Vercel installs the root scripts package and will not find Next.js.
+## Deployment
 
-Set these Vercel env vars (Production + Preview): `DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_TOKEN_SECRET`.
-
-### Database
-
-1. Run `db/neon-init.sql` in the Neon SQL editor.
-2. Set `DATABASE_URL` in `web/.env.local`.
-
-## Verification
-
-```bash
-cd web
-npm test
-npm run build
-```
-
-## Project layout
-
-```
-web/
-  src/app/           App Router pages and /api routes
-  src/server/db/     Drizzle schema + repositories
-  src/server/config/ YAML policy + app_settings overrides
-  src/server/domain/ Fee rules, dealer pricing, on-road cost
-db/
-  neon-init.sql      Schema source of truth
-docs/plans/          Migration plan
-```
+- **Frontend**: Vercel — Root Directory = `apps/frontend`
+- **Backend**: Any Node host (Railway, Render, Fly.io) — `apps/backend`, set `PORT` and `DATABASE_URL`
+- Set frontend `API_URL` to the deployed backend URL for rewrites

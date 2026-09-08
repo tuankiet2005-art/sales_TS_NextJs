@@ -1,0 +1,36 @@
+{
+  "name": "@onroad/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node scripts/run-start.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@imgly/background-removal-node": "^1.4.5",
+    "@neondatabase/serverless": "^1.1.0",
+    "@onroad/shared": "*",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "pizzip": "^3.2.0",
+    "sharp": "^0.34.5",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@onroad/tsconfig": "*",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^20",
+    "@vitest/coverage-v8": "^4.1.11",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.20.5",
+    "typescript": "^5",
+    "vitest": "^4.1.11"
+  }
+}
