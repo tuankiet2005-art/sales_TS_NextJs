@@ -1,14 +1,15 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 import type {
   DealerPolicyRecord,
   FeePolicyRecord,
   PlateRegionsRecord,
-} from "./types";
+} from "./types.js";
 
-const DATA_DIR = join(process.cwd(), "src/server/config/data");
+const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), "data");
 
 function readYamlFile<T>(filename: string): T {
   const raw = readFileSync(join(DATA_DIR, filename), "utf8");

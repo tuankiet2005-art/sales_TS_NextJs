@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   turbopack: {},
   transpilePackages: ["@onroad/shared"],
+  outputFileTracingIncludes: {
+    "/api/[[...path]]": [
+      "../../apps/backend/dist/server/config/data/**",
+      "../../apps/backend/dist/server/assets/**",
+    ],
+  },
   serverExternalPackages: [
     "@imgly/background-removal-node",
     "sharp",

@@ -1,10 +1,11 @@
 import { readFile, stat } from "node:fs/promises";
-import path from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import ExcelJS from "exceljs";
 
-export const QUOTE_REPORT_TEMPLATE = path.join(
-  process.cwd(),
-  "src/server/assets/quote-report/bang-bao-gia.xlsx",
+export const QUOTE_REPORT_TEMPLATE = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../assets/quote-report/bang-bao-gia.xlsx",
 );
 
 let cachedTemplate: { mtimeMs: number; buffer: Buffer } | null = null;

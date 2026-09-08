@@ -34,16 +34,22 @@ export async function dispatchApiRequest(request: NextRequest): Promise<Response
     const matched = matchPath(pathname);
     if (!matched) continue;
 
-    const handlers = (await loadHandlers()) as RouteExports;
-    const handler = handlers[method];
-    if (!handler) {
-      return Response.json({ message: "Method not allowed" }, { status: 405 });
-    }
+    try {
+      const handlers = (await loadHandlers()) as RouteExports;
+      const handler = handlers[method];
+      if (!handler) {
+        return Response.json({ message: "Method not allowed" }, { status: 405 });
+      }
 
-    const params = Object.fromEntries(
-      Object.entries(matched.params).map(([key, value]) => [key, String(value)]),
-    );
-    return handler(request, { params: Promise.resolve(params) });
+      const params = Object.fromEntries(
+        Object.entries(matched.params).map(([key, value]) => [key, String(value)]),
+      );
+      return await handler(request, { params: Promise.resolve(params) });
+    } catch (error) {
+      console.error(`[api] ${method} ${pathname}`, error);
+      const message = error instanceof Error ? error.message : "Internal server error";
+      return Response.json({ message }, { status: 500 });
+    }
   }
 
   return Response.json({ message: "Not found" }, { status: 404 });
