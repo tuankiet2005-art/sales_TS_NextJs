@@ -8,10 +8,7 @@ async function handle(request: NextRequest) {
   try {
     await import("@onroad/backend/load-env");
     const { dispatchApiRequest } = await import("@onroad/backend/dispatch");
-    const apiRequest = Object.assign(request, {
-      nextUrl: new URL(request.url),
-    });
-    return dispatchApiRequest(apiRequest);
+    return dispatchApiRequest(request);
   } catch (error) {
     console.error("[api] unhandled error", error);
     const message =
