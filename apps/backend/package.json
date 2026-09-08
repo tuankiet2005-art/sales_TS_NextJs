@@ -10,8 +10,8 @@
     "./load-env": "./dist/load-env-entry.js"
   },
   "scripts": {
-    "dev": "node scripts/generate-policy-yaml-module.mjs && tsx watch src/server.ts",
-    "build": "node scripts/generate-route-manifest.mjs && node scripts/generate-policy-yaml-module.mjs && tsc -p tsconfig.json && tsc-alias -p tsconfig.json --resolve-full-paths --resolve-full-extension .js && node scripts/copy-server-assets.mjs",
+    "dev": "node scripts/generate-policy-yaml-module.mjs && node scripts/generate-quote-template-module.mjs && tsx watch src/server.ts",
+    "build": "node scripts/generate-route-manifest.mjs && node scripts/generate-policy-yaml-module.mjs && node scripts/generate-quote-template-module.mjs && tsc -p tsconfig.json && tsc-alias -p tsconfig.json --resolve-full-paths --resolve-full-extension .js && node scripts/copy-server-assets.mjs",
     "start": "node scripts/run-start.mjs",
     "test": "vitest run"
   },

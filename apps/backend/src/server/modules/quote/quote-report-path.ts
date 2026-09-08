@@ -1,21 +1,14 @@
-import { readFile, stat } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import ExcelJS from "exceljs";
 
-export const QUOTE_REPORT_TEMPLATE = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../assets/quote-report/bang-bao-gia.xlsx",
-);
+import { QUOTE_REPORT_TEMPLATE_BASE64 } from "./quote-template-buffer.js";
 
-let cachedTemplate: { mtimeMs: number; buffer: Buffer } | null = null;
+let cachedTemplate: Buffer | null = null;
 
 export async function readQuoteTemplateBuffer() {
-  const info = await stat(QUOTE_REPORT_TEMPLATE);
-  if (!cachedTemplate || cachedTemplate.mtimeMs !== info.mtimeMs) {
-    cachedTemplate = { mtimeMs: info.mtimeMs, buffer: await readFile(QUOTE_REPORT_TEMPLATE) };
+  if (!cachedTemplate) {
+    cachedTemplate = Buffer.from(QUOTE_REPORT_TEMPLATE_BASE64, "base64");
   }
-  return cachedTemplate.buffer;
+  return cachedTemplate;
 }
 
 export async function loadQuoteTemplateWorkbook() {
