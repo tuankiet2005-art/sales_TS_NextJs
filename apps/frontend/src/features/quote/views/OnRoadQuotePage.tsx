@@ -14,6 +14,7 @@ import { QuoteSheet } from "@/features/quote/components/QuoteSheet";
 import { useI18n } from "@/i18n/LanguageContext";
 import { languages, type Lang } from "@/i18n/translations";
 import { quoteDiscountWithRelationship } from "@/features/customer/lib/customerRelationshipDiscount";
+import { buildQuoteExportFilename } from "@onroad/shared/quote/quoteExportFilename";
 import { downloadQuotePdf, downloadQuotePng } from "@/features/quote/lib/exportQuotePdf";
 import type { QuoteSheetView } from "@/features/quote/lib/quoteSheetView";
 import {
@@ -386,6 +387,14 @@ export function OnRoadQuotePage() {
     };
   }, [id, brandCode, locationId, categoryId, includeOptional, policyChoices.usageType, selectedOfferIdsKey, forgoneOfferIdsKey, t]);
 
+  function quoteExportFilename(extension: "xlsx" | "pdf" | "png") {
+    return buildQuoteExportFilename(extension, {
+      model: vehicle?.model ?? "mitsubishi",
+      color,
+      language: exportLang,
+    });
+  }
+
   async function exportQuote() {
     if (!id || !quoteLocationId) {
       setError(t("missingQuoteParams"));
@@ -402,7 +411,7 @@ export function OnRoadQuotePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `quote-${vehicle?.model ?? "mitsubishi"}-${exportLang}.xlsx`;
+      link.download = quoteExportFilename("xlsx");
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -429,7 +438,7 @@ export function OnRoadQuotePage() {
       } catch {
         setNotice(null);
       }
-      await downloadQuotePdf(sheet, `quote-${vehicle?.model ?? "mitsubishi"}-${exportLang}.pdf`);
+      await downloadQuotePdf(sheet, quoteExportFilename("pdf"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("apiError"));
     } finally {
@@ -454,7 +463,7 @@ export function OnRoadQuotePage() {
       } catch {
         setNotice(null);
       }
-      await downloadQuotePng(sheet, `quote-${vehicle?.model ?? "mitsubishi"}-${exportLang}.png`);
+      await downloadQuotePng(sheet, quoteExportFilename("png"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("apiError"));
     } finally {

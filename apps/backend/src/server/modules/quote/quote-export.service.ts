@@ -1,3 +1,4 @@
+import { buildQuoteExportFilename } from "@onroad/shared/quote/quoteExportFilename";
 import { persistCalculatedQuote, type QuoteSaveRequest } from "./quote-history.service";
 import { resolveQuoteCalculation } from "../catalog/catalog.service";
 import { loadQuoteTemplateWorkbook } from "./quote-report-path";
@@ -19,9 +20,12 @@ export async function exportQuote(body: QuoteSaveRequest) {
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   const buffer = new Uint8Array(arrayBuffer as ArrayBuffer);
   const language = normalizeLanguage(body.language);
-  const model = (vehicleRow.vehicle.model || "quote").replace(/\s+/g, "-");
   return {
     buffer,
-    filename: `quote-${model}-${language}.xlsx`,
+    filename: buildQuoteExportFilename("xlsx", {
+      model: vehicleRow.vehicle.model || "quote",
+      color: body.color,
+      language,
+    }),
   };
 }

@@ -18,6 +18,7 @@
     "./quote/quoteLabels": "./src/quote/quoteLabels.ts",
     "./quote/quoteSheetView": "./src/quote/quoteSheetView.ts",
     "./quote/bankLoanValidation": "./src/quote/bankLoanValidation.ts",
+    "./quote/quoteExportFilename": "./src/quote/quoteExportFilename.ts",
     "./i18n/lang": "./src/i18n/lang.ts"
   }
 }
