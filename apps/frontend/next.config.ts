@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   turbopack: {},
   transpilePackages: ["@onroad/shared"],
   serverExternalPackages: [
-    "@onroad/backend",
     "sharp",
     "@imgly/background-removal-node",
     "exceljs",

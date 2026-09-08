@@ -5,12 +5,19 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 async function handle(request: NextRequest) {
-  await import("@onroad/backend/load-env");
-  const { dispatchApiRequest } = await import("@onroad/backend/dispatch");
-  const apiRequest = Object.assign(request, {
-    nextUrl: new URL(request.url),
-  });
-  return dispatchApiRequest(apiRequest);
+  try {
+    await import("@onroad/backend/load-env");
+    const { dispatchApiRequest } = await import("@onroad/backend/dispatch");
+    const apiRequest = Object.assign(request, {
+      nextUrl: new URL(request.url),
+    });
+    return dispatchApiRequest(apiRequest);
+  } catch (error) {
+    console.error("[api] unhandled error", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    return Response.json({ message }, { status: 500 });
+  }
 }
 
 export const GET = handle;

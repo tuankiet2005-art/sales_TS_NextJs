@@ -11,7 +11,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "node scripts/generate-route-manifest.mjs && tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
+    "build": "node scripts/generate-route-manifest.mjs && tsc -p tsconfig.json && tsc-alias -p tsconfig.json --resolve-full-paths --resolve-full-extension .js",
     "start": "node scripts/run-start.mjs",
     "test": "vitest run"
   },
