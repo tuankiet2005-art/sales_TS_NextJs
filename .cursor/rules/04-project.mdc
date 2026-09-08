@@ -47,4 +47,4 @@ Vietnam vehicle catalog and location-based on-road cost quotes. Split monorepo: 
 
 - Copy `.env.example` → `apps/backend/.env.local` and `apps/frontend/.env.local`
 - Quote `ADMIN_PASSWORD` — unquoted `!` breaks bash `source`. Do not `source` `.env.local`
-- Production: Vercel Root Directory = `apps/frontend` + backend on any Node host + Neon `DATABASE_URL`
+- Production: Vercel Root Directory = `apps/frontend` — UI + API on one deployment (`api/index.mjs`); Neon `DATABASE_URL` in Vercel env

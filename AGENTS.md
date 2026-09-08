@@ -80,7 +80,7 @@ Default section order:
 - Quote page: two equal sites — Price left, Accessories right (stack on phones); the report, Word, PDF, and PNG follow `apps/backend/src/server/assets/quote-report/bang-bao-gia.xlsx`; Word, PDF, and PNG sit below the quote sheet
 - Use Lucide icons only (the set used by shadcn/ui); do not install the full shadcn component library unless asked
 - Do not commit `.env.local` or Neon passwords
-- Production: Vercel (`apps/frontend` as Root Directory) + backend on any Node host + Neon PostgreSQL
+- Production: Vercel (`apps/frontend` as Root Directory) — frontend and API deploy together via `api/index.mjs`; set `DATABASE_URL`, `ADMIN_PASSWORD`, `ADMIN_TOKEN_SECRET` in Vercel env (no separate backend host required)
 - Only create git commits when the user asks
 
 ## Child DOX Index

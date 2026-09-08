@@ -1,15 +1,24 @@
 import type { NextConfig } from "next";
 
-const API_URL = process.env.API_URL ?? "http://localhost:4000";
-
 const nextConfig: NextConfig = {
   turbopack: {},
   transpilePackages: ["@onroad/shared"],
+  serverExternalPackages: [
+    "@onroad/backend",
+    "sharp",
+    "@imgly/background-removal-node",
+    "exceljs",
+    "@neondatabase/serverless",
+  ],
   async rewrites() {
+    // Local dev: proxy /api to the standalone Express process (npm run dev:backend).
+    // On Vercel, vercel.json rewrites /api/* to api/index.ts (same deployment).
+    const apiUrl = process.env.API_URL;
+    if (!apiUrl) return [];
     return [
       {
         source: "/api/:path*",
-        destination: `${API_URL}/api/:path*`,
+        destination: `${apiUrl}/api/:path*`,
       },
     ];
   },
