@@ -54,6 +54,6 @@ Database: **Drizzle ORM** + Neon PostgreSQL (not Prisma — schema in `apps/back
 
 ## Deployment
 
-- **Frontend**: Vercel — Root Directory = `apps/frontend`
-- **Backend**: Any Node host (Railway, Render, Fly.io) — `apps/backend`, set `PORT` and `DATABASE_URL`
-- Set frontend `API_URL` to the deployed backend URL for rewrites
+- **Vercel (frontend + API)**: Root Directory = `apps/frontend`. Set `DATABASE_URL`, `ADMIN_PASSWORD`, and `ADMIN_TOKEN_SECRET` in Vercel env vars. Do **not** set `API_URL` on Vercel — `/api/*` is handled by the same deployment via `api/index.ts`.
+- **Local dev**: run `npm run dev` (both apps). Frontend `.env.local` needs `API_URL=http://localhost:4000` to proxy `/api` to the Express process.
+- **Optional split deploy**: host `apps/backend` on any Node host and set Vercel `API_URL` to that URL instead.

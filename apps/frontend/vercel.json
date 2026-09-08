@@ -1,5 +1,17 @@
 {
   "framework": "nextjs",
   "installCommand": "cd ../.. && npm install --legacy-peer-deps",
-  "buildCommand": "npm run build"
+  "buildCommand": "cd ../.. && npm run build",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    }
+  ],
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 60,
+      "includeFiles": "../../backend/dist/**,../../backend/src/server/config/data/**,../../backend/src/server/assets/**"
+    }
+  }
 }

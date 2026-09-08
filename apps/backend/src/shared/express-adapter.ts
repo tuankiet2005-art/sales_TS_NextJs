@@ -7,7 +7,7 @@ type RouteHandler = (
   context?: { params: Promise<Record<string, string>> },
 ) => Promise<Response> | Response;
 
-type RouteExports = {
+export type RouteExports = {
   GET?: RouteHandler;
   POST?: RouteHandler;
   PUT?: RouteHandler;
