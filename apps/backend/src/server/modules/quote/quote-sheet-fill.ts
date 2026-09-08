@@ -229,6 +229,7 @@ function fillQuote(sheet: ExcelJS.Worksheet, input: QuoteSheetFillInput) {
   // normalizeQuoteMoneyCells(sheet);
   normalizeQuoteMoneyCells(sheet);
   restoreQuoteSectionHeaderStyles(sheet);
+  restoreMonthlyPaymentPlanStyles(sheet);
 }
 
 function giftItems(gifts?: string | null) {
@@ -409,6 +410,7 @@ function writeAccessoryTotal(sheet: ExcelJS.Worksheet, value: string | number) {
 }
 
 const CASH_PLAN_HEADER = /PHƯƠNG ÁN:\s*MUA TIỀN MẶT/i;
+const MONTHLY_PAYMENT_HEADER = /PHƯƠNG ÁN TRẢ HÀNG THÁNG/i;
 const ON_ROAD_TOTAL_LABEL = /TỔNG LĂNG BÁNH/i;
 
 function collapseAccessoryTotalSpacerRow(sheet: ExcelJS.Worksheet) {
@@ -819,6 +821,29 @@ function paintSectionHeaderRow(sheet: ExcelJS.Worksheet, row: number) {
     const cell = sheet.getCell(row, col);
     cell.font = { ...QUOTE_SECTION_HEADER_FONT };
     cell.alignment = { ...QUOTE_SECTION_HEADER_ALIGNMENT };
+  }
+}
+
+function restoreMonthlyPaymentPlanStyles(sheet: ExcelJS.Worksheet) {
+  const header = findLabelCell(sheet, (text) => MONTHLY_PAYMENT_HEADER.test(text));
+  if (!header) {
+    return;
+  }
+  const startRow = Number(header.row) + 1;
+  const endRow = startRow + 2;
+  for (let row = startRow; row <= endRow; row += 1) {
+    for (let col = 5; col <= 7; col += 1) {
+      const cell = sheet.getCell(row, col);
+      const label = readCellText(cell) ?? "";
+      if (/^Thanh toán tháng$/i.test(label.trim())) {
+        continue;
+      }
+      cell.alignment = {
+        ...(cell.alignment ?? {}),
+        horizontal: "center",
+        vertical: "middle",
+      };
+    }
   }
 }
 

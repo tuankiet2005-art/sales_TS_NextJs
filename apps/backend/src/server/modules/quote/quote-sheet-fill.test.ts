@@ -461,6 +461,15 @@ describe("fillQuoteWorkbook", () => {
     expect(accessoryHeader?.style.textAlign).toBe("center");
     expect(accessoryHeader?.style.color?.toLowerCase()).toBe("#ff0000");
     expect(accessoryHeader?.style.fontWeight).toBe(700);
+    const loanTermYears = view.cells.find((cell) => cell.text === "5 Năm");
+    const loanTermMonths = view.cells.find((cell) => cell.text === "60");
+    const loanTermAmount = view.cells.find((cell) => cell.r === loanTermYears?.r && cell.c === 7);
+    const monthlyPaymentRow = view.cells.find((cell) => cell.text === "Thanh toán tháng");
+    const monthlyPaymentTotal = view.cells.find((cell) => cell.r === monthlyPaymentRow?.r && cell.c === 7);
+    expect(loanTermYears?.style.textAlign).toBe("center");
+    expect(loanTermMonths?.style.textAlign).toBe("center");
+    expect(loanTermAmount?.style.textAlign).toBe("center");
+    expect(monthlyPaymentTotal?.style.textAlign).toBe("center");
     expect(giftHeader?.style.borderBottom).toMatch(/solid/);
     const titleCell = view.cells.find((cell) => cell.text.includes("BẢNG BÁO GIÁ CHI TIẾT"));
     expect(titleCell?.style.borderRight).toMatch(/solid/);
